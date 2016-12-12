@@ -1,0 +1,40 @@
+{
+    "title" : "User Schema",
+    "type" : "object",
+    "properties" : {
+        "username" : {
+            "type" : "string",
+            "required" : true
+        },
+        "id" : {
+            "type" : "string",
+            "required" : true
+        },
+        "active" : {
+            "type" : "boolean"
+        },
+        "type" : {
+            "type" : "string"
+        },
+        "patron_group" : {
+            "type" : "string"
+        },
+        "meta" : {
+            "type" : "object"
+        },
+        "personal" : {
+            "type" : "object",
+            "properties" : {
+                "full_name" : {
+                    "type" : "string"
+                },
+                "email_primary" : {
+                    "type" : "string"
+                },
+                "email_alternate" : {
+                    "type" : "string"
+                }
+            }
+        }
+    }
+}
