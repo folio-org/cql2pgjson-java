@@ -31,6 +31,14 @@ public class CQL2PgJSONTest {
     }
 
     @Test
+    public void searchTerm() {
+        assertEquals("a='foo' OR b='foo'", pg("foo"));
+        assertEquals("a='foo' OR b='foo'", pg("\"foo\""));
+        assertEquals("(a='foo' OR b='foo') AND (a='bar' OR b='bar')", pg("\"foo\" AND \"bar\""));
+        assertEquals("a='foo   bar' OR b='foo   bar'", pg("   \"foo   bar\"   "));
+    }
+
+    @Test
     public void or() {
         assertEquals("(x.a='foo') OR (x.a='bar')", pg("x.a=(foo or bar)"));
     }
@@ -45,4 +53,8 @@ public class CQL2PgJSONTest {
         assertEquals("((a='foo') AND (a='bar')) OR (a='baz')", pg("a=foo and a=bar or a=baz"));
     }
 
+    @Test
+    public void not() {
+        assertEquals("(a='foo') AND NOT (b='bar')", pg("a=foo not b=bar"));
+    }
 }

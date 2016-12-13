@@ -1,7 +1,11 @@
 package org.z3950.zing.cql.cql2pgjson;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
+import org.z3950.zing.cql.CQLBoolean;
 import org.z3950.zing.cql.CQLBooleanNode;
 import org.z3950.zing.cql.CQLNode;
 import org.z3950.zing.cql.CQLParseException;
@@ -11,6 +15,13 @@ import org.z3950.zing.cql.CQLTermNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class CQL2PgJSON {
+    /**
+     * Contextual Query Language (CQL) Specification: https://www.loc.gov/standards/sru/cql/spec.html
+     */
+
+    /** default index names */
+    private static List<String> serverChoiceFields = Arrays.asList("a", "b");
+
     private CQL2PgJSON() throws InstantiationException {
         throw new InstantiationException("Utility class");
     }
@@ -38,13 +49,18 @@ public class CQL2PgJSON {
         throw new IllegalArgumentException("Not implemented yet: " + node.getClass().getName());
     }
 
-    private static String pg(CQLBooleanNode node) {
-        switch (node.getOperator()) {
-        case NOT: return "! (" + pg(node.getLeftOperand()) + ")";
-        default: break;
+    private static String toSql(CQLBoolean bool) {
+        switch (bool) {
+        case AND: return "AND";
+        case OR:  return "OR";
+        case NOT: return "AND NOT";
+        default: throw new IllegalArgumentException("Not implemented yet: " + bool);
         }
+    }
+
+    private static String pg(CQLBooleanNode node) {
         return "(" + pg(node.getLeftOperand()) + ") "
-            + node.getOperator()
+            + toSql(node.getOperator())
             + " (" + pg(node.getRightOperand()) + ")";
     }
 
@@ -59,6 +75,11 @@ public class CQL2PgJSON {
     }
 
     private static String pg(CQLTermNode node) {
-        return node.getIndex() + "='" + maskSingleQuotes(node.getTerm()) + "'";
+        String match = "='" + maskSingleQuotes(node.getTerm()) + "'";
+        if (node.getIndex().equals("cql.serverChoice")) {
+            return serverChoiceFields.stream().map(f -> f + match).collect(Collectors.joining(" OR "));
+        } else {
+            return node.getIndex() + match;
+        }
     }
 }
