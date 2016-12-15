@@ -79,6 +79,7 @@ public class CQL2PgJSON {
         if (node.getIndex().equals("cql.serverChoice")) {
             return serverChoiceFields.stream().map(f -> f + match).collect(Collectors.joining(" OR "));
         } else {
+            // FIXME: add "user_data->'"
             return node.getIndex() + match;
         }
     }
