@@ -1,7 +1,11 @@
-name="Lea Long",## Lea Long
-name="Lea Long" or name="Ka Keller",## Ka Keller; Lea Long
-email=jo@example.com or name="Ka Keller",## Jo Jane; Ka Keller
+name=Long,## Lea Long
+name=Lea or name=Keller,## Ka Keller; Lea Long
+email=jo or name="Ka Keller",## Jo Jane; Ka Keller
 address.zip=2791,## Lea Long
 "Lea Long",## Lea Long
+Long,## Lea Long
 jo@example.com,## Jo Jane
-ka@example.com or jo@example.com,## Jo Jane; Ka Keller
+example.,## Jo Jane; Ka Keller; Lea Long
+email=example.com,## Jo Jane; Ka Keller; Lea Long
+email==example.com,##
+name == "Lea Long",## Lea Long

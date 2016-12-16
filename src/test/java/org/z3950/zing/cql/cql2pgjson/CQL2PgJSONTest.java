@@ -88,8 +88,8 @@ public class CQL2PgJSONTest {
     @FileParameters("classpath:users.csv")
     public void select(String cql, String expectedNames) {
         // the "## " better visually separates the fields for humans editing the csv file.
-        assertTrue("expectedNames starts with ## ", expectedNames.startsWith("## "));
-        String expectedNames2 = expectedNames.substring(3);
+        assertTrue("expectedNames starts with ##", expectedNames.startsWith("##"));
+        String expectedNames2 = expectedNames.substring(2).trim();
         String where = cql2pgJson.cql2pgJson(cql);
         String sql = "select user_data->'name' from users where " + where + " order by user_data->'name'";
         try {

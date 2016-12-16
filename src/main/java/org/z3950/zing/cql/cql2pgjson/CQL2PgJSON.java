@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.z3950.zing.cql.CQLBoolean;
 import org.z3950.zing.cql.CQLBooleanNode;
 import org.z3950.zing.cql.CQLNode;
@@ -96,6 +97,33 @@ public class CQL2PgJSON {
     }
 
     /**
+     * Mask these characters for LIKE: \ * % _ ? '
+     * @param s
+     * @return
+     */
+    private static String cql2like(String s) {
+        return StringUtils.replaceEach(s,
+                new String[]{"\\\\", "\\*", "%",   "*", "\\_", "\\?", "_"  , "?", "'"  },
+                new String[]{"\\\\", "\\*", "\\%", "%", "\\_", "\\?", "\\_", "_", "''" } );
+    }
+
+    private String match(CQLTermNode node) {
+        switch (node.getRelation().getBase()) {
+        case "==":
+            String term = maskSingleQuotes(node.getTerm());
+            // JSON numbers don't have double quotes, JSON strings do have
+            // term=foo: in ('foo', '"foo"')
+            // term=1.5: in ('1.5', '"1.5"')
+            return " in ('" + term + "', '\"" + term + "\"')";
+        case "=":
+            return " LIKE '%" + cql2like(node.getTerm()) + "%'";
+        default:
+            throw new IllegalArgumentException("Relation " + node.getRelation().getBase()
+                    + " not implemented yet: " + node.toString());
+        }
+    }
+
+    /**
      * Convert index name to SQL term.
      * Example result for field=user and index=foo.bar:
      * CAST(user->'foo'->'bar' AS text)
@@ -108,11 +136,7 @@ public class CQL2PgJSON {
     }
 
     private String pg(CQLTermNode node) {
-        String term = maskSingleQuotes(node.getTerm());
-        // JSON numbers don't have double quotes, JSON strings do have
-        // term=foo: in ('foo', '"foo"')
-        // term=1.5: in ('1.5', '"1.5"')
-        String match = " in ('" + term + "', '\"" + term + "\"')";
+        String match = match(node);
         if (node.getIndex().equals("cql.serverChoice")) {
             return serverChoiceFields.stream()
                     .map(f -> index2sql(f) + match)
