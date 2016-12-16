@@ -5,7 +5,6 @@ import static org.junit.Assert.*;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -29,6 +28,7 @@ public class CQL2PgJSONTest {
 
     private static void setupDatabase() throws IOException, SQLException {
         // TODO: take values from dbtest_connection command line variable
+        // try local Postgres on Port 5432 with user test
         String url = "jdbc:postgresql://127.0.0.1:5432/test?currentSchema=public&user=test&password=test";
         try {
             conn = DriverManager.getConnection(url);
@@ -53,34 +53,19 @@ public class CQL2PgJSONTest {
         conn = DriverManager.getConnection(url);
     }
 
-    /**
-     * Insert userDataJson into users table after converting single quote to double quote.
-     *
-     * Single quote makes JSON more readable in java code files that allows
-     * only double quotes for string constants.
-     *
-     * @param userDataJson      json to insert
-     * @throws SQLException     on sql error
-     */
-    private static void insert(String userDataJson) throws SQLException {
-        PreparedStatement stmt = conn.prepareStatement("INSERT INTO users (user_data) VALUES (cast(? as jsonb))");
-        stmt.setString(1, userDataJson.replace("'", "\""));
-        assertEquals(1, stmt.executeUpdate());
-    }
-
-    private static void setupData() throws SQLException {
-        conn.createStatement().execute("DROP TABLE IF EXISTS users");
-        conn.createStatement().execute("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"");
-        conn.createStatement().execute("CREATE TABLE users (id UUID PRIMARY KEY DEFAULT uuid_generate_v1mc(), user_data JSONB NOT NULL);");
-        insert("{'name': 'Jo Jane', 'email': 'jo@example.com', 'address': {'city': 'Sydhavn', 'zip': 2450}, 'lang': ['en', 'pl']}");
-        insert("{'name': 'Ka Keller', 'email': 'ka@example.com', 'address': {'city': 'Fred', 'zip': 1900}, 'lang': ['en', 'dk', 'fi']}");
-        insert("{'name': 'Lea Long', 'email': 'lea@example.com', 'address': {'city': 'Søvang', 'zip': 2791}, 'lang': ['en', 'dk']}");
+    private static void setupData(String sqlFile) throws SQLException {
+        String sql = Util.getResource(sqlFile);
+        // split at semicolon at end of line (removing optional whitespace)
+        String statements [] = sql.split(";\\s*[\\n\\r]\\s*");
+        for (String stmt : statements) {
+            conn.createStatement().execute(stmt);
+        }
     }
 
     @BeforeClass
     public static void runOnceBeforeClass() throws IOException, SQLException {
         setupDatabase();
-        setupData();
+        setupData("users.sql");
         cql2pgJson = new CQL2PgJSON("users.user_data", Util.getResource("userdata.json"));
     }
 
@@ -94,49 +79,38 @@ public class CQL2PgJSONTest {
         }
     }
 
-    private void select(String where, String expectedNames) throws SQLException {
-        final Statement statement = conn.createStatement();
+    private void select(String cql, String where, String expectedNames) {
         String sql = "select user_data->'name' from users where " + where + " order by user_data->'name'";
         try {
+            Statement statement = conn.createStatement();
             statement.execute(sql);
-        } catch (SQLException e) {
-            throw new SQLException(sql, e);
-        }
-        ResultSet result = statement.getResultSet();
-        String actualNames = "";
-        while (result.next()) {
-            if (! "".equals(actualNames)) {
-                actualNames += ", ";
+            ResultSet result = statement.getResultSet();
+            String actualNames = "";
+            while (result.next()) {
+                if (! "".equals(actualNames)) {
+                    actualNames += ", ";
+                }
+                actualNames += result.getString(1).toString().replace("\"", "");
             }
-            actualNames += result.getString(1).toString().replace("\"", "");
+            assertEquals("CQL: " + cql + ", SQL: " + where, expectedNames, actualNames);
+        } catch (SQLException e) {
+            throw new RuntimeException(sql, e);
         }
-        assertEquals(where, expectedNames, actualNames);
+    }
+
+    private void test(String testFile) {
+        String tests [] = Util.getResource("users.test").split("[\\n\\r]+");
+        for (String test : tests) {
+            String s [] = test.split("## ");
+            String cql = s[0];
+            String expectedNames = s[1];
+            String sql = cql2pgJson.cql2pgJson(cql);
+            select(cql, sql, expectedNames);
+        }
     }
 
     @Test
-    public void testSelect() throws SQLException {
-        select("true", "Jo Jane, Ka Keller, Lea Long");
-        select("user_data @> '{\"lang\": [\"fi\", \"en\"] }'", "Ka Keller");
-        select("CAST(user_data->'name' as text) = '\"Lea Long\"'", "Lea Long");
-    }
-
-    /**
-     * In cql replace single quote ' by double quote " and invoke cql2pgJson.
-     * Convert to SQL and run, assert that the names in the result set matches expectedNames.
-     */
-    private void cql(String cql, String expectedNames) throws SQLException {
-        String sql = cql2pgJson.cql2pgJson(cql.replace("'", "\""));
-        select(sql, expectedNames);
-    }
-
-    @Test
-    public void test() throws SQLException {
-        cql("name='Lea Long'", "Lea Long");
-        cql("name='Lea Long' or name='Ka Keller'", "Ka Keller, Lea Long");
-        cql("email=jo@example.com or name='Ka Keller'", "Jo Jane, Ka Keller");
-        cql("address.zip=2791", "Lea Long");
-        cql("'Lea Long'", "Lea Long");
-        cql("jo@example.com", "Jo Jane");
-        cql("ka@example.com or jo@example.com", "Jo Jane, Ka Keller");
+    public void users() {
+        test("users.test");
     }
 }
