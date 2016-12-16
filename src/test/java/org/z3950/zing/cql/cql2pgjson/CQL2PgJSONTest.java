@@ -1,6 +1,7 @@
 package org.z3950.zing.cql.cql2pgjson;
 
 import static org.junit.Assert.*;
+import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -13,11 +14,15 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import junitparams.FileParameters;
+import junitparams.JUnitParamsRunner;
+
 import ru.yandex.qatools.embed.postgresql.PostgresExecutable;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
 import ru.yandex.qatools.embed.postgresql.PostgresStarter;
 import ru.yandex.qatools.embed.postgresql.config.PostgresConfig;
 
+@RunWith(JUnitParamsRunner.class)
 public class CQL2PgJSONTest {
     static PostgresProcess postgresProcess;
     static Connection conn;
@@ -79,7 +84,13 @@ public class CQL2PgJSONTest {
         }
     }
 
-    private void select(String cql, String where, String expectedNames) {
+    @Test
+    @FileParameters("classpath:users.csv")
+    public void select(String cql, String expectedNames) {
+        // the "## " better visually separates the fields for humans editing the csv file.
+        assertTrue("expectedNames starts with ## ", expectedNames.startsWith("## "));
+        String expectedNames2 = expectedNames.substring(3);
+        String where = cql2pgJson.cql2pgJson(cql);
         String sql = "select user_data->'name' from users where " + where + " order by user_data->'name'";
         try {
             Statement statement = conn.createStatement();
@@ -88,29 +99,13 @@ public class CQL2PgJSONTest {
             String actualNames = "";
             while (result.next()) {
                 if (! "".equals(actualNames)) {
-                    actualNames += ", ";
+                    actualNames += "; ";
                 }
                 actualNames += result.getString(1).toString().replace("\"", "");
             }
-            assertEquals("CQL: " + cql + ", SQL: " + where, expectedNames, actualNames);
+            assertEquals("CQL: " + cql + ", SQL: " + where, expectedNames2, actualNames);
         } catch (SQLException e) {
             throw new RuntimeException(sql, e);
         }
-    }
-
-    private void test(String testFile) {
-        String tests [] = Util.getResource("users.test").split("[\\n\\r]+");
-        for (String test : tests) {
-            String s [] = test.split("## ");
-            String cql = s[0];
-            String expectedNames = s[1];
-            String sql = cql2pgJson.cql2pgJson(cql);
-            select(cql, sql, expectedNames);
-        }
-    }
-
-    @Test
-    public void users() {
-        test("users.test");
     }
 }
