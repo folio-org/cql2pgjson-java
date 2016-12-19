@@ -9,6 +9,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -71,7 +72,7 @@ public class CQL2PgJSONTest {
     public static void runOnceBeforeClass() throws IOException, SQLException {
         setupDatabase();
         setupData("users.sql");
-        cql2pgJson = new CQL2PgJSON("users.user_data", Util.getResource("userdata.json"));
+        cql2pgJson = new CQL2PgJSON("users.user_data", Util.getResource("userdata.json"), Arrays.asList("name", "email"));
     }
 
     @AfterClass

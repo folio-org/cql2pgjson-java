@@ -2,6 +2,7 @@ package org.z3950.zing.cql.cql2pgjson;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,8 +30,11 @@ public class CQL2PgJSON {
     /** JSON schema of jsonb field as object tree */
     private Object schema;
 
-    /** default index names */
-    private static List<String> serverChoiceFields = Arrays.asList("name", "email");
+    /**
+     * Default index names to be used for cql.serverChoice.
+     * May be empty, but not null. Must not contain null, names must not contain double quote or single quote.
+     */
+    private List<String> serverChoiceIndexes = Collections.emptyList();
 
     /**
      * Create an instance for the specified schema.
@@ -49,6 +53,57 @@ public class CQL2PgJSON {
 
         ObjectMapper mapper = new ObjectMapper();
         this.schema = mapper.readValue(schema, Object.class);
+    }
+
+    /**
+     * Create an instance for the specified schema.
+     *
+     * @param field Name of the JSON field, may include schema and table name (e.g. tenant1.user_table.json).
+     *   Must conform to SQL identifiert requirements (characters, not a keyword), or properly
+     *   quoted using double quotes.
+     * @param schema JSON String representing the schema of the field the CQL queries against.
+     * @param serverChoiceIndexes       List of field names, may be empty, must not contain null,
+     *                                  names must not contain double quote or single quote.
+     * @throws IOException if the JSON structure is invalid
+     */
+    public CQL2PgJSON(String field, String schema, List<String> serverChoiceIndexes) throws IOException {
+        if (field == null || field.isEmpty() || field.equals(" ")) {
+            throw new IllegalArgumentException("tableName must not be empty");
+        }
+        this.field = field;
+
+        ObjectMapper mapper = new ObjectMapper();
+        this.schema = mapper.readValue(schema, Object.class);
+        setServerChoiceIndexes(serverChoiceIndexes);
+    }
+
+    /**
+     * Set the index names (field names) for cql.serverChoice.
+     * @param serverChoiceIndexes       List of field names, may be empty, must not contain null,
+     *                                  names must not contain double quote or single quote.
+     */
+    public void setServerChoiceIndexes(List<String> serverChoiceIndexes) {
+        if (serverChoiceIndexes == null) {
+            this.serverChoiceIndexes = Collections.emptyList();
+            return;
+        }
+        for (String field : serverChoiceIndexes) {
+            if (field == null) {
+                throw new NullPointerException("serverChoiceFields must not contain null elements");
+            }
+            if (field.trim().isEmpty()) {
+                throw new IllegalArgumentException("serverChoiceFields must not contain emtpy field names");
+            }
+            int pos = field.indexOf('"');
+            if (pos >= 0) {
+                throw new IllegalArgumentException("field contains double quote at position " + pos+1 + ": " + field);
+            }
+            pos = field.indexOf('\'');
+            if (pos >= 0) {
+                throw new IllegalArgumentException("field contains single quote at position " + pos+1 + ": " + field);
+            }
+        }
+        this.serverChoiceIndexes = serverChoiceIndexes;
     }
 
     public String cql2pgJson(String cql) {
@@ -138,7 +193,10 @@ public class CQL2PgJSON {
     private String pg(CQLTermNode node) {
         String match = match(node);
         if (node.getIndex().equals("cql.serverChoice")) {
-            return serverChoiceFields.stream()
+            if (serverChoiceIndexes.isEmpty()) {
+                throw new IllegalStateException("cql.serverChoice requested, but not serverChoiceIndexes defined.");
+            }
+            return serverChoiceIndexes.stream()
                     .map(f -> index2sql(f) + match)
                     .collect(Collectors.joining(" OR "));
         } else {
