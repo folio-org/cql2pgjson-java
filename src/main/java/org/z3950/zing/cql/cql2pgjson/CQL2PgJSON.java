@@ -44,17 +44,41 @@ public class CQL2PgJSON {
      * @param field Name of the JSON field, may include schema and table name (e.g. tenant1.user_table.json).
      *   Must conform to SQL identifiert requirements (characters, not a keyword), or properly
      *   quoted using double quotes.
-     * @param schema JSON String representing the schema of the field the CQL queries against.
-     * @throws IOException if the JSON structure is invalid
      */
-    public CQL2PgJSON(String field, String schema) throws IOException {
+    public CQL2PgJSON(String field) {
         if (field == null || field.trim().isEmpty()) {
             throw new IllegalArgumentException("field (containing tableName) must not be empty");
         }
         this.field = field;
+    }
 
-        ObjectMapper mapper = new ObjectMapper();
-        this.schema = mapper.readValue(schema, Object.class);
+    /**
+     * Create an instance for the specified schema.
+     *
+     * @param field Name of the JSON field, may include schema and table name (e.g. tenant1.user_table.json).
+     *   Must conform to SQL identifiert requirements (characters, not a keyword), or properly
+     *   quoted using double quotes.
+     * @param schema JSON String representing the schema of the field the CQL queries against.
+     * @throws IOException if the JSON structure is invalid
+     */
+    public CQL2PgJSON(String field, String schema) throws IOException {
+        this(field);
+        setSchema(schema);
+    }
+
+    /**
+     * Create an instance for the specified schema.
+     *
+     * @param field Name of the JSON field, may include schema and table name (e.g. tenant1.user_table.json).
+     *   Must conform to SQL identifier requirements (characters, not a keyword), or properly
+     *   quoted using double quotes.
+     * @param serverChoiceIndexes       List of field names, may be empty, must not contain null,
+     *                                  names must not contain double quote or single quote.
+     * @throws IOException if the JSON structure is invalid
+     */
+    public CQL2PgJSON(String field, List<String> serverChoiceIndexes) throws IOException {
+        this(field);
+        setServerChoiceIndexes(serverChoiceIndexes);
     }
 
     /**
@@ -69,8 +93,19 @@ public class CQL2PgJSON {
      * @throws IOException if the JSON structure is invalid
      */
     public CQL2PgJSON(String field, String schema, List<String> serverChoiceIndexes) throws IOException {
-        this(field, schema);
+        this(field);
+        setSchema(schema);
         setServerChoiceIndexes(serverChoiceIndexes);
+    }
+
+    /**
+     * Set the schema of the field.
+     * @param schema  JSON String representing the schema of the field the CQL queries against.
+     * @throws IOException if the JSON structure is invalid
+     */
+    private void setSchema(String schema) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        this.schema = mapper.readValue(schema, Object.class);
     }
 
     /**
