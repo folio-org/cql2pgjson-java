@@ -1,7 +1,6 @@
 package org.z3950.zing.cql.cql2pgjson;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -49,8 +48,8 @@ public class CQL2PgJSON {
      * @throws IOException if the JSON structure is invalid
      */
     public CQL2PgJSON(String field, String schema) throws IOException {
-        if (field == null || field.isEmpty() || field.equals(" ")) {
-            throw new IllegalArgumentException("tableName must not be empty");
+        if (field == null || field.trim().isEmpty()) {
+            throw new IllegalArgumentException("field (containing tableName) must not be empty");
         }
         this.field = field;
 
@@ -62,7 +61,7 @@ public class CQL2PgJSON {
      * Create an instance for the specified schema.
      *
      * @param field Name of the JSON field, may include schema and table name (e.g. tenant1.user_table.json).
-     *   Must conform to SQL identifiert requirements (characters, not a keyword), or properly
+     *   Must conform to SQL identifier requirements (characters, not a keyword), or properly
      *   quoted using double quotes.
      * @param schema JSON String representing the schema of the field the CQL queries against.
      * @param serverChoiceIndexes       List of field names, may be empty, must not contain null,
@@ -70,13 +69,7 @@ public class CQL2PgJSON {
      * @throws IOException if the JSON structure is invalid
      */
     public CQL2PgJSON(String field, String schema, List<String> serverChoiceIndexes) throws IOException {
-        if (field == null || field.isEmpty() || field.equals(" ")) {
-            throw new IllegalArgumentException("tableName must not be empty");
-        }
-        this.field = field;
-
-        ObjectMapper mapper = new ObjectMapper();
-        this.schema = mapper.readValue(schema, Object.class);
+        this(field, schema);
         setServerChoiceIndexes(serverChoiceIndexes);
     }
 
