@@ -12,7 +12,10 @@ import org.z3950.zing.cql.CQLBooleanNode;
 import org.z3950.zing.cql.CQLNode;
 import org.z3950.zing.cql.CQLParseException;
 import org.z3950.zing.cql.CQLParser;
+import org.z3950.zing.cql.CQLSortNode;
 import org.z3950.zing.cql.CQLTermNode;
+import org.z3950.zing.cql.Modifier;
+import org.z3950.zing.cql.ModifierSet;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -123,7 +126,37 @@ public class CQL2PgJSON {
         if (node instanceof CQLBooleanNode) {
             return pg((CQLBooleanNode) node);
         }
+        if (node instanceof CQLSortNode) {
+            return pg((CQLSortNode) node);
+        }
         throw new IllegalArgumentException("Not implemented yet: " + node.getClass().getName());
+    }
+
+    private String pg(CQLSortNode node) {
+        StringBuilder order = new StringBuilder();
+        order.append(pg(node.getSubtree()))
+             .append(" ORDER BY ");
+        boolean firstIndex = true;
+        for (ModifierSet modifierSet : node.getSortIndexes()) {
+            if (firstIndex) {
+                firstIndex = false;
+            } else {
+                order.append(", ");
+            }
+            String index = modifierSet.getBase();
+            order.append(field).append("->'").append(index.replace(".", "'->'")).append("'");
+            for (Modifier m : modifierSet.getModifiers()) {
+                if ("sort.ascending".equals(m.getType())) {
+                    order.append(" ASC");
+                    break;
+                }
+                if ("sort.descending".equals(m.getType())) {
+                    order.append(" DESC");
+                    break;
+                }
+            }
+        }
+        return order.toString();
     }
 
     private String toSql(CQLBoolean bool) {

@@ -91,8 +91,12 @@ public class CQL2PgJSONTest {
         // the "## " better visually separates the fields for humans editing the csv file.
         assertTrue("expectedNames starts with ##", expectedNames.startsWith("##"));
         String expectedNames2 = expectedNames.substring(2).trim();
+
+        if (! cql.contains(" sortBy ")) {
+            cql += " sortBy name";
+        }
         String where = cql2pgJson.cql2pgJson(cql);
-        String sql = "select user_data->'name' from users where " + where + " order by user_data->'name'";
+        String sql = "select user_data->'name' from users where " + where;
         try {
             Statement statement = conn.createStatement();
             statement.execute(sql);
@@ -102,7 +106,7 @@ public class CQL2PgJSONTest {
                 if (! "".equals(actualNames)) {
                     actualNames += "; ";
                 }
-                actualNames += result.getString(1).toString().replace("\"", "");
+                actualNames += result.getString(1).replace("\"", "");
             }
             assertEquals("CQL: " + cql + ", SQL: " + where, expectedNames2, actualNames);
         } catch (SQLException e) {

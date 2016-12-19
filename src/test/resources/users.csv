@@ -9,3 +9,7 @@ example.,## Jo Jane; Ka Keller; Lea Long
 email=example.com,## Jo Jane; Ka Keller; Lea Long
 email==example.com,##
 name == "Lea Long",## Lea Long
+example sortBy name,## Jo Jane; Ka Keller; Lea Long
+example sortBy name/sort.ascending,## Jo Jane; Ka Keller; Lea Long
+example sortBy name/sort.descending,## Lea Long; Ka Keller; Jo Jane
+example sortBy notExistingIndex address.zip,## Ka Keller; Jo Jane; Lea Long
