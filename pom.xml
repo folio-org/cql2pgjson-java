@@ -44,7 +44,7 @@
     <dependency>
         <groupId>org.z3950.zing</groupId>
         <artifactId>cql-java</artifactId>
-        <version>1.13-SNAPSHOT</version>
+        <version>1.12</version>
     </dependency>
 
     <!-- test dependencies -->
@@ -112,6 +112,14 @@
 
     </plugins>
   </build>
+
+  <repositories>
+    <repository>
+      <id>indexdata</id>
+      <name>Index Data</name>
+      <url>http://maven.indexdata.com/</url>
+    </repository>
+  </repositories>
 
 </project>
 

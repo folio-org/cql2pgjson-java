@@ -6,9 +6,11 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
-import org.z3950.zing.cql.CQLBoolean;
+import org.z3950.zing.cql.CQLAndNode;
 import org.z3950.zing.cql.CQLBooleanNode;
 import org.z3950.zing.cql.CQLNode;
+import org.z3950.zing.cql.CQLNotNode;
+import org.z3950.zing.cql.CQLOrNode;
 import org.z3950.zing.cql.CQLParseException;
 import org.z3950.zing.cql.CQLParser;
 import org.z3950.zing.cql.CQLSortNode;
@@ -187,18 +189,24 @@ public class CQL2PgJSON {
         return order.toString();
     }
 
-    private String toSql(CQLBoolean bool) {
-        switch (bool) {
-        case AND: return "AND";
-        case OR:  return "OR";
-        case NOT: return "AND NOT";
-        default: throw new IllegalArgumentException("Not implemented yet: " + bool);
+    private String sqlOperator(CQLBooleanNode node) {
+        if (node instanceof CQLAndNode) {
+            return "AND";
         }
+        if (node instanceof CQLOrNode) {
+            return "OR";
+        }
+        if (node instanceof CQLNotNode) {
+            // CQL "NOT" means SQL "AND NOT", see section "7. Boolean Operators" in
+            // https://www.loc.gov/standards/sru/cql/spec.html
+            return "AND NOT";
+        }
+        throw new IllegalArgumentException("Not implemented yet: " + node.getClass().getName());
     }
 
     private String pg(CQLBooleanNode node) {
         return "(" + pg(node.getLeftOperand()) + ") "
-            + toSql(node.getOperator())
+            + sqlOperator(node)
             + " (" + pg(node.getRightOperand()) + ")";
     }
 
