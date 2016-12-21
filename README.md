@@ -18,3 +18,8 @@ Setting server choice indexes is possible:
     String sql = "select * from users where " + where;
     // select * from users where CAST(users.user_data->'name' AS text) LIKE '%Miller%'
     //                        OR CAST(users.user_data->'email' AS text) LIKE '%Miller%'
+
+Only these relations have been implemented yet:
+
+* = (substring match)
+* == (exact match)
