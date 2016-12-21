@@ -86,7 +86,7 @@ public class CQL2PgJSONTest {
     }
 
     @Test
-    @FileParameters("classpath:users.csv")
+    @FileParameters(value = "classpath:users.tsv", mapper = TsvWithHeaderMapper.class)
     public void select(String cql, String expectedNames) {
         // the "## " better visually separates the fields for humans editing the csv file.
         assertTrue("expectedNames starts with ##", expectedNames.startsWith("##"));
