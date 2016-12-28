@@ -63,7 +63,7 @@
         <version>4.12</version>
         <scope>test</scope>
     </dependency>
-    
+
     <dependency>
         <groupId>pl.pragmatists</groupId>
         <artifactId>JUnitParams</artifactId>
