@@ -1,5 +1,15 @@
 # cql2pgjson-java
+
 CQL (Contextual Query Language) to PostgreSQL JSON converter in Java.
+
+## License
+
+Copyright (C) 2016 The Open Library Foundation
+
+This software is distributed under the terms of the Apache License,
+Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
+
+## Usage
 
 Invoke like this:
 
@@ -23,3 +33,9 @@ Only these relations have been implemented yet:
 
 * = (substring match)
 * == (exact match)
+
+## Additional information
+
+* Further [CQL](http://dev.folio.org/doc/glossary#cql) information.
+
+* Other FOLIO Developer documentation is at [dev.folio.org](http://dev.folio.org/)
