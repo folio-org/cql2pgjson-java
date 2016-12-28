@@ -33,3 +33,9 @@ Only these relations have been implemented yet:
 
 * = (substring match)
 * == (exact match)
+
+## Additional information
+
+* Further [CQL](http://dev.folio.org/doc/glossary#cql) information.
+
+* Other FOLIO Developer documentation is at [dev.folio.org](http://dev.folio.org/)
