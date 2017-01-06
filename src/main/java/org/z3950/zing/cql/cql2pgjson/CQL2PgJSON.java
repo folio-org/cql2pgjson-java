@@ -261,7 +261,7 @@ public class CQL2PgJSON {
 
     private String pg(CQLTermNode node) {
         String match = match(node);
-        if (node.getIndex().equals("cql.serverChoice")) {
+        if ("cql.serverChoice".equalsIgnoreCase(node.getIndex())) {
             if (serverChoiceIndexes.isEmpty()) {
                 throw new IllegalStateException("cql.serverChoice requested, but not serverChoiceIndexes defined.");
             }
