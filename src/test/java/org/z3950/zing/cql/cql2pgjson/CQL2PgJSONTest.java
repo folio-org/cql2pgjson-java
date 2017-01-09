@@ -15,9 +15,8 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import junitparams.FileParameters;
 import junitparams.JUnitParamsRunner;
-
+import junitparams.Parameters;
 import ru.yandex.qatools.embed.postgresql.PostgresExecutable;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
 import ru.yandex.qatools.embed.postgresql.PostgresStarter;
@@ -85,12 +84,11 @@ public class CQL2PgJSONTest {
         }
     }
 
-    @Test
-    @FileParameters(value = "classpath:users.tsv", mapper = TsvWithHeaderMapper.class)
-    public void select(String cql, String expectedNames) {
-        // the "## " better visually separates the fields for humans editing the csv file.
-        assertTrue("expectedNames starts with ##", expectedNames.startsWith("##"));
-        String expectedNames2 = expectedNames.substring(2).trim();
+    public void select(String testcase) {
+        int hash = testcase.indexOf('#');
+        assertTrue("hash character in testcase", hash>=0);
+        String cql           = testcase.substring(0, hash).trim();
+        String expectedNames = testcase.substring(hash+1).trim();
 
         if (! cql.contains(" sortBy ")) {
             cql += " sortBy name";
@@ -108,9 +106,40 @@ public class CQL2PgJSONTest {
                 }
                 actualNames += result.getString(1).replace("\"", "");
             }
-            assertEquals("CQL: " + cql + ", SQL: " + where, expectedNames2, actualNames);
+            assertEquals("CQL: " + cql + ", SQL: " + where, expectedNames, actualNames);
         } catch (SQLException e) {
             throw new RuntimeException(sql, e);
         }
+    }
+
+    @Test
+    @Parameters({
+        "name=Long                      # Lea Long",
+        "name=Lea or name=Keller        # Ka Keller; Lea Long",
+        "name=Long                      # Lea Long",
+        "name=Lea or name=Keller        # Ka Keller; Lea Long",
+        "email=jo or name=\"Ka Keller\" # Jo Jane; Ka Keller",
+        "address.zip=2791               # Lea Long",
+        "\"Lea Long\"                   # Lea Long",
+        "Long                           # Lea Long",
+        "jo@example.com                 # Jo Jane",
+        "example.                       # Jo Jane; Ka Keller; Lea Long",
+        "email=example.com              # Jo Jane; Ka Keller; Lea Long",
+        "email==example.com             #",
+        "name == \"Lea Long\"           # Lea Long",
+        })
+    public void basic(String testcase) {
+        select(testcase);
+    }
+
+    @Test
+    @Parameters({
+        "example sortBy name                         # Jo Jane; Ka Keller; Lea Long",
+        "example sortBy name/sort.ascending          # Jo Jane; Ka Keller; Lea Long",
+        "example sortBy name/sort.descending         # Lea Long; Ka Keller; Jo Jane",
+        "example sortBy notExistingIndex address.zip # Ka Keller; Jo Jane; Lea Long",
+        })
+    public void sort(String testcase) {
+        select(testcase);
     }
 }
