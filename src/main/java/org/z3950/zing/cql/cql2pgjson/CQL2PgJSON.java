@@ -64,6 +64,7 @@ public class CQL2PgJSON {
                 "\\?", "\\?",
                 "?", "[^[:punct:][:space:]]",
                 "\\", "\\\\",
+                "'", "''",
                 };
         // copy first column into regexpSearchList and
         // second column into regexpReplacementList
@@ -268,14 +269,8 @@ public class CQL2PgJSON {
         return masking;
     }
 
-    /**
-     * Replace each single quote by two single quotes. Required for SQL string constants:
-     * https://www.postgresql.org/docs/9.6/static/sql-syntax-lexical.html#SQL-SYNTAX-CONSTANTS
-     * @param s
-     * @return String with single quotes masked
-     */
-    private static String maskSingleQuotes(String s) {
-        return s.replace("'", "''");
+    private static String maskRegexp(String s) {
+        return StringUtils.replaceEach(s, regexpSearchList, regexpReplacementList);
     }
 
     /**
@@ -290,7 +285,7 @@ public class CQL2PgJSON {
         }
         for (int i=0; i<split.length; i++) {
             split[i] = " ~* '(^|[[:punct:]]|[[:space:]])"
-                    + StringUtils.replaceEach(split[i], regexpSearchList, regexpReplacementList)
+                    + maskRegexp(split[i])
                     + "($|[[:punct:]]|[[:space:]])'";
 
         }
@@ -301,11 +296,9 @@ public class CQL2PgJSON {
         String masking = masking(node.getRelation().getModifiers());
         switch (node.getRelation().getBase()) {
         case "==":
-            String term = maskSingleQuotes(node.getTerm());
-            // JSON numbers don't have double quotes, JSON strings do have
-            // term=foo: in ('foo', '"foo"')
-            // term=1.5: in ('1.5', '"1.5"')
-            return new String [] { " in ('" + term + "', '\"" + term + "\"')" };
+            // accept quotes at beginning and end because JSON string are
+            // quoted (but JSON numbers aren't)
+            return new String [] { " ~* '^\"?" + maskRegexp(node.getTerm()) + "\"?$'" };
         case "=":
             return cql2regexp(node.getTerm());
         default:

@@ -136,6 +136,19 @@ public class CQL2PgJSONTest {
 
     @Test
     @Parameters({
+        "long                           # Lea Long",
+        "LONG                           # Lea Long",
+        "lONG                           # Lea Long",
+        "email=JO                       # Jo Jane",
+        "\"lEA LoNg\"                   # Lea Long",
+        "name == \"LEA long\"           # Lea Long",
+        })
+    public void caseInsensitive(String testcase) {
+        select(testcase);
+    }
+
+    @Test
+    @Parameters({
         "*Lea* *Long*                   # Lea Long",
         "*e* *on*                       # Lea Long",
         "?e? ?on?                       # Lea Long",
@@ -148,6 +161,18 @@ public class CQL2PgJSONTest {
         "?a                             # Ka Keller", // and not Lea
         })
     public void wildcards(String testcase) {
+        select(testcase);
+    }
+
+    @Test
+    @Parameters({
+        // check correct masking of special chars
+        "'        OR Jo                 # Jo Jane",
+        "\\       OR Jo                 # Jo Jane",
+        "name=='  OR Jo                 # Jo Jane",
+        "name==\\ OR Jo                 # Jo Jane",
+        })
+    public void special(String testcase) {
         select(testcase);
     }
 

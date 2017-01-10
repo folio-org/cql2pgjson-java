@@ -34,6 +34,11 @@ Only these relations have been implemented yet:
 * = (substring match)
 * == (exact match)
 
+Search is case insensitive, but only for ASCII characters, not for other Unicode characters.
+
+Word begin and word end in JSON is only detected at whitespace and punctuation characters
+from the ASCII charset, not from other Unicode charsets.
+
 ## Additional information
 
 * Further [CQL](http://dev.folio.org/doc/glossary#cql) information.
