@@ -40,6 +40,41 @@ public class CQL2PgJSON {
      */
     private List<String> serverChoiceIndexes = Collections.emptyList();
 
+    private static String [] regexpSearchList;
+    private static String [] regexpReplacementList;
+    {
+        String [] s = {
+                "\\\\", "\\\\",
+                "\\(", "\\(",
+                "(", "\\(",
+                "\\)", "\\)",
+                ")", "\\)",
+                "\\[", "\\[",
+                "[", "\\[",
+                "\\]", "\\]",
+                "]", "\\]",
+                "\\.", "\\.",
+                ".", "\\.",
+                "\\{", "\\{",
+                "{", "\\{",
+                "\\*", "\\*",
+                "*", "[^[:punct:][:space:]]*",    // includes unicode characters
+                "\\+", "\\+",
+                "+", "\\+",
+                "\\?", "\\?",
+                "?", "[^[:punct:][:space:]]",
+                "\\", "\\\\",
+                };
+        // copy first column into regexpSearchList and
+        // second column into regexpReplacementList
+        regexpSearchList      = new String [s.length/2];
+        regexpReplacementList = new String [s.length/2];
+        for (int i=0; i<regexpSearchList.length; i++) {
+            regexpSearchList     [i] = s[i*2];
+            regexpReplacementList[i] = s[i*2 + 1];
+        }
+    }
+
     /**
      * Create an instance for the specified schema.
      *
@@ -211,6 +246,29 @@ public class CQL2PgJSON {
     }
 
     /**
+     * Return the last masking contained in modifiers. If none use "masked" as default.
+     * @param modifiers where to search in
+     * @return one of "masked", "unmasked", "substring", "regexp".
+     */
+    private static String masking(List<Modifier> modifiers) {
+        String masking = "masked";  // default
+        for (Modifier m : modifiers) {
+            String type = m.getType();
+            switch (type) {
+            case "masked":
+            case "unmasked":
+            case "substring":
+            case "regexp":
+                masking = type;
+                break;
+            default:
+                // ignore
+            }
+        }
+        return masking;
+    }
+
+    /**
      * Replace each single quote by two single quotes. Required for SQL string constants:
      * https://www.postgresql.org/docs/9.6/static/sql-syntax-lexical.html#SQL-SYNTAX-CONSTANTS
      * @param s
@@ -221,26 +279,35 @@ public class CQL2PgJSON {
     }
 
     /**
-     * Mask these characters for LIKE: \ * % _ ? '
-     * @param s
-     * @return
+     * Return a POSIX regexp expression for the cql expression.
+     * @param cql   expression to convert
+     * @return resulting regexp
      */
-    private static String cql2like(String s) {
-        return StringUtils.replaceEach(s,
-                new String[]{"\\\\", "\\*", "%",   "*", "\\_", "\\?", "_"  , "?", "'"  },
-                new String[]{"\\\\", "\\*", "\\%", "%", "\\_", "\\?", "\\_", "_", "''" } );
+    private static String [] cql2regexp(String cql) {
+        String split [] = cql.split("\\s+");  // split at whitespace
+        if (split.length == 0) {
+            return new String [] { "''" };
+        }
+        for (int i=0; i<split.length; i++) {
+            split[i] = " ~* '(^|[[:punct:]]|[[:space:]])"
+                    + StringUtils.replaceEach(split[i], regexpSearchList, regexpReplacementList)
+                    + "($|[[:punct:]]|[[:space:]])'";
+
+        }
+        return split;
     }
 
-    private String match(CQLTermNode node) {
+    private String [] match(CQLTermNode node) {
+        String masking = masking(node.getRelation().getModifiers());
         switch (node.getRelation().getBase()) {
         case "==":
             String term = maskSingleQuotes(node.getTerm());
             // JSON numbers don't have double quotes, JSON strings do have
             // term=foo: in ('foo', '"foo"')
             // term=1.5: in ('1.5', '"1.5"')
-            return " in ('" + term + "', '\"" + term + "\"')";
+            return new String [] { " in ('" + term + "', '\"" + term + "\"')" };
         case "=":
-            return " LIKE '%" + cql2like(node.getTerm()) + "%'";
+            return cql2regexp(node.getTerm());
         default:
             throw new IllegalArgumentException("Relation " + node.getRelation().getBase()
                     + " not implemented yet: " + node.toString());
@@ -259,17 +326,34 @@ public class CQL2PgJSON {
         return "CAST(" + field + "->'" + index.replace(".", "'->'") + "' AS text)";
     }
 
+    /**
+     * Create an SQL expression where index is applied to all matches.
+     * @param index   index to use
+     * @param matches  list of match expressions
+     * @return SQL expression
+     */
+    private String index2sql(String index, String [] matches) {
+        StringBuilder s = new StringBuilder();
+        for (String match : matches) {
+            if (s.length() > 0) {
+                s.append(" AND ");
+            }
+            s.append(index2sql(index) + match);
+        }
+        return s.toString();
+    }
+
     private String pg(CQLTermNode node) {
-        String match = match(node);
+        String [] matches = match(node);
         if ("cql.serverChoice".equalsIgnoreCase(node.getIndex())) {
             if (serverChoiceIndexes.isEmpty()) {
                 throw new IllegalStateException("cql.serverChoice requested, but not serverChoiceIndexes defined.");
             }
             return serverChoiceIndexes.stream()
-                    .map(f -> index2sql(f) + match)
+                    .map(index -> index2sql(index, matches))
                     .collect(Collectors.joining(" OR "));
         } else {
-            return index2sql(node.getIndex()) + match;
+            return index2sql(node.getIndex(), matches);
         }
     }
 }

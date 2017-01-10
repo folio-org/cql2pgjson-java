@@ -116,19 +116,34 @@ public class CQL2PgJSONTest {
     @Parameters({
         "name=Long                      # Lea Long",
         "name=Lea or name=Keller        # Ka Keller; Lea Long",
-        "name=Long                      # Lea Long",
-        "name=Lea or name=Keller        # Ka Keller; Lea Long",
         "email=jo or name=\"Ka Keller\" # Jo Jane; Ka Keller",
         "address.zip=2791               # Lea Long",
         "\"Lea Long\"                   # Lea Long",
+        "\"Long Lea\"                   # Lea Long",
+        "\"Long Lea Long\"              # Lea Long",
         "Long                           # Lea Long",
+        "Lon                            #",
+        "ong                            #",
         "jo@example.com                 # Jo Jane",
-        "example.                       # Jo Jane; Ka Keller; Lea Long",
+        "example                        # Jo Jane; Ka Keller; Lea Long",
         "email=example.com              # Jo Jane; Ka Keller; Lea Long",
         "email==example.com             #",
         "name == \"Lea Long\"           # Lea Long",
         })
     public void basic(String testcase) {
+        select(testcase);
+    }
+
+    @Test
+    @Parameters({
+        "address.city=Søvang            # Lea Long",
+        "address.city=øvang             #",
+        "address.city=vang              #",
+        "address.city=S?vang            # Lea Long",
+        "address.city=S*vang            # Lea Long",
+        "address.city=*ang              # Lea Long",
+        })
+    public void unicode(String testcase) {
         select(testcase);
     }
 
