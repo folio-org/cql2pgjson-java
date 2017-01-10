@@ -136,6 +136,23 @@ public class CQL2PgJSONTest {
 
     @Test
     @Parameters({
+        "*Lea* *Long*                   # Lea Long",
+        "*e* *on*                       # Lea Long",
+        "?e? ?on?                       # Lea Long",
+        "L*e*a L*o*n*g                  # Lea Long",
+        "Lo??                           # Lea Long",
+        "Lo?                            #",
+        "Lo???                          #",
+        "??a                            # Lea Long",
+        "???a                           #",
+        "?a                             # Ka Keller", // and not Lea
+        })
+    public void wildcards(String testcase) {
+        select(testcase);
+    }
+
+    @Test
+    @Parameters({
         "address.city=Søvang            # Lea Long",
         "address.city=øvang             #",
         "address.city=vang              #",
