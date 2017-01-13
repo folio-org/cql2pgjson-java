@@ -22,15 +22,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class CQL2PgJSON {
     /*
-     * Contextual Query Language (CQL) Specification: https://www.loc.gov/standards/sru/cql/spec.html
+     * Contextual Query Language (CQL) Specification:
+     * https://www.loc.gov/standards/sru/cql/spec.html
+     * https://docs.oasis-open.org/search-ws/searchRetrieve/v1.0/os/part5-cql/searchRetrieve-v1.0-os-part5-cql.html
      */
 
     /**
      * Name of the JSON field, may include schema and table name (e.g. tenant1.user_table.json).
-     * Must conform to SQL identifiert requirements (characters, not a keyword), or properly
+     * Must conform to SQL identifier requirements (characters, not a keyword), or properly
      * quoted using double quotes.
      */
-    private String field;
+    private String jsonField;
     /** JSON schema of jsonb field as object tree */
     private Object schema;
 
@@ -42,7 +44,7 @@ public class CQL2PgJSON {
 
     private static String [] regexpSearchList;
     private static String [] regexpReplacementList;
-    {
+    static {
         String [] s = {
                 "\\\\", "\\\\",
                 "\\(", "\\(",
@@ -58,7 +60,7 @@ public class CQL2PgJSON {
                 "\\{", "\\{",
                 "{", "\\{",
                 "\\*", "\\*",
-                "*", "[^[:punct:][:space:]]*",    // includes unicode characters
+                "*", "[^[:punct:][:space:]]*",    // includes Unicode characters
                 "\\+", "\\+",
                 "+", "\\+",
                 "\\?", "\\?",
@@ -80,21 +82,21 @@ public class CQL2PgJSON {
      * Create an instance for the specified schema.
      *
      * @param field Name of the JSON field, may include schema and table name (e.g. tenant1.user_table.json).
-     *   Must conform to SQL identifiert requirements (characters, not a keyword), or properly
+     *   Must conform to SQL identifier requirements (characters, not a keyword), or properly
      *   quoted using double quotes.
      */
     public CQL2PgJSON(String field) {
         if (field == null || field.trim().isEmpty()) {
             throw new IllegalArgumentException("field (containing tableName) must not be empty");
         }
-        this.field = field;
+        this.jsonField = field;
     }
 
     /**
      * Create an instance for the specified schema.
      *
      * @param field Name of the JSON field, may include schema and table name (e.g. tenant1.user_table.json).
-     *   Must conform to SQL identifiert requirements (characters, not a keyword), or properly
+     *   Must conform to SQL identifier requirements (characters, not a keyword), or properly
      *   quoted using double quotes.
      * @param schema JSON String representing the schema of the field the CQL queries against.
      * @throws IOException if the JSON structure is invalid
@@ -210,16 +212,24 @@ public class CQL2PgJSON {
                 order.append(", ");
             }
             String index = modifierSet.getBase();
-            order.append(field).append("->'").append(index.replace(".", "'->'")).append("'");
-            for (Modifier m : modifierSet.getModifiers()) {
-                if ("sort.ascending".equals(m.getType())) {
-                    order.append(" ASC");
+            order.append(jsonField).append("->'").append(index.replace(".", "'->'")).append("'");
+
+            String sort = null;
+            // find last sort modifier
+            for (Modifier modifier : modifierSet.getModifiers()) {
+                switch (modifier.getType()) {
+                case "sort.ascending":
+                    sort = " ASC";
                     break;
-                }
-                if ("sort.descending".equals(m.getType())) {
-                    order.append(" DESC");
+                case "sort.descending":
+                    sort = " DESC";
                     break;
+                default:
+                    // ignore
                 }
+            }
+            if (sort != null) {
+                order.append(sort);
             }
         }
         return order.toString();
@@ -316,7 +326,7 @@ public class CQL2PgJSON {
      * @return SQL term
      */
     private String index2sql(String index) {
-        return "CAST(" + field + "->'" + index.replace(".", "'->'") + "' AS text)";
+        return "CAST(" + jsonField + "->'" + index.replace(".", "'->'") + "' AS text)";
     }
 
     /**
