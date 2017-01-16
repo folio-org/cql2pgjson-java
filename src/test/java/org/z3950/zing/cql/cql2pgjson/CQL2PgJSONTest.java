@@ -178,6 +178,7 @@ public class CQL2PgJSONTest {
         "??a                            # Lea Long",
         "???a                           #",
         "?a                             # Ka Keller", // and not Lea
+        "name=/masked ?a                # Ka Keller",
         })
     public void wildcards(String testcase) {
         select(testcase);
@@ -217,5 +218,60 @@ public class CQL2PgJSONTest {
         })
     public void sort(String testcase) {
         select(testcase);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void nullField() {
+        new CQL2PgJSON(null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void emptyField() {
+        new CQL2PgJSON(" \t \t ");
+    }
+
+    @Test
+    public void noServerChoiceIndexes() throws IOException {
+        CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList());
+        try {
+            cql2pgJson.cql2pgJson("Jane");
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("serverChoiceIndex"));
+            return;
+        }
+        fail();
+    }
+
+    @Test
+    public void relationNotImplemented() throws IOException {
+        CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data");
+        try {
+            cql2pgJson.cql2pgJson("name > Jane");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("Relation"));
+            assertTrue(e.getMessage().contains(">"));
+            return;
+        }
+        fail();
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void nullIndex() throws IOException {
+        new CQL2PgJSON("users.user_data", Arrays.asList((String) null));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void emptyIndex() throws IOException {
+        new CQL2PgJSON("users.user_data", Arrays.asList(" \t \t "));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void doubleQuoteIndex() throws IOException {
+        new CQL2PgJSON("users.user_data", Arrays.asList("test\"cql"));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void singleQuoteIndex() throws IOException {
+        new CQL2PgJSON("users.user_data", Arrays.asList("test'cql"));
     }
 }
