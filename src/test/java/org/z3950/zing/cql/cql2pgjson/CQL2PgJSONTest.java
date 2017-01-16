@@ -115,8 +115,6 @@ public class CQL2PgJSONTest {
     @Test
     @Parameters({
         "name=Long                      # Lea Long",
-        "name=Lea or name=Keller        # Ka Keller; Lea Long",
-        "email=jo or name=\"Ka Keller\" # Jo Jane; Ka Keller",
         "address.zip=2791               # Lea Long",
         "\"Lea Long\"                   # Lea Long",
         "\"Long Lea\"                   # Lea Long",
@@ -131,6 +129,27 @@ public class CQL2PgJSONTest {
         "name == \"Lea Long\"           # Lea Long",
         })
     public void basic(String testcase) {
+        select(testcase);
+    }
+
+    @Test
+    @Parameters({
+        "name=*o*                                   # Jo Jane; Lea Long",
+        "              email=*a                     # Ka Keller; Lea Long",
+        "                           address.zip=*0  # Jo Jane; Ka Keller",
+        "name=*o* and  email=*a                     # Lea Long",
+        "name=*o* or   email=*a                     # Jo Jane; Ka Keller; Lea Long",
+        "name=*o* not  email=*a                     # Jo Jane",
+        "name=*o* and  email=*a or  address.zip=*0  # Jo Jane; Ka Keller; Lea Long",
+        "name=*o* and (email=*a or  address.zip=*0) # Jo Jane; Lea Long",
+        "name=*o* or   email=*a and address.zip=*0  # Jo Jane; Ka Keller",
+        "name=*o* or  (email=*a and address.zip=*0) # Jo Jane; Ka Keller; Lea Long",
+        "name=*o* not  email=*a or  address.zip=*0  # Jo Jane; Ka Keller",
+        "name=*o* not (email=*a or  address.zip=*0) #",
+        "name=*o* or   email=*a not address.zip=*0  # Lea Long",
+        "name=*o* or  (email=*a not address.zip=*0) # Jo Jane; Lea Long",
+        })
+    public void andOrNot(String testcase) {
         select(testcase);
     }
 
