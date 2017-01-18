@@ -291,7 +291,10 @@ public class CQL2PgJSON {
     private static String [] cql2regexp(String cql) {
         String split [] = cql.split("\\s+");  // split at whitespace
         if (split.length == 0) {
-            return new String [] { "''" };
+            // cql contains whitespace only.
+            // honorWhitespace is not implemented yet,
+            // whitespace only results in empty string and matches anything
+            return new String [] { " ~* ''" };
         }
         for (int i=0; i<split.length; i++) {
             split[i] = " ~* '(^|[[:punct:]]|[[:space:]])"
@@ -304,6 +307,9 @@ public class CQL2PgJSON {
 
     private String [] match(CQLTermNode node) {
         String masking = masking(node.getRelation().getModifiers());
+        if (! "masked".equals(masking)) {
+            throw new IllegalArgumentException("This masking is not implemented yet: " + masking);
+        }
         switch (node.getRelation().getBase()) {
         case "==":
             // accept quotes at beginning and end because JSON string are

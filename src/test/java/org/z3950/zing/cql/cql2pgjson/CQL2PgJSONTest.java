@@ -10,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.List;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -112,6 +113,49 @@ public class CQL2PgJSONTest {
         }
     }
 
+    /**
+     * Invoke CQL2PgJSON.cql2pgJson(cql) expecting an exception.
+     * @param cql  the cql expression that should trigger the exception
+     * @param clazz  the expected class of the exception
+     * @param contains  the expected strings of the exception message
+     * @throws RuntimeException  if an exception was thrown that is not an instance of clazz
+     */
+    public void cql2pgJsonException(String cql,
+            Class<? extends Exception> clazz, String ... contains) {
+        try {
+            CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email"));
+            cql2pgJsonException(cql2pgJson, cql, clazz, contains);
+        } catch (Throwable e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Invoke CQL2PgJSON.cql2pgJson(cql) expecting an exception.
+     * @param cql2pgJson  the CQL2PgJSON to use
+     * @param cql  the cql expression that should trigger the exception
+     * @param clazz  the expected class of the exception
+     * @param contains  the expected strings of the exception message
+     * @throws RuntimeException  if an exception was thrown that is not an instance of clazz
+     */
+    public void cql2pgJsonException(CQL2PgJSON cql2pgJson, String cql,
+            Class<? extends Exception> clazz, String ... contains) {
+        try {
+            cql2pgJson.cql2pgJson(cql);
+        } catch (Throwable e) {
+            if (! clazz.isInstance(e)) {
+                throw new RuntimeException(e);
+            }
+            for (String s : contains) {
+                assertTrue("Expect exception message containing '" + s + "': " + e.getMessage(),
+                        e.getMessage().contains(s));
+            }
+            return;
+        }
+        fail("Exception " + clazz + " expected.");
+    }
+
+
     @Test
     @Parameters({
         "name=Long                      # Lea Long",
@@ -127,6 +171,8 @@ public class CQL2PgJSONTest {
         "email=example.com              # Jo Jane; Ka Keller; Lea Long",
         "email==example.com             #",
         "name == \"Lea Long\"           # Lea Long",
+        // whitespace is removed, empty string matches anything (including email without whitespace)
+        "email=\" \"                    # Jo Jane; Ka Keller; Lea Long",
         })
     public void basic(String testcase) {
         select(testcase);
@@ -151,6 +197,12 @@ public class CQL2PgJSONTest {
         })
     public void andOrNot(String testcase) {
         select(testcase);
+    }
+
+    @Test
+    public void prox() {
+        cql2pgJsonException("name=Lea prox/unit=word/distance>3 name=Long",
+                IllegalArgumentException.class, "CQLProxNode");
     }
 
     @Test
@@ -182,6 +234,13 @@ public class CQL2PgJSONTest {
         })
     public void wildcards(String testcase) {
         select(testcase);
+    }
+
+    @Test
+    public void masking() {
+        cql2pgJsonException("name=/unmasked Lea",  IllegalArgumentException.class, "unmasked");
+        cql2pgJsonException("name=/substring Lea", IllegalArgumentException.class, "substring");
+        cql2pgJsonException("name=/regexp Lea",    IllegalArgumentException.class, "regexp");
     }
 
     @Test
@@ -232,27 +291,16 @@ public class CQL2PgJSONTest {
 
     @Test
     public void noServerChoiceIndexes() throws IOException {
-        CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList());
-        try {
-            cql2pgJson.cql2pgJson("Jane");
-        } catch (IllegalStateException e) {
-            assertTrue(e.getMessage().contains("serverChoiceIndex"));
-            return;
-        }
-        fail();
+        cql2pgJsonException(new CQL2PgJSON("users.user_data", Arrays.asList()),
+                "Jane", IllegalStateException.class, "serverChoiceIndex");
+        cql2pgJsonException(new CQL2PgJSON("users.user_data", (List<String>) null),
+                "Jane", IllegalStateException.class, "serverChoiceIndex");
     }
 
     @Test
-    public void relationNotImplemented() throws IOException {
-        CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data");
-        try {
-            cql2pgJson.cql2pgJson("name > Jane");
-        } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().contains("Relation"));
-            assertTrue(e.getMessage().contains(">"));
-            return;
-        }
-        fail();
+    public void relationNotImplemented() {
+        cql2pgJsonException(new CQL2PgJSON("users.user_data"),
+                "name > Jane", IllegalArgumentException.class, "Relation", ">");
     }
 
     @Test(expected = NullPointerException.class)
