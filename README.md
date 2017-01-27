@@ -34,7 +34,11 @@ Only these relations have been implemented yet:
 * = (substring match)
 * == (exact match)
 
-Search is case insensitive, but only for ASCII characters, not for other Unicode characters.
+Functional modifiers: Only the default `ignoreCase` and `ignoreAccents` is implemented ignoring
+both case and diacritics/accents for all characters (ASCII and Unicode).
+
+Matching modifiers: Only `masked` is implemented, not `unmasked`, `regexp`,
+`honorWhitespace`, `substring`.
 
 Word begin and word end in JSON is only detected at whitespace and punctuation characters
 from the ASCII charset, not from other Unicode charsets.

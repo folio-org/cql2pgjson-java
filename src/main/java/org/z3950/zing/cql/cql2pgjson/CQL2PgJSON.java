@@ -5,7 +5,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.StringUtils;
 import org.z3950.zing.cql.CQLAndNode;
 import org.z3950.zing.cql.CQLBooleanNode;
 import org.z3950.zing.cql.CQLNode;
@@ -42,41 +41,16 @@ public class CQL2PgJSON {
      */
     private List<String> serverChoiceIndexes = Collections.emptyList();
 
-    private static String [] regexpSearchList;
-    private static String [] regexpReplacementList;
-    static {
-        String [] s = {
-                "\\\\", "\\\\",
-                "\\(", "\\(",
-                "(", "\\(",
-                "\\)", "\\)",
-                ")", "\\)",
-                "\\[", "\\[",
-                "[", "\\[",
-                "\\]", "\\]",
-                "]", "\\]",
-                "\\.", "\\.",
-                ".", "\\.",
-                "\\{", "\\{",
-                "{", "\\{",
-                "\\*", "\\*",
-                "*", "[^[:punct:][:space:]]*",    // includes Unicode characters
-                "\\+", "\\+",
-                "+", "\\+",
-                "\\?", "\\?",
-                "?", "[^[:punct:][:space:]]",
-                "\\", "\\\\",
-                "'", "''",
-                };
-        // copy first column into regexpSearchList and
-        // second column into regexpReplacementList
-        regexpSearchList      = new String [s.length/2];
-        regexpReplacementList = new String [s.length/2];
-        for (int i=0; i<regexpSearchList.length; i++) {
-            regexpSearchList     [i] = s[i*2];
-            regexpReplacementList[i] = s[i*2 + 1];
-        }
+    private enum CqlMasking {
+      MASKED, UNMASKED, SUBSTRING, REGEXP;
+      @Override
+      public String toString() {
+        return super.toString().toLowerCase();
+      }
     }
+
+    /** includes unicode characters */
+    private static final String WORD_CHARACTER_REGEXP = "[^[:punct:][:space:]]";
 
     /**
      * Create an instance for the specified schema.
@@ -256,32 +230,51 @@ public class CQL2PgJSON {
             + " (" + pg(node.getRightOperand()) + ")";
     }
 
-    /**
-     * Return the last masking contained in modifiers. If none use "masked" as default.
-     * @param modifiers where to search in
-     * @return one of "masked", "unmasked", "substring", "regexp".
-     */
-    private static String masking(List<Modifier> modifiers) {
-        String masking = "masked";  // default
-        for (Modifier m : modifiers) {
-            String type = m.getType();
-            switch (type) {
-            case "masked":
-            case "unmasked":
-            case "substring":
-            case "regexp":
-                masking = type;
-                break;
-            default:
-                // ignore
-            }
-        }
-        return masking;
+  /**
+   * Return the last CqlMasking contained in modifiers. If none use MASKED as default.
+   * @param modifiers where to search in
+   * @return one of CqlMasking.
+   */
+  private static CqlMasking masking(List<Modifier> modifiers) {
+    CqlMasking masking = CqlMasking.MASKED;  // default
+    for (Modifier m : modifiers) {
+      switch (m.getType().toLowerCase()) {
+      case "masked":
+        masking = CqlMasking.MASKED;
+        break;
+      case "unmasked":
+        masking = CqlMasking.UNMASKED;
+        break;
+      case "substring":
+        masking = CqlMasking.SUBSTRING;
+        break;
+      case "regexp":
+        masking = CqlMasking.REGEXP;
+        break;
+      default:
+        // ignore
+      }
     }
+    return masking;
+  }
 
-    private static String maskRegexp(String s) {
-        return StringUtils.replaceEach(s, regexpSearchList, regexpReplacementList);
+  private static String regexp(String s) {
+    StringBuilder regexp = new StringBuilder();
+    for (char c : s.toCharArray()) {
+      switch (c) {
+      case '?':
+        regexp.append(WORD_CHARACTER_REGEXP);
+        break;
+      case '*':
+        regexp.append(WORD_CHARACTER_REGEXP + "*");
+        break;
+      default:
+        regexp.append(Unicode.IGNORE_CASE_AND_DIACRITICS.getEquivalents(c));
+      }
     }
+    // mask ' used for quoting postgres strings
+    return regexp.toString().replace("'", "''");
+  }
 
     /**
      * Return a POSIX regexp expression for the cql expression.
@@ -289,16 +282,16 @@ public class CQL2PgJSON {
      * @return resulting regexp
      */
     private static String [] cql2regexp(String cql) {
-        String split [] = cql.split("\\s+");  // split at whitespace
+        String [] split = cql.split("\\s+");  // split at whitespace
         if (split.length == 0) {
             // cql contains whitespace only.
             // honorWhitespace is not implemented yet,
             // whitespace only results in empty string and matches anything
-            return new String [] { " ~* ''" };
+            return new String [] { " ~ ''" };
         }
         for (int i=0; i<split.length; i++) {
-            split[i] = " ~* '(^|[[:punct:]]|[[:space:]])"
-                    + maskRegexp(split[i])
+            split[i] = " ~ '(^|[[:punct:]]|[[:space:]])"
+                    + regexp(split[i])
                     + "($|[[:punct:]]|[[:space:]])'";
 
         }
@@ -306,15 +299,15 @@ public class CQL2PgJSON {
     }
 
     private String [] match(CQLTermNode node) {
-        String masking = masking(node.getRelation().getModifiers());
-        if (! "masked".equals(masking)) {
+        CqlMasking masking = masking(node.getRelation().getModifiers());
+        if (! masking.equals(CqlMasking.MASKED)) {
             throw new IllegalArgumentException("This masking is not implemented yet: " + masking);
         }
         switch (node.getRelation().getBase()) {
         case "==":
             // accept quotes at beginning and end because JSON string are
             // quoted (but JSON numbers aren't)
-            return new String [] { " ~* '^\"?" + maskRegexp(node.getTerm()) + "\"?$'" };
+            return new String [] { " ~* '^\"?" + regexp(node.getTerm()) + "\"?$'" };
         case "=":
             return cql2regexp(node.getTerm());
         default:

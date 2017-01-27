@@ -263,6 +263,11 @@ public class CQL2PgJSONTest {
         "address.city=S?vang            # Lea Long",
         "address.city=S*vang            # Lea Long",
         "address.city=*ang              # Lea Long",
+        "address.city=SØvang            # Lea Long",
+        "address.city=Sövang            # Lea Long",
+        "address.city=SÖvang            # Lea Long",
+        "address.city=Sävang            #",
+        "address.city=SÄvang            #",
         })
     public void unicode(String testcase) {
         select(testcase);
