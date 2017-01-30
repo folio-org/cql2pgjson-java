@@ -23,7 +23,7 @@ import java.util.stream.Stream;
  * initialization of the classes (UnicodeIgnoreCase, ...). The static initialization is invoked only when
  * the class is actually actually invoked.
  */
-public class UnicodeMapFileGenerator {
+public final class UnicodeMapFileGenerator {
   /** iterates over Character.isSurrogate(ch) */
   private static class NonSurrogates implements Iterator<Character>
   {

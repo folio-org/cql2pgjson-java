@@ -79,6 +79,8 @@ public enum Unicode {
     case ')':
     case '[':
     case ']':
+    case '{':
+    case '}':
     case '\\':
       return "\\" + ch;
     default:
