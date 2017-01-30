@@ -45,20 +45,20 @@ public final class UnicodeMapFileGenerator {
   }
 
   private static Iterable<Character> nonSurrogates = NonSurrogates::new;
-  private static Pattern diacritics = Pattern.compile("[\\p{InCombiningDiacriticalMarks}\uFE20\uFE21]+");
+  private static Pattern accents = Pattern.compile("[\\p{InCombiningDiacriticalMarks}\uFE20\uFE21]+");
 
   private UnicodeMapFileGenerator() {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");
   }
 
-  private static String removeDiacritics(String s) {
+  private static String removeAccents(String s) {
     String plain = Normalizer.normalize(s, Normalizer.Form.NFKD);
     if ("ø".equals(plain)) {
       plain = "o";
     } else if ("Ø".equals(plain)) {
       plain = "O";
     }
-    return diacritics.matcher(plain).replaceAll("");
+    return accents.matcher(plain).replaceAll("");
   }
 
   /**
@@ -156,20 +156,20 @@ public final class UnicodeMapFileGenerator {
     return new String [] { s, lower, upper, title };
   }
 
-  private static String [] ignoreDiacritics(Character c) {
+  private static String [] ignoreAccents(Character c) {
     String s = c.toString();
-    String plain = removeDiacritics(s);
+    String plain = removeAccents(s);
     if (s.equals(plain)) {
       return new String [] {};
     }
     return new String [] { s, plain };
   }
 
-  private static String [] ignoreCaseDiacritics(Character c) {
+  private static String [] ignoreCaseAccents(Character c) {
     String s = c.toString();
-    String upper = removeDiacritics(    s.toUpperCase(Locale.ROOT));
-    String lower = removeDiacritics(upper.toLowerCase(Locale.ROOT));
-    String title = removeDiacritics(Character.toString(Character.toTitleCase(c)));
+    String upper = removeAccents(    s.toUpperCase(Locale.ROOT));
+    String lower = removeAccents(upper.toLowerCase(Locale.ROOT));
+    String title = removeAccents(Character.toString(Character.toTitleCase(c)));
     if (s.equals(upper) && s.equals(lower) && s.equals(title)) {
       return new String [] {};
     }
@@ -212,8 +212,8 @@ public final class UnicodeMapFileGenerator {
     if (args.length != 1) {
       throw new IllegalArgumentException("1 argument (output dir) expected, " + args.length + " arguments found.");
     }
-    generateMapFile(args[0] + "/UnicodeIgnoreCase",           UnicodeMapFileGenerator::ignoreCase);
-    generateMapFile(args[0] + "/UnicodeIgnoreDiacritics",     UnicodeMapFileGenerator::ignoreDiacritics);
-    generateMapFile(args[0] + "/UnicodeIgnoreCaseDiacritics", UnicodeMapFileGenerator::ignoreCaseDiacritics);
+    generateMapFile(args[0] + "/UnicodeIgnoreCase",        UnicodeMapFileGenerator::ignoreCase);
+    generateMapFile(args[0] + "/UnicodeIgnoreAccents",     UnicodeMapFileGenerator::ignoreAccents);
+    generateMapFile(args[0] + "/UnicodeIgnoreCaseAccents", UnicodeMapFileGenerator::ignoreCaseAccents);
   }
 }

@@ -36,8 +36,8 @@ Only these relations have been implemented yet:
 
 Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
 
-Functional modifiers: Only the default (`ignoreCase` and `ignoreAccents`) is implemented ignoring
-both case and diacritics/accents for all characters (ASCII and Unicode).
+Functional modifiers: `ignoreCase`, `respectCase` and `ignoreAccents`, `respectAccents`
+are implemented for all characters (ASCII and Unicode). Default is `ignoreCase` and `ignoreAccents`.
 
 Matching modifiers: Only `masked` is implemented, not `unmasked`, `regexp`,
 `honorWhitespace`, `substring`.

@@ -5,10 +5,10 @@ import java.util.Map;
 /**
  * Provides regular expressions for matching Unicode characters ignoring accents/diacritics.
  */
-public final class UnicodeIgnoreDiacritics {
-  private static Map<Character,String> unmodifiableMap = Unicode.readMappingFile("UnicodeIgnoreDiacritics");
+public final class UnicodeIgnoreAccents {
+  private static Map<Character,String> unmodifiableMap = Unicode.readMappingFile("UnicodeIgnoreAccents");
 
-  private UnicodeIgnoreDiacritics() {
+  private UnicodeIgnoreAccents() {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");
   }
 

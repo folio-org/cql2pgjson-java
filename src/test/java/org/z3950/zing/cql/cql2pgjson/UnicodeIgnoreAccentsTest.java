@@ -11,7 +11,7 @@ import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
 
 @RunWith(JUnitParamsRunner.class)
-public class UnicodeIgnoreCaseDiacriticsTest {
+public class UnicodeIgnoreAccentsTest {
 
   private static String [] tests = { "",
       "a", "A", "ä", "Ä",
@@ -22,7 +22,7 @@ public class UnicodeIgnoreCaseDiacriticsTest {
   };
 
   public static void match(Character c, String test, boolean match) {
-    String regexp = Unicode.IGNORE_CASE_AND_DIACRITICS.getEquivalents(c);
+    String regexp = Unicode.IGNORE_ACCENTS.getEquivalents(c);
     boolean matching = test.matches("^" + regexp + "$");
     String title = "c=" + c + " test=" + test + " match=" + match + " regexp=" + regexp;
     assertTrue(title, matching == match);
@@ -30,33 +30,37 @@ public class UnicodeIgnoreCaseDiacriticsTest {
 
   @Test
   @Parameters({
-    "a,A,a,ä,A,Ä",
-    "ä,Ä,a,ä,A,Ä",
-    "o,O,o,ö,ø,O,Ö,Ø",
-    "ö,Ö,o,ö,ø,O,Ö,Ø",
-    "ø,Ø,o,ö,ø,O,Ö,Ø",
-    "b,B,b,B",
-    "z,Z,z,Z",
-    "ß,ẞ,ß,ẞ",  // LATIN SMALL LETTER SHARP S, LATIN CAPITAL LETTER SHARP S
+    "a,a,ä",
+    "ä,a,ä",
+    "A,A,Ä",
+    "Ä,A,Ä",
+    "o,o,ö,ø",
+    "ö,o,ö,ø",
+    "ø,o,ö,ø",
+    "O,O,Ö,Ø",
+    "Ö,O,Ö,Ø",
+    "Ø,O,Ö,Ø",
+    "b,b",
+    "B,B",
+    "z,z",
+    "Z,Z",
+    "ß,ß",  // LATIN SMALL LETTER SHARP S
+    "ẞ,ẞ"   // LATIN CAPITAL LETTER SHARP S
   })
-  public void match(Character c1, Character c2, String ... expected) {
-    // the regexp of each c1 and c2 must match each expected string
+  public void match(Character c, String ... expected) {
     for (String test : expected) {
-      match(c1, test, true);
-      match(c2, test, true);
+      match(c, test, true);
     }
-    // the regexp of each c1 and c2 must not match any not expected string
     for (String test : tests) {
       if (Arrays.asList(expected).contains(test)) {
         continue;
       }
-      match(c1, test, false);
-      match(c2, test, false);
+      match(c, test, false);
     }
   }
 
   @Test
   public void utilityClass() {
-    Util.assertUtilityClass(UnicodeIgnoreCaseDiacritics.class);
+    Util.assertUtilityClass(UnicodeIgnoreAccents.class);
   }
 }

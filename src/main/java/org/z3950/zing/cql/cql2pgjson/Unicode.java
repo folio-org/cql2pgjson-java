@@ -39,10 +39,10 @@ public enum Unicode {
    * Diacritics/accents ignoring equivalent. The return of getEquivalents(ch)
    * is a regular expression for one character that is ch or a character that differs in diacritics/accents only.
    */
-  IGNORE_DIACRITICS {
+  IGNORE_ACCENTS {
       @Override
       public String getEquivalents(char ch) {
-          return nullHandler(UnicodeIgnoreDiacritics.getRegexpMap().get(ch), ch);
+          return nullHandler(UnicodeIgnoreAccents.getRegexpMap().get(ch), ch);
       }
   },
   /**
@@ -53,10 +53,10 @@ public enum Unicode {
    * @see java.lang.Character#toUpperCase(java.lang.Character)
    * @see java.lang.Character#toTitleCase(java.lang.Character)
    */
-  IGNORE_CASE_AND_DIACRITICS {
+  IGNORE_CASE_AND_ACCENTS {
       @Override
       public String getEquivalents(char ch) {
-          return nullHandler(UnicodeIgnoreCaseDiacritics.getRegexpMap().get(ch), ch);
+          return nullHandler(UnicodeIgnoreCaseAccents.getRegexpMap().get(ch), ch);
       }
   };
 
