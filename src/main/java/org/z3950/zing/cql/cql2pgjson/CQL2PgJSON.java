@@ -260,18 +260,39 @@ public class CQL2PgJSON {
 
   private static String regexp(String s) {
     StringBuilder regexp = new StringBuilder();
+    boolean backslash = false;
     for (char c : s.toCharArray()) {
+      if (backslash) {
+        // Backslash (\) is used to escape '*', '?', quote (") and '^' , as well as itself.
+        // Backslash followed by any other characters is an error (see cql spec), but
+        // we handle it gracefully matching that character.
+        regexp.append(Unicode.IGNORE_CASE_AND_DIACRITICS.getEquivalents(c));
+        backslash = false;
+        continue;
+      }
       switch (c) {
+      case '\\':
+        backslash = true;
+        break;
       case '?':
         regexp.append(WORD_CHARACTER_REGEXP);
         break;
       case '*':
         regexp.append(WORD_CHARACTER_REGEXP + "*");
         break;
+      case '^':
+        regexp.append("(^\"?|\"?$)");
+        break;
       default:
         regexp.append(Unicode.IGNORE_CASE_AND_DIACRITICS.getEquivalents(c));
       }
     }
+
+    if (backslash) {
+      // a single backslash at the end is an error but we handle it gracefully matching one.
+      regexp.append(Unicode.IGNORE_CASE_AND_DIACRITICS.getEquivalents('\\'));
+    }
+
     // mask ' used for quoting postgres strings
     return regexp.toString().replace("'", "''");
   }

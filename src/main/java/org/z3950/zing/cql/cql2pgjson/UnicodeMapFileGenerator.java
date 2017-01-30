@@ -112,12 +112,24 @@ public class UnicodeMapFileGenerator {
     return changed;
   }
 
+  /**
+   * If s is a single backslash mask it by prepending a backslash, otherwise return s unchanged.
+   * @param s source String
+   * @return s masked String
+   */
+  private static String maskBackslash(String s) {
+    if ("\\".equals(s)) {
+      return "\\\\";
+    }
+    return s;
+  }
+
   private static void createRegexp(Map<Character,Set<String>> mapSet, Map<Character,String> mapRegexp) {
     for (Map.Entry<Character,Set<String>> entry : mapSet.entrySet()) {
       Character c = entry.getKey();
       Set<String> values = entry.getValue();
       int maxLength         = values.stream().mapToInt(String::length).max().orElse(0);
-      Stream<String> sorted = values.stream().sorted();
+      Stream<String> sorted = values.stream().map(UnicodeMapFileGenerator::maskBackslash).sorted();
       String regexp;
       if (maxLength == 1) {
         regexp = "[" + sorted.collect(Collectors.joining()) + "]";

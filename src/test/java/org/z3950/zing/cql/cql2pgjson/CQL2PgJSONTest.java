@@ -250,9 +250,26 @@ public class CQL2PgJSONTest {
         "\\       OR Jo                 # Jo Jane",
         "name=='  OR Jo                 # Jo Jane",
         "name==\\ OR Jo                 # Jo Jane",
+        "address.city=\\*               # Jo Jane",
+        "address.city=\\?               # Ka Keller",
+        "address.city=\\\\              # Lea Long",
+        "address.city=\\                # Lea Long",
+        "\\K\\a                         # Ka Keller",
         })
     public void special(String testcase) {
         select(testcase);
+    }
+
+    @Test
+    @Parameters({
+      "^Jo                            # Jo Jane",
+      "^Jane                          #",
+      "Jo^                            #",
+      "Jane^                          # Jo Jane",
+      "Jane^ ^Jo                      # Jo Jane",
+    })
+    public void caret(String testcase) {
+      select(testcase);
     }
 
     @Test

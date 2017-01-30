@@ -116,7 +116,7 @@ public enum Unicode {
           throw new IllegalStateException("second character must be a tabulator: " + line);
         }
         Character c = line.charAt(0);
-        String s = line.substring(2);
+        String s = line.substring(2).intern();
         map.put(c,  s);
       }
     } catch (IOException e) {
