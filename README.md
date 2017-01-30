@@ -34,7 +34,9 @@ Only these relations have been implemented yet:
 * = (substring match)
 * == (exact match)
 
-Functional modifiers: Only the default `ignoreCase` and `ignoreAccents` is implemented ignoring
+Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
+
+Functional modifiers: Only the default (`ignoreCase` and `ignoreAccents`) is implemented ignoring
 both case and diacritics/accents for all characters (ASCII and Unicode).
 
 Matching modifiers: Only `masked` is implemented, not `unmasked`, `regexp`,
