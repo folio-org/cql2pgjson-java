@@ -60,12 +60,16 @@ public class CQL2PgJSONTest {
     conn = DriverManager.getConnection(url);
   }
 
-  private static void setupData(String sqlFile) throws SQLException {
+  private static void setupData(String sqlFile) {
     String sql = Util.getResource(sqlFile);
     // split at semicolon at end of line (removing optional whitespace)
     String statements [] = sql.split(";\\s*[\\n\\r]\\s*");
     for (String stmt : statements) {
-      conn.createStatement().execute(stmt);
+      try {
+        conn.createStatement().execute(stmt);
+      } catch (SQLException e) {
+        throw new RuntimeException(stmt, e);
+      }
     }
   }
 
@@ -86,7 +90,7 @@ public class CQL2PgJSONTest {
     }
   }
 
-  public void select(String testcase) {
+  public void select(String sqlFile, String testcase) {
     int hash = testcase.indexOf('#');
     assertTrue("hash character in testcase", hash>=0);
     String cql           = testcase.substring(0, hash).trim();
@@ -98,6 +102,7 @@ public class CQL2PgJSONTest {
     String where = cql2pgJson.cql2pgJson(cql);
     String sql = "select user_data->'name' from users where " + where;
     try {
+      setupData(sqlFile);
       Statement statement = conn.createStatement();
       statement.execute(sql);
       ResultSet result = statement.getResultSet();
@@ -112,6 +117,10 @@ public class CQL2PgJSONTest {
     } catch (SQLException e) {
       throw new RuntimeException(sql, e);
     }
+  }
+
+  public void select(String testcase) {
+    select("jo-ka-lea.sql", testcase);
   }
 
   /**
@@ -259,19 +268,22 @@ public class CQL2PgJSONTest {
 
   @Test
   @Parameters({
-    // check correct masking of special chars
-    "'        OR Jo                 # Jo Jane",
-    "\\       OR Jo                 # Jo Jane",
-    "name=='  OR Jo                 # Jo Jane",
-    "name==\\ OR Jo                 # Jo Jane",
-    "address.city=\\*               # Jo Jane",
-    "address.city=\\?               # Ka Keller",
-    "address.city=\\\\              # Lea Long",
-    "address.city=\\                # Lea Long",
-    "\\K\\a                         # Ka Keller",
+    "email==\\\\                    # a",
+    "email==\\\\\\\\                # b",
+    "email==\\*                     # c",
+    "email==\\*\\*                  # d",
+    "email==\\?                     # e",
+    "email==\\?\\?                  # f",
+    "email==\\\\\\\"                # g",
+    "email==\\\\\\\"\\\\\\\"        # h",
+    "             address.zip=1     # a",
+    "'         OR address.zip=1     # a",
+    "name=='   OR address.zip=1     # a",
+    "name==\\  OR address.zip=1     # a",
+    "\\a                            # a",
   })
   public void special(String testcase) {
-    select(testcase);
+    select("special.sql", testcase);
   }
 
   @Test
@@ -288,32 +300,47 @@ public class CQL2PgJSONTest {
 
   @Test
   @Parameters({
-    "address.city=Søvang            # Lea Long",
-    "address.city=øvang             #",
-    "address.city=vang              #",
-    "address.city=S?vang            # Lea Long",
-    "address.city=S*vang            # Lea Long",
-    "address.city=*ang              # Lea Long",
-    "address.city=SØvang            # Lea Long",
-    "address.city=Sovang            # Lea Long",
-    "address.city=Sövang            # Lea Long",
-    "address.city=SÖvang            # Lea Long",
-    "address.city=Sävang            #",
-    "address.city=SÄvang            #",
+    "address.city= Søvang            # Lea Long",
+    "address.city==Søvang            # Lea Long",
+    "address.city= øvang             #",
+    "address.city==øvang             #",
+    "address.city= vang              #",
+    "address.city= S?vang            # Lea Long",
+    "address.city= S*vang            # Lea Long",
+    "address.city= *ang              # Lea Long",
+    "address.city= SØvang            # Lea Long",
+    "address.city==SØvang            # Lea Long",
+    "address.city= Sovang            # Lea Long",
+    "address.city==Sovang            # Lea Long",
+    "address.city= Sövang            # Lea Long",
+    "address.city==Sövang            # Lea Long",
+    "address.city= SÖvang            # Lea Long",
+    "address.city==SÖvang            # Lea Long",
+    "address.city= Sävang            #",
+    "address.city==Sävang            #",
+    "address.city= SÄvang            #",
+    "address.city==SÄvang            #",
   })
   public void unicode(String testcase) {
     select(testcase);
-    select(testcase.replace("=", "=/ignoreCase/ignoreAccents "));
+    select(testcase.replace("==", "==/ignoreCase/ignoreAccents ")
+                   .replace("= ", "= /ignoreCase/ignoreAccents "));
   }
 
   @Test
   @Parameters({
-    "address.city=/respectCase Søvang # Lea Long",
-    "address.city=/respectCase SØvang #",
-    "address.city=/respectCase Sovang # Lea Long",
-    "address.city=/respectCase SOvang #",
-    "address.city=/respectCase Sövang # Lea Long",
-    "address.city=/respectCase SÖvang #",
+    "address.city= /respectCase Søvang # Lea Long",
+    "address.city==/respectCase Søvang # Lea Long",
+    "address.city= /respectCase SØvang #",
+    "address.city==/respectCase SØvang #",
+    "address.city= /respectCase Sovang # Lea Long",
+    "address.city==/respectCase Sovang # Lea Long",
+    "address.city= /respectCase SOvang #",
+    "address.city==/respectCase SOvang #",
+    "address.city= /respectCase Sövang # Lea Long",
+    "address.city==/respectCase Sövang # Lea Long",
+    "address.city= /respectCase SÖvang #",
+    "address.city==/respectCase SÖvang #",
   })
   public void unicodeCase(String testcase) {
     select(testcase);
@@ -321,12 +348,18 @@ public class CQL2PgJSONTest {
 
   @Test
   @Parameters({
-    "address.city=/respectAccents Søvang # Lea Long",
-    "address.city=/respectAccents SØvang # Lea Long",
-    "address.city=/respectAccents Sovang #",
-    "address.city=/respectAccents SOvang #",
-    "address.city=/respectAccents Sövang #",
-    "address.city=/respectAccents SÖvang #",
+    "address.city= /respectAccents Søvang # Lea Long",
+    "address.city==/respectAccents Søvang # Lea Long",
+    "address.city= /respectAccents SØvang # Lea Long",
+    "address.city==/respectAccents SØvang # Lea Long",
+    "address.city= /respectAccents Sovang #",
+    "address.city==/respectAccents Sovang #",
+    "address.city= /respectAccents SOvang #",
+    "address.city==/respectAccents SOvang #",
+    "address.city= /respectAccents Sövang #",
+    "address.city==/respectAccents Sövang #",
+    "address.city= /respectAccents SÖvang #",
+    "address.city==/respectAccents SÖvang #",
   })
   public void unicodeAccents(String testcase) {
     select(testcase);

@@ -37,7 +37,8 @@ public enum Unicode {
   },
   /**
    * Diacritics/accents ignoring equivalent. The return of getEquivalents(ch)
-   * is a regular expression for one character that is ch or a character that differs in diacritics/accents only.
+   * is a regular expression for one character that is ch or a character that differs in
+   * diacritics/accents only.
    */
   IGNORE_ACCENTS {
       @Override
@@ -47,7 +48,7 @@ public enum Unicode {
   },
   /**
    * Case and diacritics/accents ignoring equivalent. The return of getEquivalents(ch)
-   * is a regular expression for one character that is ch or a character that differns in
+   * is a regular expression for one character that is ch or a character that differs in
    * case and/or diacritics/accents only.
    * @see java.lang.Character#toLowerCase(java.lang.Character)
    * @see java.lang.Character#toUpperCase(java.lang.Character)
@@ -67,7 +68,8 @@ public enum Unicode {
    */
   public abstract String getEquivalents(char ch);
 
-  private static String nullHandler(String s, char ch) {  // NOSONAR
+  @SuppressWarnings("squid:MethodCyclomaticComplexity")
+  private static String nullHandler(String s, char ch) {
     if (s != null) {
       return s;
     }
@@ -98,7 +100,8 @@ public enum Unicode {
   }
 
   /**
-   * Reads the resource filename where each line contains a character, a tabulator and a String (minimum length 1).
+   * Reads the resource filename where each line contains a character, a tabulator
+   * and a String (minimum length 1).
    * @param filename  resource file to read
    * @return unmodifiable map that maps each character to the String of that line.
    * @throws IllegalStateException on error

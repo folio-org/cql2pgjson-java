@@ -77,6 +77,7 @@ public class CQL2PgJSON {
      *
      * @param modifiers  where to read from
      */
+    @SuppressWarnings("squid:MethodCyclomaticComplexity")
     public final void readModifiers(List<Modifier> modifiers) {
       for (Modifier m : modifiers) {
         switch (m.getType()) {
@@ -275,6 +276,25 @@ public class CQL2PgJSON {
         + " (" + pg(node.getRightOperand()) + ")";
   }
 
+  /**
+   * unicode.getEquivalents(c) but with \ and " masked using backslash.
+   * @param unicode quivalence to use
+   * @param c  character to use
+   * @return masked equivalents
+   */
+  private static String equivalents(Unicode unicode, char c) {
+    String s = unicode.getEquivalents(c);
+    // JSON requires special quoting of \ and "
+    if (s.startsWith("[\\")) {  // s == "[\\﹨＼]"
+      return "(\\\\\\\\|[" + s.substring(2) + ")";
+    }
+    if (s.startsWith("[\"")) {  // s == "["＂]"
+      return "(\\\\\\\"|[" + s.substring(2) + ")";
+    }
+
+    return s;
+  }
+
   private static String regexp(Unicode unicode, String s) {
     StringBuilder regexp = new StringBuilder();
     boolean backslash = false;
@@ -283,7 +303,7 @@ public class CQL2PgJSON {
         // Backslash (\) is used to escape '*', '?', quote (") and '^' , as well as itself.
         // Backslash followed by any other characters is an error (see cql spec), but
         // we handle it gracefully matching that character.
-        regexp.append(unicode.getEquivalents(c));
+        regexp.append(equivalents(unicode, c));
         backslash = false;
         continue;
       }
@@ -301,13 +321,13 @@ public class CQL2PgJSON {
         regexp.append("(^\"?|\"?$)");
         break;
       default:
-        regexp.append(unicode.getEquivalents(c));
+        regexp.append(equivalents(unicode, c));
       }
     }
 
     if (backslash) {
       // a single backslash at the end is an error but we handle it gracefully matching one.
-      regexp.append(unicode.getEquivalents('\\'));
+      regexp.append(equivalents(unicode, '\\'));
     }
 
     // mask ' used for quoting postgres strings
@@ -364,7 +384,7 @@ public class CQL2PgJSON {
     case "==":
       // accept quotes at beginning and end because JSON string are
       // quoted (but JSON numbers aren't)
-      return new String [] { " ~* '^\"?" + regexp(modifiers, node.getTerm()) + "\"?$'" };
+      return new String [] { " ~ '^\"?" + regexp(modifiers, node.getTerm()) + "\"?$'" };
     case "=":
       return cql2regexp(modifiers, node.getTerm());
     default:
