@@ -27,8 +27,6 @@ Setting server choice indexes is possible:
     String cql = "Miller";
     String where = cql2pgJson.cql2pgJson(cql);
     String sql = "select * from users where " + where;
-    // select * from users where CAST(users.user_data->'name' AS text) LIKE '%Miller%'
-    //                        OR CAST(users.user_data->'email' AS text) LIKE '%Miller%'
 
 Only these relations have been implemented yet:
 
@@ -51,3 +49,6 @@ from the ASCII charset, not from other Unicode charsets.
 * Further [CQL](http://dev.folio.org/doc/glossary#cql) information.
 
 * Other FOLIO Developer documentation is at [dev.folio.org](http://dev.folio.org/)
+
+* To run the unit tests in your IDE the Unicode input files must have been produced by running maven,
+  in Eclipse you may use "Run as ... Maven Build" for doing so.

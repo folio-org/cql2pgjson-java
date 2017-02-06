@@ -204,6 +204,8 @@ public class CQL2PgJSONTest {
     "name=*o* not (email=*a or  address.zip=*0) #",
     "name=*o* or   email=*a not address.zip=*0  # Lea Long",
     "name=*o* or  (email=*a not address.zip=*0) # Jo Jane; Lea Long",
+    "\"lea example\"                            # Lea Long",  // both matches email
+    "\"long example\"                           #",  // no match because "long" from name and "example" from email
   })
   public void andOrNot(String testcase) {
     select(testcase);
@@ -274,8 +276,8 @@ public class CQL2PgJSONTest {
     "email==\\*\\*                  # d",
     "email==\\?                     # e",
     "email==\\?\\?                  # f",
-    "email==\\\\\\\"                # g",
-    "email==\\\\\\\"\\\\\\\"        # h",
+    "email==\\\"                    # g",
+    "email==\\\"\\\"                # h",
     "             address.zip=1     # a",
     "'         OR address.zip=1     # a",
     "name=='   OR address.zip=1     # a",

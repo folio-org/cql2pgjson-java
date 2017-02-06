@@ -284,12 +284,13 @@ public class CQL2PgJSON {
    */
   private static String equivalents(Unicode unicode, char c) {
     String s = unicode.getEquivalents(c);
-    // JSON requires special quoting of \ and "
-    if (s.startsWith("[\\")) {  // s == "[\\﹨＼]"
-      return "(\\\\\\\\|[" + s.substring(2) + ")";
+    // JSON requires special quoting of \ and ".
+    // The blackslash needs to be doubled for Java, Postgres and JSON each (2*2*2=8)
+    if (s.startsWith("[\\")) {  // s == [\﹨＼]
+      return "(\\\\|[" + s.substring(2) + ")";
     }
-    if (s.startsWith("[\"")) {  // s == "["＂]"
-      return "(\\\\\\\"|[" + s.substring(2) + ")";
+    if (s.startsWith("[\"")) {  // s == ["＂]
+      return "(\\\\\"|[" + s.substring(2) + ")";
     }
 
     return s;
@@ -318,7 +319,7 @@ public class CQL2PgJSON {
         regexp.append(WORD_CHARACTER_REGEXP + "*");
         break;
       case '^':
-        regexp.append("(^\"?|\"?$)");
+        regexp.append("(^|$)");
         break;
       default:
         regexp.append(equivalents(unicode, c));
@@ -334,22 +335,24 @@ public class CQL2PgJSON {
     return regexp.toString().replace("'", "''");
   }
 
-  private static String regexp(CqlModifiers modifiers, String s) {
-    Unicode unicode;
+  private static Unicode unicode(CqlModifiers modifiers) {
     if (modifiers.cqlCase == CqlCase.IGNORE_CASE) {
       if (modifiers.cqlAccents == CqlAccents.IGNORE_ACCENTS) {
-        unicode = Unicode.IGNORE_CASE_AND_ACCENTS;
+        return Unicode.IGNORE_CASE_AND_ACCENTS;
       } else {
-        unicode = Unicode.IGNORE_CASE;
+        return Unicode.IGNORE_CASE;
       }
     } else {
       if (modifiers.cqlAccents == CqlAccents.IGNORE_ACCENTS) {
-        unicode = Unicode.IGNORE_ACCENTS;
+        return Unicode.IGNORE_ACCENTS;
       } else {
-        unicode = Unicode.IGNORE_NONE;
+        return Unicode.IGNORE_NONE;
       }
     }
-    return regexp(unicode, s);
+  }
+
+  private static String regexp(CqlModifiers modifiers, String s) {
+    return regexp(unicode(modifiers), s);
   }
 
   /**
@@ -366,9 +369,10 @@ public class CQL2PgJSON {
       // whitespace only results in empty string and matches anything
       return new String [] { " ~ ''" };
     }
+    Unicode unicode = unicode(modifiers);
     for (int i=0; i<split.length; i++) {
       split[i] = " ~ '(^|[[:punct:]]|[[:space:]])"
-          + regexp(modifiers, split[i])
+          + regexp(unicode, split[i])
           + "($|[[:punct:]]|[[:space:]])'";
 
     }
@@ -380,11 +384,14 @@ public class CQL2PgJSON {
     if (modifiers.cqlMasking != CqlMasking.MASKED) {
       throw new IllegalArgumentException("This masking is not implemented yet: " + modifiers.cqlMasking);
     }
-    switch (node.getRelation().getBase()) {
+    String comparator = node.getRelation().getBase();
+    switch (comparator) {
     case "==":
       // accept quotes at beginning and end because JSON string are
       // quoted (but JSON numbers aren't)
-      return new String [] { " ~ '^\"?" + regexp(modifiers, node.getTerm()) + "\"?$'" };
+      return new String [] {  " ~ '^" + regexp(modifiers, node.getTerm()) + "$'" };
+    case "<>":
+      return new String [] { " !~ '^" + regexp(modifiers, node.getTerm()) + "$'" };
     case "=":
       return cql2regexp(modifiers, node.getTerm());
     default:
@@ -396,13 +403,15 @@ public class CQL2PgJSON {
   /**
    * Convert index name to SQL term.
    * Example result for field=user and index=foo.bar:
-   * CAST(user->'foo'->'bar' AS text)
+   * user->'foo'->>'bar'
    *
    * @param index name to convert
    * @return SQL term
    */
   private String index2sql(String index) {
-    return "CAST(" + jsonField + "->'" + index.replace(".", "'->'") + "' AS text)";
+    String result = jsonField + "->'" + index.replace(".", "'->'") + "'";
+    int lastArrow = result.lastIndexOf("->'");
+    return result.substring(0,  lastArrow) + "->>" + result.substring(lastArrow + 2);
   }
 
   /**
@@ -419,7 +428,10 @@ public class CQL2PgJSON {
       }
       s.append(index2sql(index) + match);
     }
-    return s.toString();
+    if (matches.length <= 1) {
+      return s.toString();
+    }
+    return "(" + s.toString() + ")";
   }
 
   private String pg(CQLTermNode node) {
