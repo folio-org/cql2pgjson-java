@@ -32,6 +32,7 @@ Only these relations have been implemented yet:
 
 * = (substring match)
 * == (exact match)
+* > >= < <= <> (comparison for both strings and numbers)
 
 Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
 
