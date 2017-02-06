@@ -165,7 +165,6 @@ public class CQL2PgJSONTest {
     fail("Exception " + clazz + " expected.");
   }
 
-
   @Test
   @Parameters({
     "name=Long                      # Lea Long",
@@ -180,7 +179,9 @@ public class CQL2PgJSONTest {
     "example                        # Jo Jane; Ka Keller; Lea Long",
     "email=example.com              # Jo Jane; Ka Keller; Lea Long",
     "email==example.com             #",
+    "email<>example.com             # Jo Jane; Ka Keller; Lea Long",
     "name == \"Lea Long\"           # Lea Long",
+    "name <> \"Lea Long\"           # Jo Jane; Ka Keller",
     // whitespace is removed, empty string matches anything (including email without whitespace)
     "email=\" \"                    # Jo Jane; Ka Keller; Lea Long",
   })
@@ -378,6 +379,44 @@ public class CQL2PgJSONTest {
     select(testcase);
   }
 
+  @Test
+  @Parameters({
+    "address.zip<1                  #",
+    "address.zip<2                  # a",
+    "address.zip<3                  # a; b",
+    "address.zip<=0                 #",
+    "address.zip<=1                 # a",
+    "address.zip<=2                 # a; b",
+    "address.zip>16                 # g; h",
+    "address.zip>17                 # h",
+    "address.zip>18                 #",
+    "address.zip>=17                # g; h",
+    "address.zip>=18                # h",
+    "address.zip>=19                #",
+    "address.zip<>5                 # a; b; c; d; f; g; h",
+  })
+  public void compareNumber(String testcase) {
+    select("special.sql", testcase);
+  }
+
+  @Test
+  public void compareNumberNotImplemented() {
+    cql2pgJsonException(new CQL2PgJSON("users.user_data"), "address.zip adj 5",
+        IllegalArgumentException.class, "Relation", "adj");
+  }
+
+  @Test
+  @Parameters({
+    "name< \"Ka Keller\"  # Jo Jane",
+    "name<=\"Ka Keller\"  # Jo Jane; Ka Keller",
+    "name> \"Ka Keller\"  # Lea Long",
+    "name>=\"Ka Keller\"  # Ka Keller; Lea Long",
+    "name<>\"Ka Keller\"  # Jo Jane; Lea Long",
+  })
+  public void compareString(String testcase) {
+    select(testcase);
+  }
+
   @Test(expected = IllegalArgumentException.class)
   public void nullField() {
     new CQL2PgJSON(null);
@@ -401,7 +440,7 @@ public class CQL2PgJSONTest {
   @Test
   public void relationNotImplemented() {
     cql2pgJsonException(new CQL2PgJSON("users.user_data"),
-        "name > Jane", IllegalArgumentException.class, "Relation", ">");
+        "address.zip encloses 12", IllegalArgumentException.class, "Relation", "encloses");
   }
 
   @Test(expected = NullPointerException.class)

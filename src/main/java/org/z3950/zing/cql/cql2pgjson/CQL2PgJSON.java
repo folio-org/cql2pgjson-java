@@ -3,6 +3,7 @@ package org.z3950.zing.cql.cql2pgjson;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.z3950.zing.cql.CQLAndNode;
@@ -34,6 +35,9 @@ public class CQL2PgJSON {
   private String jsonField;
   /** JSON schema of jsonb field as object tree */
   private Object schema;
+
+  /** JSON number, see spec at http://json.org/ */
+  private static final Pattern jsonNumber = Pattern.compile("-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?");
 
   /**
    * Default index names to be used for cql.serverChoice.
@@ -394,6 +398,11 @@ public class CQL2PgJSON {
       return new String [] { " !~ '^" + regexp(modifiers, node.getTerm()) + "$'" };
     case "=":
       return cql2regexp(modifiers, node.getTerm());
+    case "<":
+    case "<=":
+    case ">":
+    case ">=":
+      return new String [] { comparator + "'" + node.getTerm().replace("'", "''") + "'" };
     default:
       throw new IllegalArgumentException("Relation " + node.getRelation().getBase()
           + " not implemented yet: " + node.toString());
@@ -401,32 +410,94 @@ public class CQL2PgJSON {
   }
 
   /**
-   * Convert index name to SQL term.
+   * Test if s is a JSON number.
+   * @param s  String to test
+   * @return true if s is a JSON number, false otherwise
+   */
+  private static boolean isJsonNumber(String s) {
+    return jsonNumber.matcher(s).matches();
+  }
+
+  /**
+   * Returns a numeric match like ">=17" if the node term is a JSON number, null otherwise.
+   * @param node  the node to get the comparator operator and the term from
+   * @return  the comparison or null
+   */
+  private String getNumberMatch(CQLTermNode node) {
+    if (! isJsonNumber(node.getTerm())) {
+      return null;
+    }
+    String comparator = node.getRelation().getBase();
+    switch (comparator) {
+    case "==":
+      comparator = "=";
+      break;
+    case "<>":
+    case "=":
+    case "<":
+    case "<=":
+    case ">":
+    case ">=":
+      break;
+    default:
+      throw new IllegalArgumentException("Relation " + node.getRelation().getBase()
+          + " not implemented yet: " + node.toString());
+    }
+    return comparator + node.getTerm();
+  }
+
+  /**
+   * Convert index name to SQL term of type text.
    * Example result for field=user and index=foo.bar:
    * user->'foo'->>'bar'
    *
    * @param index name to convert
    * @return SQL term
    */
-  private String index2sql(String index) {
+  private String index2sqlText(String index) {
     String result = jsonField + "->'" + index.replace(".", "'->'") + "'";
     int lastArrow = result.lastIndexOf("->'");
     return result.substring(0,  lastArrow) + "->>" + result.substring(lastArrow + 2);
   }
 
   /**
+   * Convert index name to SQL term of type json.
+   * Example result for field=user and index=foo.bar:
+   * user->'foo'->'bar'
+   *
+   * @param index name to convert
+   * @return SQL term
+   */
+  private String index2sqlJson(String index) {
+    return jsonField + "->'" + index.replace(".", "'->'") + "'";
+  }
+
+  /**
    * Create an SQL expression where index is applied to all matches.
-   * @param index   index to use
+   * @param index  index to use
    * @param matches  list of match expressions
+   * @param numberMatch  match expression for numeric comparison (null for no numeric comparison)
    * @return SQL expression
    */
-  private String index2sql(String index, String [] matches) {
+  private String index2sql(String index, String [] matches, String numberMatch) {
     StringBuilder s = new StringBuilder();
     for (String match : matches) {
       if (s.length() > 0) {
         s.append(" AND ");
       }
-      s.append(index2sql(index) + match);
+      if (numberMatch == null) {
+        s.append(index2sqlText(index)).append(match);
+      } else {
+        /* CASE jsonb_typeof(jsonb->amount)
+         * WHEN 'number' then (jsonb->>amount)::numeric = 100
+         * ELSE jsonb->>amount ~ '(^|[[:punct:]]|[[:space:]])100($|[[:punct:]]|[[:space:]])'
+         * END
+         */
+        s.append(" CASE jsonb_typeof(").append(index2sqlJson(index)).append(")")
+         .append(" WHEN 'number' then (").append(index2sqlText(index)).append(")::numeric ").append(numberMatch)
+         .append(" ELSE ").append(index2sqlText(index)).append(match)
+         .append(" END");
+      }
     }
     if (matches.length <= 1) {
       return s.toString();
@@ -436,15 +507,16 @@ public class CQL2PgJSON {
 
   private String pg(CQLTermNode node) {
     String [] matches = match(node);
+    String numberMatch = getNumberMatch(node);
     if ("cql.serverChoice".equalsIgnoreCase(node.getIndex())) {
       if (serverChoiceIndexes.isEmpty()) {
         throw new IllegalStateException("cql.serverChoice requested, but not serverChoiceIndexes defined.");
       }
       return serverChoiceIndexes.stream()
-          .map(index -> index2sql(index, matches))
+          .map(index -> index2sql(index, matches, numberMatch))
           .collect(Collectors.joining(" OR "));
     } else {
-      return index2sql(node.getIndex(), matches);
+      return index2sql(node.getIndex(), matches, numberMatch);
     }
   }
 }
