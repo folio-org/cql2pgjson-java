@@ -510,7 +510,7 @@ public class CQL2PgJSON {
     String numberMatch = getNumberMatch(node);
     if ("cql.serverChoice".equalsIgnoreCase(node.getIndex())) {
       if (serverChoiceIndexes.isEmpty()) {
-        throw new IllegalStateException("cql.serverChoice requested, but not serverChoiceIndexes defined.");
+        throw new IllegalStateException("cql.serverChoice requested, but no serverChoiceIndexes defined.");
       }
       return serverChoiceIndexes.stream()
           .map(index -> index2sql(index, matches, numberMatch))
