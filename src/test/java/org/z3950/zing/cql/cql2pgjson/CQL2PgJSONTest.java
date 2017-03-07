@@ -99,15 +99,10 @@ public class CQL2PgJSONTest {
     if (! cql.contains(" sortBy ")) {
       cql += " sortBy name";
     }
-    String where = null;
+    String sql = null;
     try {
-      where = cql2pgJson.cql2pgJson(cql);
-    } catch (QueryValidationException e1) {
-      e1.printStackTrace();
-      fail(e1.getMessage());
-    }
-    String sql = "select user_data->'name' from users where " + where;
-    try {
+      String where = cql2pgJson.cql2pgJson(cql);
+      sql = "select user_data->'name' from users where " + where;
       setupData(sqlFile);
       Statement statement = conn.createStatement();
       statement.execute(sql);
@@ -120,8 +115,8 @@ public class CQL2PgJSONTest {
         actualNames += result.getString(1).replace("\"", "");
       }
       assertEquals("CQL: " + cql + ", SQL: " + where, expectedNames, actualNames);
-    } catch (SQLException e) {
-      throw new RuntimeException(sql, e);
+    } catch (QueryValidationException|SQLException e) {
+      throw new RuntimeException(sql != null ? sql : cql, e);
     }
   }
 
