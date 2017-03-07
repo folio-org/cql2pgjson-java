@@ -1,10 +1,10 @@
 package org.z3950.zing.cql.cql2pgjson;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.z3950.zing.cql.CQLAndNode;
 import org.z3950.zing.cql.CQLBooleanNode;
@@ -17,8 +17,6 @@ import org.z3950.zing.cql.CQLSortNode;
 import org.z3950.zing.cql.CQLTermNode;
 import org.z3950.zing.cql.Modifier;
 import org.z3950.zing.cql.ModifierSet;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class CQL2PgJSON {
   /*
@@ -33,8 +31,8 @@ public class CQL2PgJSON {
    * quoted using double quotes.
    */
   private String jsonField;
-  /** JSON schema of jsonb field as object tree */
-  private Object schema;
+  /** Local data model of JSON schema */
+  private Schema schema;
 
   /** JSON number, see spec at http://json.org/ */
   private static final Pattern jsonNumber = Pattern.compile("-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?");
@@ -137,8 +135,9 @@ public class CQL2PgJSON {
    *   quoted using double quotes.
    * @param schema JSON String representing the schema of the field the CQL queries against.
    * @throws IOException if the JSON structure is invalid
+   * @throws SchemaException if the JSON is structurally acceptable but doesn't match expected schema
    */
-  public CQL2PgJSON(String field, String schema) throws IOException {
+  public CQL2PgJSON(String field, String schema) throws IOException, SchemaException {
     this(field);
     setSchema(schema);
   }
@@ -168,8 +167,9 @@ public class CQL2PgJSON {
    * @param serverChoiceIndexes       List of field names, may be empty, must not contain null,
    *                                  names must not contain double quote or single quote.
    * @throws IOException if the JSON structure is invalid
+   * @throws SchemaException if the JSON is structurally acceptable but doesn't match expected schema
    */
-  public CQL2PgJSON(String field, String schema, List<String> serverChoiceIndexes) throws IOException {
+  public CQL2PgJSON(String field, String schema, List<String> serverChoiceIndexes) throws IOException, SchemaException {
     this(field);
     setSchema(schema);
     setServerChoiceIndexes(serverChoiceIndexes);
@@ -179,10 +179,10 @@ public class CQL2PgJSON {
    * Set the schema of the field.
    * @param schema  JSON String representing the schema of the field the CQL queries against.
    * @throws IOException if the JSON structure is invalid
+   * @throws SchemaException if the JSON is structurally acceptable but doesn't match expected schema
    */
-  private void setSchema(String schema) throws IOException {
-    ObjectMapper mapper = new ObjectMapper();
-    this.schema = mapper.readValue(schema, Object.class);
+  private void setSchema(String schema) throws IOException, SchemaException {
+    this.schema = new Schema( schema );
   }
 
   /**
@@ -214,7 +214,7 @@ public class CQL2PgJSON {
     this.serverChoiceIndexes = serverChoiceIndexes;
   }
 
-  public String cql2pgJson(String cql) {
+  public String cql2pgJson(String cql) throws QueryValidationException {
     try {
       CQLParser parser = new CQLParser();
       CQLNode node = parser.parse(cql);
@@ -224,7 +224,7 @@ public class CQL2PgJSON {
     }
   }
 
-  private String pg(CQLNode node) {
+  private String pg(CQLNode node) throws QueryValidationException {
     if (node instanceof CQLTermNode) {
       return pg((CQLTermNode) node);
     }
@@ -237,7 +237,7 @@ public class CQL2PgJSON {
     throw new IllegalArgumentException("Not implemented yet: " + node.getClass().getName());
   }
 
-  private String pg(CQLSortNode node) {
+  private String pg(CQLSortNode node) throws QueryValidationException {
     StringBuilder order = new StringBuilder();
     order.append(pg(node.getSubtree()))
     .append(" ORDER BY ");
@@ -259,7 +259,7 @@ public class CQL2PgJSON {
     return order.toString();
   }
 
-  private String sqlOperator(CQLBooleanNode node) {
+  private static String sqlOperator(CQLBooleanNode node) {
     if (node instanceof CQLAndNode) {
       return "AND";
     }
@@ -274,7 +274,7 @@ public class CQL2PgJSON {
     throw new IllegalArgumentException("Not implemented yet: " + node.getClass().getName());
   }
 
-  private String pg(CQLBooleanNode node) {
+  private String pg(CQLBooleanNode node) throws QueryValidationException {
     return "(" + pg(node.getLeftOperand()) + ") "
         + sqlOperator(node)
         + " (" + pg(node.getRightOperand()) + ")";
@@ -343,16 +343,13 @@ public class CQL2PgJSON {
     if (modifiers.cqlCase == CqlCase.IGNORE_CASE) {
       if (modifiers.cqlAccents == CqlAccents.IGNORE_ACCENTS) {
         return Unicode.IGNORE_CASE_AND_ACCENTS;
-      } else {
-        return Unicode.IGNORE_CASE;
       }
-    } else {
-      if (modifiers.cqlAccents == CqlAccents.IGNORE_ACCENTS) {
-        return Unicode.IGNORE_ACCENTS;
-      } else {
-        return Unicode.IGNORE_NONE;
-      }
+      return Unicode.IGNORE_CASE;
     }
+    if (modifiers.cqlAccents == CqlAccents.IGNORE_ACCENTS) {
+      return Unicode.IGNORE_ACCENTS;
+    }
+    return Unicode.IGNORE_NONE;
   }
 
   private static String regexp(CqlModifiers modifiers, String s) {
@@ -423,7 +420,7 @@ public class CQL2PgJSON {
    * @param node  the node to get the comparator operator and the term from
    * @return  the comparison or null
    */
-  private String getNumberMatch(CQLTermNode node) {
+  private static String getNumberMatch(CQLTermNode node) {
     if (! isJsonNumber(node.getTerm())) {
       return null;
     }
@@ -478,13 +475,16 @@ public class CQL2PgJSON {
    * @param matches  list of match expressions
    * @param numberMatch  match expression for numeric comparison (null for no numeric comparison)
    * @return SQL expression
+   * @throws QueryValidationException 
    */
-  private String index2sql(String index, String [] matches, String numberMatch) {
+  private String index2sql(String index, String [] matches, String numberMatch) throws QueryValidationException {
     StringBuilder s = new StringBuilder();
     for (String match : matches) {
       if (s.length() > 0) {
         s.append(" AND ");
       }
+      if (schema != null) 
+        index = schema.mapFieldNameAgainstSchema(index);
       if (numberMatch == null) {
         s.append(index2sqlText(index)).append(match);
       } else {
@@ -505,18 +505,18 @@ public class CQL2PgJSON {
     return "(" + s.toString() + ")";
   }
 
-  private String pg(CQLTermNode node) {
+  private String pg(CQLTermNode node) throws QueryValidationException {
     String [] matches = match(node);
     String numberMatch = getNumberMatch(node);
     if ("cql.serverChoice".equalsIgnoreCase(node.getIndex())) {
       if (serverChoiceIndexes.isEmpty()) {
         throw new IllegalStateException("cql.serverChoice requested, but no serverChoiceIndexes defined.");
       }
-      return serverChoiceIndexes.stream()
-          .map(index -> index2sql(index, matches, numberMatch))
-          .collect(Collectors.joining(" OR "));
-    } else {
-      return index2sql(node.getIndex(), matches, numberMatch);
+      List<String> sqlPieces = new ArrayList<>();
+      for(String index : serverChoiceIndexes)
+        sqlPieces.add(index2sql(index, matches, numberMatch));
+      return String.join(" OR ", sqlPieces);
     }
+    return index2sql(node.getIndex(), matches, numberMatch);
   }
 }

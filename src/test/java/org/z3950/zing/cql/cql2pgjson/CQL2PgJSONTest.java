@@ -74,7 +74,7 @@ public class CQL2PgJSONTest {
   }
 
   @BeforeClass
-  public static void runOnceBeforeClass() throws IOException, SQLException {
+  public static void runOnceBeforeClass() throws IOException, SQLException, SchemaException {
     setupDatabase();
     setupData("users.sql");
     cql2pgJson = new CQL2PgJSON("users.user_data", Util.getResource("userdata.json"), Arrays.asList("name", "email"));
@@ -99,7 +99,13 @@ public class CQL2PgJSONTest {
     if (! cql.contains(" sortBy ")) {
       cql += " sortBy name";
     }
-    String where = cql2pgJson.cql2pgJson(cql);
+    String where = null;
+    try {
+      where = cql2pgJson.cql2pgJson(cql);
+    } catch (QueryValidationException e1) {
+      e1.printStackTrace();
+      fail(e1.getMessage());
+    }
     String sql = "select user_data->'name' from users where " + where;
     try {
       setupData(sqlFile);
@@ -428,7 +434,7 @@ public class CQL2PgJSONTest {
   }
 
   @Test
-  public void noServerChoiceIndexes() throws IOException {
+  public void noServerChoiceIndexes() throws IOException, SchemaException {
     cql2pgJsonException(new CQL2PgJSON("users.user_data", Arrays.asList()),
         "Jane", IllegalStateException.class, "serverChoiceIndex");
     cql2pgJsonException(new CQL2PgJSON("users.user_data", (List<String>) null),
