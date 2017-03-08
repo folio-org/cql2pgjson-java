@@ -9,37 +9,69 @@ import org.junit.Test;
 public class SchemaTest {
 
   @Test
-  public void ValidFieldLookupsTest() throws QueryValidationException, IOException, SchemaException {
+  public void validFieldLookupsTest() throws QueryValidationException, IOException, SchemaException {
     Schema s = new Schema( Util.getResource("userdata.json") );
-    assertTrue(s.mapFieldNameAgainstSchema("city").equals("address.city"));
-    assertTrue(s.mapFieldNameAgainstSchema("address.city").equals("address.city"));
-    assertTrue(s.mapFieldNameAgainstSchema("zip").equals("address.zip"));
-    assertTrue(s.mapFieldNameAgainstSchema("address.zip").equals("address.zip"));
-    assertFalse(s.mapFieldNameAgainstSchema("name").equals("address.zip"));
-    assertTrue(s.mapFieldNameAgainstSchema("name").equals("name"));
-    assertFalse(s.mapFieldNameAgainstSchema("name").equals("address.name"));
-    assertFalse(s.mapFieldNameAgainstSchema("name").equals("name.address"));
+    assertEquals(s.mapFieldNameAgainstSchema("city"),          "address.city");
+    assertEquals(s.mapFieldNameAgainstSchema("address.city"),  "address.city");
+    assertEquals(s.mapFieldNameAgainstSchema("zip"),           "address.zip");
+    assertEquals(s.mapFieldNameAgainstSchema("address.zip"),   "address.zip");
+    assertEquals(s.mapFieldNameAgainstSchema("name"),          "name");
+  }
+
+  /* Both `type` and `properties` are structural keywords, but can still be used for attributes. */
+  @Test
+  public void noReservedWordsTest() throws QueryValidationException, IOException, SchemaException {
+    Schema s = new Schema( Util.getResource("complex.json") );
+    assertEquals(s.mapFieldNameAgainstSchema("type"),          "child.pet.type");
+    assertEquals(s.mapFieldNameAgainstSchema("pet.type"),      "child.pet.type");
+    assertEquals(s.mapFieldNameAgainstSchema("child.pet.type"),"child.pet.type");
+    assertEquals(s.mapFieldNameAgainstSchema("properties"),    "parent.properties");    
+    assertEquals(s.mapFieldNameAgainstSchema("favoriteColor"), "child.favoriteColor");    
   }
 
   @Test
-  public void ValidFieldsWithTypeSpeficiedTest() throws QueryValidationException, IOException, SchemaException {
+  public void validFieldsWithTypeSpeficiedTest() throws QueryValidationException, IOException, SchemaException {
     Schema s = new Schema( Util.getResource("userdata.json") );
-    assertTrue(s.mapFieldNameAndTypeAgainstSchema("city","string").equals("address.city"));
-    assertTrue(s.mapFieldNameAndTypeAgainstSchema("address.city","string").equals("address.city"));
-    assertTrue(s.mapFieldNameAndTypeAgainstSchema("name","string").equals("name"));
+    assertEquals(s.mapFieldNameAndTypeAgainstSchema("city","string"),        "address.city");
+    assertEquals(s.mapFieldNameAndTypeAgainstSchema("address.city","string"),"address.city");
+    assertEquals(s.mapFieldNameAndTypeAgainstSchema("name","string"),        "name");
+    s = new Schema( Util.getResource("complex.json") ); // other size attributes are integers
+    assertEquals(s.mapFieldNameAndTypeAgainstSchema("size","string"),        "parent.shirt.size");
   }
 
   @Test(expected=QueryValidationException.class)
-  public void InvalidFieldLookupTest() throws QueryValidationException, IOException, SchemaException {
+  public void invalidFieldLookupTest() throws QueryValidationException, IOException, SchemaException {
     Schema s = new Schema( Util.getResource("userdata.json") );
-    s.mapFieldNameAgainstSchema("fake_field");
-    fail("We shouldn't get here.");
+    s.mapFieldNameAgainstSchema("fakeField");
   }
 
   @Test(expected=QueryValidationException.class)
   public void inValidFieldsWithTypeSpeficiedTest() throws QueryValidationException, IOException, SchemaException {
     Schema s = new Schema( Util.getResource("userdata.json") );
     s.mapFieldNameAndTypeAgainstSchema("city","integer");
-    fail("We shouldn't get here.");
+  }
+
+  @Test(expected=QueryAmbiguousExeption.class)
+  public void ambiguousQueryTest() throws QueryValidationException, IOException, SchemaException {
+    Schema s = new Schema( Util.getResource("complex.json") );
+    s.mapFieldNameAgainstSchema("size");
+  }
+  @Test(expected=QueryAmbiguousExeption.class)
+  public void ambiguousQueryTestWithType() throws QueryValidationException, IOException, SchemaException {
+    Schema s = new Schema( Util.getResource("complex.json") );
+    s.mapFieldNameAndTypeAgainstSchema("size","integer");
+  }
+
+  @Test
+  public void ambiguousQueryMessageTest() throws IOException, SchemaException, QueryValidationException {
+    Schema s = new Schema( Util.getResource("complex.json") );
+    try {
+      s.mapFieldNameAgainstSchema("color");
+      fail("QueryAmbiguousExeption not thrown");
+    } catch (QueryAmbiguousExeption e) {
+      assertEquals(e.getMessage(),
+          "Field name 'color' was ambiguous in index. "
+          + "(parent.shirt.color, parent.pants.color, parent.shoes.color, child.pet.color)");
+    }
   }
 }

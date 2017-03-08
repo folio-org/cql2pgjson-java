@@ -31,7 +31,6 @@ public class Schema {
           if (jp.getCurrentName().equals("properties"))
             iteratePropertiesArray(jp,new ArrayList<>());
       }
-      jp.close();
     }
   }
 
@@ -48,7 +47,7 @@ public class Schema {
       throw new QueryValidationException( "Field name '"+index+"' not present in index." );
     JsonPath path = _byNodeName.get(index);
     if (path instanceof MultipleJsonPath) {
-      throw new QueryValidationException( "Field name '"+index+"' was ambiguous in index. ("+
+      throw new QueryAmbiguousExeption( "Field name '"+index+"' was ambiguous in index. ("+
           ((MultipleJsonPath) path).paths.stream().map(p->p.path).collect(Collectors.joining(", "))+")");
     }
     return path.path;
@@ -78,7 +77,7 @@ public class Schema {
         throw new QueryValidationException( "Field name '"+index+"' with type '"+type+"' not present in index." );
       else if (matchingPaths.size() == 1)
         return matchingPaths.get(0).path;
-      throw new QueryValidationException( "Field name '"+index+"' with type '"+type+"' was ambiguous in index. ("+
+      throw new QueryAmbiguousExeption( "Field name '"+index+"' with type '"+type+"' was ambiguous in index. ("+
           matchingPaths.stream().map(p->p.path).collect(Collectors.joining(", "))+")");
     }
     if (type.equals(path.type) || type.equals(path.items))
@@ -115,7 +114,9 @@ public class Schema {
           jp.nextToken();
           type = jp.getValueAsString();
         } else if (subFieldName.equals("items")) {
-          items = getItemsType( jp );
+          breadcrumbs.add(fieldName);
+          items = getItems( jp, breadcrumbs );
+          breadcrumbs.remove(breadcrumbs.size()-1);
         }
       } else if (jt.equals(JsonToken.END_OBJECT)) {
         recordFoundNode(type,items,fieldName,breadcrumbs);
@@ -158,7 +159,7 @@ public class Schema {
     }
   }
 
-  private String getItemsType(JsonParser jp) throws IOException, SchemaException {
+  private String getItems(JsonParser jp, List<String> breadcrumbs) throws IOException, SchemaException {
     JsonToken jt = jp.nextToken();
     String type = null;
     if (!jt.equals(JsonToken.START_OBJECT)) 
@@ -169,6 +170,8 @@ public class Schema {
         if (jp.getCurrentName().equals("type")) {
           jp.nextValue();
           type = jp.getValueAsString();
+        } else if (jp.getCurrentName().equals("properties")) {
+          iteratePropertiesArray(jp,breadcrumbs);
         }
       }
     }
