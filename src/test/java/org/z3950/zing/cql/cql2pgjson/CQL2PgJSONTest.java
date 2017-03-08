@@ -104,15 +104,16 @@ public class CQL2PgJSONTest {
       String where = cql2pgJson.cql2pgJson(cql);
       sql = "select user_data->'name' from users where " + where;
       setupData(sqlFile);
-      Statement statement = conn.createStatement();
-      statement.execute(sql);
-      ResultSet result = statement.getResultSet();
       String actualNames = "";
-      while (result.next()) {
-        if (! "".equals(actualNames)) {
-          actualNames += "; ";
+      try ( Statement statement = conn.createStatement();
+            ResultSet result = statement.executeQuery(sql) ) {
+
+        while (result.next()) {
+          if (! actualNames.isEmpty()) {
+            actualNames += "; ";
+          }
+          actualNames += result.getString(1).replace("\"", "");
         }
-        actualNames += result.getString(1).replace("\"", "");
       }
       assertEquals("CQL: " + cql + ", SQL: " + where, expectedNames, actualNames);
     } catch (QueryValidationException|SQLException e) {
