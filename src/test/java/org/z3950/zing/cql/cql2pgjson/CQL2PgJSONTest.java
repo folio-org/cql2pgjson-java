@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -28,13 +29,43 @@ import ru.yandex.qatools.embed.postgresql.config.PostgresConfig;
 public class CQL2PgJSONTest {
   static PostgresProcess postgresProcess;
   static Connection conn;
-  static final String dbName = "test";
-  static final String username = "test";
-  static final String password = "test";
+  static final String embeddedDbName = "test";
+  static final String embeddedUsername = "test";
+  static final String embeddedPassword = "test";
   static CQL2PgJSON cql2pgJson;
 
+  private static String nonNull(String s) {
+    return StringUtils.defaultString(s);
+  }
+
+  private static String url(String host, int port, String db, String username, String password) {
+    return String.format("jdbc:postgresql://%s:%s/%s?currentSchema=public&user=%s&password=%s",
+        nonNull(host), port, nonNull(db), nonNull(username), nonNull(password));
+  }
+
   private static void setupDatabase() throws IOException, SQLException {
-    // TODO: take values from dbtest_connection command line variable
+    int port = 5432;
+    try {
+      port = Integer.parseInt(System.getenv("DB_PORT"));
+    } catch (NumberFormatException e) {
+      // ignore, still use 5432
+    }
+    String username = nonNull(System.getenv("DB_USERNAME"));
+    if (! username.isEmpty()) {
+      try {
+        conn = DriverManager.getConnection(url(
+            System.getenv("DB_HOST"),
+            port,
+            System.getenv("DB_DATABASE"),
+            System.getenv("DB_USERNAME"),
+            System.getenv("DB_PASSWORD")
+            ));
+        return;
+      } catch (SQLException e) {
+        // ignore and try next
+      }
+    }
+
     // try local Postgres on Port 5432 with user test
     String url = "jdbc:postgresql://127.0.0.1:5432/test?currentSchema=public&user=test&password=test";
     try {
@@ -47,8 +78,8 @@ public class CQL2PgJSONTest {
 
     // start embedded Postgres
     final PostgresStarter<PostgresExecutable, PostgresProcess> runtime = PostgresStarter.getDefaultInstance();
-    final PostgresConfig config = PostgresConfig.defaultWithDbName(dbName, username, password);
-    url = String.format("jdbc:postgresql://%s:%s/%s?currentSchema=public&user=%s&password=%s",
+    final PostgresConfig config = PostgresConfig.defaultWithDbName(embeddedDbName, embeddedUsername, embeddedPassword);
+    url = url(
         config.net().host(),
         config.net().port(),
         config.storage().dbName(),
@@ -212,6 +243,12 @@ public class CQL2PgJSONTest {
   })
   public void andOrNot(String testcase) {
     select(testcase);
+  }
+
+  /** https://issues.folio.org/browse/DMOD-184 CQL conversion seems to ignore some errors */
+  @Test
+  public void startsWithOr() {
+    cql2pgJsonException("or name=a", IllegalArgumentException.class);
   }
 
   @Test
