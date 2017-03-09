@@ -13,6 +13,21 @@ import com.fasterxml.jackson.core.JsonToken;
 
 public class Schema {
 
+  /* Private use variables and object structures*/
+  private final Map<String,JsonPath> byNodeName = new HashMap<>();
+  private final static String itemsUsage =
+      "`items` is a reserved field name, whose value should be a Json object containing `type` field.";
+
+  private class JsonPath {
+    String path = null;
+    String type = null;
+    String items = null;
+  }
+  private class MultipleJsonPath extends JsonPath {
+    List<JsonPath> paths = new ArrayList<>();
+  }
+  /* End of private use variables and object structures*/
+
   /**
    * Run a schema validation on the specified JSON file, producing errors if the file
    * is either invalid JSON, or merely incorrectly structured for the purpose of defining
@@ -43,9 +58,9 @@ public class Schema {
    * @throws QueryValidationException 
    */
   public String mapFieldNameAgainstSchema(String index) throws QueryValidationException {
-    if (! _byNodeName.containsKey(index)) 
+    if (! byNodeName.containsKey(index)) 
       throw new QueryValidationException( "Field name '"+index+"' not present in index." );
-    JsonPath path = _byNodeName.get(index);
+    JsonPath path = byNodeName.get(index);
     if (path instanceof MultipleJsonPath) {
       throw new QueryAmbiguousExeption( "Field name '"+index+"' was ambiguous in index. ("+
           ((MultipleJsonPath) path).paths.stream().map(p->p.path).collect(Collectors.joining(", "))+")");
@@ -65,9 +80,9 @@ public class Schema {
    * @throws QueryValidationException 
    */
   public String mapFieldNameAndTypeAgainstSchema(String index, String type) throws QueryValidationException {
-    if (! _byNodeName.containsKey(index))
+    if (! byNodeName.containsKey(index))
       throw new QueryValidationException( "Field name '"+index+"' not present in index." );
-    JsonPath path = _byNodeName.get(index);
+    JsonPath path = byNodeName.get(index);
     if (path instanceof MultipleJsonPath) {
       List<JsonPath> matchingPaths = new ArrayList<>();
       for (JsonPath p : ((MultipleJsonPath)path).paths)
@@ -130,7 +145,7 @@ public class Schema {
       return;
     if (type.equals("array") && items == null)
         throw new SchemaException("Array type nodes require an items object to identify the object type in the array."
-            +items_usage);
+            +itemsUsage);
     breadcrumbs.add(fieldName);
     JsonPath path = new JsonPath();
     path.path = String.join(".", breadcrumbs);
@@ -144,17 +159,17 @@ public class Schema {
   }
 
   private void saveToNodeNameMap(JsonPath path, String nodeName) {
-    if (! _byNodeName.containsKey(nodeName)) {
-      _byNodeName.put(nodeName, path);
+    if (! byNodeName.containsKey(nodeName)) {
+      byNodeName.put(nodeName, path);
     } else {
-      JsonPath prevPath = _byNodeName.get(nodeName);
+      JsonPath prevPath = byNodeName.get(nodeName);
       if (prevPath instanceof MultipleJsonPath) {
         ((MultipleJsonPath) prevPath).paths.add(path);
       } else {
         MultipleJsonPath multiPath = new MultipleJsonPath();
         multiPath.paths.add(prevPath);
         multiPath.paths.add(path);
-        _byNodeName.put(nodeName, multiPath);
+        byNodeName.put(nodeName, multiPath);
       }
     }
   }
@@ -163,7 +178,7 @@ public class Schema {
     JsonToken jt = jp.nextToken();
     String type = null;
     if (!jt.equals(JsonToken.START_OBJECT)) 
-      throw new SchemaException(items_usage);
+      throw new SchemaException(itemsUsage);
     while ( ! jp.isClosed() && ! jt.equals(JsonToken.END_OBJECT)) {
       jt = jp.nextToken();
       if (jt.equals(JsonToken.FIELD_NAME)) {
@@ -176,20 +191,8 @@ public class Schema {
       }
     }
     if (type == null)
-      throw new SchemaException(items_usage);
+      throw new SchemaException(itemsUsage);
     return type;
   }
 
-  private Map<String,JsonPath> _byNodeName = new HashMap<>();
-  private final String items_usage =
-      "`items` is a reserved field name, whose value should be a Json object containing `type` field.";
-
-  private class JsonPath {
-    String path = null;
-    String type = null;
-    String items = null;
-  }
-  private class MultipleJsonPath extends JsonPath {
-    List<JsonPath> paths = new ArrayList<>();
-  }
 }
