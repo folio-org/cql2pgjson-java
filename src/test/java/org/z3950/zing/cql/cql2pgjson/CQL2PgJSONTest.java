@@ -147,7 +147,7 @@ public class CQL2PgJSONTest {
         }
       }
       assertEquals("CQL: " + cql + ", SQL: " + where, expectedNames, actualNames);
-    } catch (QueryValidationException|SQLException|IOException e) {
+    } catch (QueryValidationException|SQLException e) {
       throw new RuntimeException(sql != null ? sql : cql, e);
     }
   }

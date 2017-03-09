@@ -221,12 +221,12 @@ public class CQL2PgJSON {
     this.serverChoiceIndexes = serverChoiceIndexes;
   }
 
-  public String cql2pgJson(String cql) throws QueryValidationException, IOException {
+  public String cql2pgJson(String cql) throws QueryValidationException {
     try {
       CQLParser parser = new CQLParser();
       CQLNode node = parser.parse(cql);
       return pg(node);
-    } catch (CQLParseException e) {
+    } catch (IOException|CQLParseException e) {
       throw new QueryValidationException(e);
     }
   }
