@@ -121,7 +121,7 @@ public class CQL2PgJSONTest {
     }
   }
 
-  public void select(String sqlFile, String testcase) {
+  public void select(CQL2PgJSON aCql2pgJson, String sqlFile, String testcase) {
     int hash = testcase.indexOf('#');
     assertTrue("hash character in testcase", hash>=0);
     String cql           = testcase.substring(0, hash).trim();
@@ -132,7 +132,7 @@ public class CQL2PgJSONTest {
     }
     String sql = null;
     try {
-      String where = cql2pgJson.cql2pgJson(cql);
+      String where = aCql2pgJson.cql2pgJson(cql);
       sql = "select user_data->'name' from users where " + where;
       setupData(sqlFile);
       String actualNames = "";
@@ -152,8 +152,16 @@ public class CQL2PgJSONTest {
     }
   }
 
+  public void select(String sqlFile, String testcase) {
+    select(cql2pgJson, sqlFile, testcase);
+  }
+
   public void select(String testcase) {
-    select("jo-ka-lea.sql", testcase);
+    select(cql2pgJson, "jo-ka-lea.sql", testcase);
+  }
+
+  public void select(CQL2PgJSON aCql2pgJson, String testcase) {
+    select(aCql2pgJson, "jo-ka-lea.sql", testcase);
   }
 
   /**
@@ -500,5 +508,23 @@ public class CQL2PgJSONTest {
   @Test(expected = IllegalArgumentException.class)
   public void singleQuoteIndex() throws IOException {
     new CQL2PgJSON("users.user_data", Arrays.asList("test'cql"));
+  }
+
+  @Parameters({
+    "name=Long                      # Lea Long",
+    "address.zip=2791               # Lea Long",
+    "zip=2791                       # Lea Long",
+  })
+  @Test
+  public void schema(String testcase) throws IOException, SchemaException, QueryValidationException {
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON("users.user_data", Util.getResource("userdata.json"));
+    select(aCql2pgJson, testcase);
+  }
+
+  @Test
+  public void notInSchema() throws IOException, SchemaException, QueryValidationException {
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON(
+        "users.user_data", Util.getResource("userdata.json"), Arrays.asList("name"));
+    cql2pgJsonException(aCql2pgJson, "foobar=x", QueryValidationException.class);
   }
 }
