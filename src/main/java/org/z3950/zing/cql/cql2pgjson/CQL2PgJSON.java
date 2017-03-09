@@ -119,10 +119,11 @@ public class CQL2PgJSON {
    * @param field Name of the JSON field, may include schema and table name (e.g. tenant1.user_table.json).
    *   Must conform to SQL identifier requirements (characters, not a keyword), or properly
    *   quoted using double quotes.
+   * @throws FieldException provided field is not valid
    */
-  public CQL2PgJSON(String field) {
+  public CQL2PgJSON(String field) throws FieldException {
     if (field == null || field.trim().isEmpty()) {
-      throw new IllegalArgumentException("field (containing tableName) must not be empty");
+      throw new FieldException("field (containing tableName) must not be empty");
     }
     this.jsonField = field;
   }
@@ -135,9 +136,10 @@ public class CQL2PgJSON {
    *   quoted using double quotes.
    * @param schema JSON String representing the schema of the field the CQL queries against.
    * @throws IOException if the JSON structure is invalid
-   * @throws SchemaException if the JSON is structurally acceptable but doesn't match expected schema
+   * @throws FieldException (subclass of CQL2PgJSONException) provided field is not valid
+   * @throws SchemaException (subclass of CQL2PgJSONException) provided JSON schema not valid
    */
-  public CQL2PgJSON(String field, String schema) throws IOException, SchemaException {
+  public CQL2PgJSON(String field, String schema) throws IOException, FieldException, SchemaException {
     this(field);
     setSchema(schema);
   }
@@ -150,9 +152,10 @@ public class CQL2PgJSON {
    *   quoted using double quotes.
    * @param serverChoiceIndexes       List of field names, may be empty, must not contain null,
    *                                  names must not contain double quote or single quote.
-   * @throws IOException if the JSON structure is invalid
+   * @throws FieldException (subclass of CQL2PgJSONException) - provided field is not valid
+   * @throws ServerChoiceIndexesException (subclass of CQL2PgJSONException) - provided serverChoiceIndexes is not valid
    */
-  public CQL2PgJSON(String field, List<String> serverChoiceIndexes) throws IOException {
+  public CQL2PgJSON(String field, List<String> serverChoiceIndexes) throws FieldException, ServerChoiceIndexesException {
     this(field);
     setServerChoiceIndexes(serverChoiceIndexes);
   }
@@ -167,9 +170,12 @@ public class CQL2PgJSON {
    * @param serverChoiceIndexes       List of field names, may be empty, must not contain null,
    *                                  names must not contain double quote or single quote.
    * @throws IOException if the JSON structure is invalid
-   * @throws SchemaException if the JSON is structurally acceptable but doesn't match expected schema
+   * @throws FieldException (subclass of CQL2PgJSONException) - provided field is not valid
+   * @throws SchemaException (subclass of CQL2PgJSONException) provided JSON schema not valid
+   * @throws ServerChoiceIndexesException (subclass of CQL2PgJSONException) - provided serverChoiceIndexes is not valid
    */
-  public CQL2PgJSON(String field, String schema, List<String> serverChoiceIndexes) throws IOException, SchemaException {
+  public CQL2PgJSON(String field, String schema, List<String> serverChoiceIndexes)
+      throws IOException, SchemaException, ServerChoiceIndexesException, FieldException {
     this(field);
     setSchema(schema);
     setServerChoiceIndexes(serverChoiceIndexes);
@@ -189,42 +195,43 @@ public class CQL2PgJSON {
    * Set the index names (field names) for cql.serverChoice.
    * @param serverChoiceIndexes       List of field names, may be empty, must not contain null,
    *                                  names must not contain double quote or single quote.
+   * @throws ServerChoiceIndexesException if serverChoiceIndexes value(s) are invalid
    */
-  public void setServerChoiceIndexes(List<String> serverChoiceIndexes) {
+  public void setServerChoiceIndexes(List<String> serverChoiceIndexes) throws ServerChoiceIndexesException {
     if (serverChoiceIndexes == null) {
       this.serverChoiceIndexes = Collections.emptyList();
       return;
     }
     for (String field : serverChoiceIndexes) {
       if (field == null) {
-        throw new NullPointerException("serverChoiceFields must not contain null elements");
+        throw new ServerChoiceIndexesException("serverChoiceFields must not contain null elements");
       }
       if (field.trim().isEmpty()) {
-        throw new IllegalArgumentException("serverChoiceFields must not contain emtpy field names");
+        throw new ServerChoiceIndexesException("serverChoiceFields must not contain empty field names");
       }
       int pos = field.indexOf('"');
       if (pos >= 0) {
-        throw new IllegalArgumentException("field contains double quote at position " + pos+1 + ": " + field);
+        throw new ServerChoiceIndexesException("field contains double quote at position " + pos+1 + ": " + field);
       }
       pos = field.indexOf('\'');
       if (pos >= 0) {
-        throw new IllegalArgumentException("field contains single quote at position " + pos+1 + ": " + field);
+        throw new ServerChoiceIndexesException("field contains single quote at position " + pos+1 + ": " + field);
       }
     }
     this.serverChoiceIndexes = serverChoiceIndexes;
   }
 
-  public String cql2pgJson(String cql) throws QueryValidationException {
+  public String cql2pgJson(String cql) throws QueryValidationException, IOException {
     try {
       CQLParser parser = new CQLParser();
       CQLNode node = parser.parse(cql);
       return pg(node);
-    } catch (IOException|CQLParseException e) {
-      throw new IllegalArgumentException(e);
+    } catch (CQLParseException e) {
+      throw new QueryValidationException(e);
     }
   }
 
-  private String pg(CQLNode node) throws QueryValidationException {
+  private String pg(CQLNode node) throws QueryValidationException, CQLFeatureUnsupportedException {
     if (node instanceof CQLTermNode) {
       return pg((CQLTermNode) node);
     }
@@ -234,7 +241,7 @@ public class CQL2PgJSON {
     if (node instanceof CQLSortNode) {
       return pg((CQLSortNode) node);
     }
-    throw new IllegalArgumentException("Not implemented yet: " + node.getClass().getName());
+    throw new CQLFeatureUnsupportedException("Not implemented yet: " + node.getClass().getName());
   }
 
   private String pg(CQLSortNode node) throws QueryValidationException {
@@ -259,7 +266,7 @@ public class CQL2PgJSON {
     return order.toString();
   }
 
-  private static String sqlOperator(CQLBooleanNode node) {
+  private static String sqlOperator(CQLBooleanNode node) throws CQLFeatureUnsupportedException {
     if (node instanceof CQLAndNode) {
       return "AND";
     }
@@ -271,7 +278,7 @@ public class CQL2PgJSON {
       // https://www.loc.gov/standards/sru/cql/spec.html
       return "AND NOT";
     }
-    throw new IllegalArgumentException("Not implemented yet: " + node.getClass().getName());
+    throw new CQLFeatureUnsupportedException("Not implemented yet: " + node.getClass().getName());
   }
 
   private String pg(CQLBooleanNode node) throws QueryValidationException {
@@ -380,10 +387,10 @@ public class CQL2PgJSON {
     return split;
   }
 
-  private String [] match(CQLTermNode node) {
+  private String [] match(CQLTermNode node) throws CQLFeatureUnsupportedException {
     CqlModifiers modifiers = new CqlModifiers(node);
     if (modifiers.cqlMasking != CqlMasking.MASKED) {
-      throw new IllegalArgumentException("This masking is not implemented yet: " + modifiers.cqlMasking);
+      throw new CQLFeatureUnsupportedException("This masking is not implemented yet: " + modifiers.cqlMasking);
     }
     String comparator = node.getRelation().getBase();
     switch (comparator) {
@@ -401,7 +408,7 @@ public class CQL2PgJSON {
     case ">=":
       return new String [] { comparator + "'" + node.getTerm().replace("'", "''") + "'" };
     default:
-      throw new IllegalArgumentException("Relation " + node.getRelation().getBase()
+      throw new CQLFeatureUnsupportedException("Relation " + node.getRelation().getBase()
           + " not implemented yet: " + node.toString());
     }
   }
@@ -419,8 +426,9 @@ public class CQL2PgJSON {
    * Returns a numeric match like ">=17" if the node term is a JSON number, null otherwise.
    * @param node  the node to get the comparator operator and the term from
    * @return  the comparison or null
+   * @throws CQLFeatureUnsupportedException if cql query attempts to use unsupported operators.
    */
-  private static String getNumberMatch(CQLTermNode node) {
+  private static String getNumberMatch(CQLTermNode node) throws CQLFeatureUnsupportedException {
     if (! isJsonNumber(node.getTerm())) {
       return null;
     }
@@ -437,7 +445,7 @@ public class CQL2PgJSON {
     case ">=":
       break;
     default:
-      throw new IllegalArgumentException("Relation " + node.getRelation().getBase()
+      throw new CQLFeatureUnsupportedException("Relation " + node.getRelation().getBase()
           + " not implemented yet: " + node.toString());
     }
     return comparator + node.getTerm();
@@ -510,7 +518,7 @@ public class CQL2PgJSON {
     String numberMatch = getNumberMatch(node);
     if ("cql.serverChoice".equalsIgnoreCase(node.getIndex())) {
       if (serverChoiceIndexes.isEmpty()) {
-        throw new IllegalStateException("cql.serverChoice requested, but no serverChoiceIndexes defined.");
+        throw new QueryValidationException("cql.serverChoice requested, but no serverChoiceIndexes defined.");
       }
       List<String> sqlPieces = new ArrayList<>();
       for(String index : serverChoiceIndexes)
