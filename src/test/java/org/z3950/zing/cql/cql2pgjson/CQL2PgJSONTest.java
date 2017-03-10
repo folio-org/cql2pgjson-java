@@ -105,7 +105,7 @@ public class CQL2PgJSONTest {
   }
 
   @BeforeClass
-  public static void runOnceBeforeClass() throws IOException, SQLException {
+  public static void runOnceBeforeClass() throws IOException, SQLException, CQL2PgJSONException {
     setupDatabase();
     setupData("users.sql");
     cql2pgJson = new CQL2PgJSON("users.user_data", Util.getResource("userdata.json"), Arrays.asList("name", "email"));
@@ -121,7 +121,7 @@ public class CQL2PgJSONTest {
     }
   }
 
-  public void select(String sqlFile, String testcase) {
+  public void select(CQL2PgJSON aCql2pgJson, String sqlFile, String testcase) {
     int hash = testcase.indexOf('#');
     assertTrue("hash character in testcase", hash>=0);
     String cql           = testcase.substring(0, hash).trim();
@@ -130,28 +130,38 @@ public class CQL2PgJSONTest {
     if (! cql.contains(" sortBy ")) {
       cql += " sortBy name";
     }
-    String where = cql2pgJson.cql2pgJson(cql);
-    String sql = "select user_data->'name' from users where " + where;
+    String sql = null;
     try {
+      String where = aCql2pgJson.cql2pgJson(cql);
+      sql = "select user_data->'name' from users where " + where;
       setupData(sqlFile);
-      Statement statement = conn.createStatement();
-      statement.execute(sql);
-      ResultSet result = statement.getResultSet();
       String actualNames = "";
-      while (result.next()) {
-        if (! "".equals(actualNames)) {
-          actualNames += "; ";
+      try ( Statement statement = conn.createStatement();
+            ResultSet result = statement.executeQuery(sql) ) {
+
+        while (result.next()) {
+          if (! actualNames.isEmpty()) {
+            actualNames += "; ";
+          }
+          actualNames += result.getString(1).replace("\"", "");
         }
-        actualNames += result.getString(1).replace("\"", "");
       }
       assertEquals("CQL: " + cql + ", SQL: " + where, expectedNames, actualNames);
-    } catch (SQLException e) {
-      throw new RuntimeException(sql, e);
+    } catch (QueryValidationException|SQLException e) {
+      throw new RuntimeException(sql != null ? sql : cql, e);
     }
   }
 
+  public void select(String sqlFile, String testcase) {
+    select(cql2pgJson, sqlFile, testcase);
+  }
+
   public void select(String testcase) {
-    select("jo-ka-lea.sql", testcase);
+    select(cql2pgJson, "jo-ka-lea.sql", testcase);
+  }
+
+  public void select(CQL2PgJSON aCql2pgJson, String testcase) {
+    select(aCql2pgJson, "jo-ka-lea.sql", testcase);
   }
 
   /**
@@ -162,7 +172,7 @@ public class CQL2PgJSONTest {
    * @throws RuntimeException  if an exception was thrown that is not an instance of clazz
    */
   public void cql2pgJsonException(String cql,
-      Class<? extends Exception> clazz, String ... contains) {
+      Class<? extends Exception> clazz, String ... contains) throws RuntimeException {
     try {
       CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email"));
       cql2pgJsonException(cql2pgJson, cql, clazz, contains);
@@ -180,7 +190,7 @@ public class CQL2PgJSONTest {
    * @throws RuntimeException  if an exception was thrown that is not an instance of clazz
    */
   public void cql2pgJsonException(CQL2PgJSON cql2pgJson, String cql,
-      Class<? extends Exception> clazz, String ... contains) {
+      Class<? extends Exception> clazz, String ... contains) throws RuntimeException {
     try {
       cql2pgJson.cql2pgJson(cql);
     } catch (Throwable e) {
@@ -246,13 +256,13 @@ public class CQL2PgJSONTest {
   /** https://issues.folio.org/browse/DMOD-184 CQL conversion seems to ignore some errors */
   @Test
   public void startsWithOr() {
-    cql2pgJsonException("or name=a", IllegalArgumentException.class);
+    cql2pgJsonException("or name=a", QueryValidationException.class);
   }
 
   @Test
   public void prox() {
     cql2pgJsonException("name=Lea prox/unit=word/distance>3 name=Long",
-        IllegalArgumentException.class, "CQLProxNode");
+        CQLFeatureUnsupportedException.class, "CQLProxNode");
   }
 
   @Test
@@ -301,9 +311,9 @@ public class CQL2PgJSONTest {
 
   @Test
   public void masking() {
-    cql2pgJsonException("name=/unmasked Lea",  IllegalArgumentException.class, "unmasked");
-    cql2pgJsonException("name=/substring Lea", IllegalArgumentException.class, "substring");
-    cql2pgJsonException("name=/regexp Lea",    IllegalArgumentException.class, "regexp");
+    cql2pgJsonException("name=/unmasked Lea",  CQLFeatureUnsupportedException.class, "unmasked");
+    cql2pgJsonException("name=/substring Lea", CQLFeatureUnsupportedException.class, "substring");
+    cql2pgJsonException("name=/regexp Lea",    CQLFeatureUnsupportedException.class, "regexp");
   }
 
   @Test
@@ -437,9 +447,9 @@ public class CQL2PgJSONTest {
   }
 
   @Test
-  public void compareNumberNotImplemented() {
+  public void compareNumberNotImplemented() throws FieldException, RuntimeException {
     cql2pgJsonException(new CQL2PgJSON("users.user_data"), "address.zip adj 5",
-        IllegalArgumentException.class, "Relation", "adj");
+        CQLFeatureUnsupportedException.class, "Relation", "adj");
   }
 
   @Test
@@ -454,49 +464,67 @@ public class CQL2PgJSONTest {
     select(testcase);
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void nullField() {
+  @Test(expected = FieldException.class)
+  public void nullField() throws FieldException {
     new CQL2PgJSON(null);
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void emptyField() {
+  @Test(expected = FieldException.class)
+  public void emptyField() throws FieldException {
     new CQL2PgJSON(" \t \t ");
   }
 
   @Test
-  public void noServerChoiceIndexes() throws IOException {
+  public void noServerChoiceIndexes() throws IOException, CQL2PgJSONException {
     cql2pgJsonException(new CQL2PgJSON("users.user_data", Arrays.asList()),
-        "Jane", IllegalStateException.class, "serverChoiceIndex");
+        "Jane", QueryValidationException.class, "serverChoiceIndex");
     cql2pgJsonException(new CQL2PgJSON("users.user_data", (List<String>) null),
-        "Jane", IllegalStateException.class, "serverChoiceIndex");
+        "Jane", QueryValidationException.class, "serverChoiceIndex");
     cql2pgJsonException(new CQL2PgJSON("users.user_data", "{}"),
-        "Jane", IllegalStateException.class, "serverChoiceIndex");
+        "Jane", QueryValidationException.class, "serverChoiceIndex");
   }
 
   @Test
-  public void relationNotImplemented() {
+  public void relationNotImplemented() throws FieldException, RuntimeException {
     cql2pgJsonException(new CQL2PgJSON("users.user_data"),
-        "address.zip encloses 12", IllegalArgumentException.class, "Relation", "encloses");
+        "address.zip encloses 12", CQLFeatureUnsupportedException.class, "Relation", "encloses");
   }
 
-  @Test(expected = NullPointerException.class)
-  public void nullIndex() throws IOException {
+  @Test(expected = ServerChoiceIndexesException.class)
+  public void nullIndex() throws CQL2PgJSONException {
     new CQL2PgJSON("users.user_data", Arrays.asList((String) null));
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void emptyIndex() throws IOException {
+  @Test(expected = ServerChoiceIndexesException.class)
+  public void emptyIndex() throws CQL2PgJSONException {
     new CQL2PgJSON("users.user_data", Arrays.asList(" \t \t "));
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void doubleQuoteIndex() throws IOException {
+  @Test(expected = ServerChoiceIndexesException.class)
+  public void doubleQuoteIndex() throws CQL2PgJSONException {
     new CQL2PgJSON("users.user_data", Arrays.asList("test\"cql"));
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void singleQuoteIndex() throws IOException {
+  @Test(expected = ServerChoiceIndexesException.class)
+  public void singleQuoteIndex() throws CQL2PgJSONException {
     new CQL2PgJSON("users.user_data", Arrays.asList("test'cql"));
+  }
+
+  @Parameters({
+    "name=Long                      # Lea Long",
+    "address.zip=2791               # Lea Long",
+    "zip=2791                       # Lea Long",
+  })
+  @Test
+  public void schema(String testcase) throws IOException, CQL2PgJSONException {
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON("users.user_data", Util.getResource("userdata.json"));
+    select(aCql2pgJson, testcase);
+  }
+
+  @Test
+  public void notInSchema() throws IOException, CQL2PgJSONException {
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON(
+        "users.user_data", Util.getResource("userdata.json"), Arrays.asList("name"));
+    cql2pgJsonException(aCql2pgJson, "foobar=x", QueryValidationException.class);
   }
 }

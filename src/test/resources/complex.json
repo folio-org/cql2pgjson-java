@@ -1,0 +1,69 @@
+{
+  "title" : "Complex Object Model for Testing",
+  "type"  : "object",
+  "properties" : {
+    "parent" : {
+      "type" : "object",
+      "properties" : {
+        "name" : { "type" : "string" },
+        "dob"  : { "type" : "date" },
+        "properties" : { "type" : "integer" },
+        "address" : {
+          "type"       : "object",
+          "properties" : {
+            "streetNumber" : { "type" : "string" },
+            "street"       : { "type" : "string" },
+            "city"         : { "type" : "string" },
+            "zip"          : { "type" : "integer" },
+            "apartment"    : { "type" : "string" }
+          }
+        },
+        "shirt" : {
+          "type" : "object",
+          "properties" : {
+            "size"  : { "type" : "string" },
+            "color" : { "type" : "string" }
+          }
+        },
+        "pants" : {
+          "type" : "object",
+          "properties" : {
+            "size"  : { "type" : "integer" },
+            "color" : { "type" : "string" }
+          }
+        },
+        "shoes" : {
+          "type" : "object",
+          "properties" : {
+            "size"  : { "type" : "integer" },
+            "color" : { "type" : "string" },
+            "style" : { "type" : "string" }
+          }
+        }
+      }
+    },
+    "child" : {
+      "type" : "array",
+      "items" : {
+        "type" : "object",
+        "properties" : {
+          "name"          : { "type" : "string" },
+          "dob"           : { "type" : "date" },
+          "favoriteColor" : { "type" : "string" },
+          "gender"        : { "type" : "string" },
+          "pet"           : {
+            "type" : "array",
+            "items": { 
+              "type" : "object",
+              "properties" : {
+                "name"   : { "type" : "string" },
+                "type"   : { "type" : "string" },
+                "color"  : { "type" : "string" }
+              }
+            }
+          }
+        }
+      }
+    } 
+  }
+}
