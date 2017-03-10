@@ -45,6 +45,18 @@ Matching modifiers: Only `masked` is implemented, not `unmasked`, `regexp`,
 Word begin and word end in JSON is only detected at whitespace and punctuation characters
 from the ASCII charset, not from other Unicode charsets.
 
+All locally produced Exceptions are derived from a single parent so they can be caught collectively
+or individually. Methods that load a JSON data object model pass in the identity of the model as a
+resource file name, and may also throw a native `java.io.IOException`.
+
+    CQL2PgJSONException
+      ├── FieldException
+      ├── SchemaException
+      ├── ServerChoiceIndexesException
+      ├── CQLFeatureUnsupportedException
+      └── QueryValidationException
+            └── QueryAmbiguousException
+
 ## Additional information
 
 * Further [CQL](http://dev.folio.org/doc/glossary#cql) information.
