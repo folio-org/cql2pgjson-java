@@ -477,11 +477,11 @@ public class CQL2PgJSONTest {
   @Test
   public void noServerChoiceIndexes() throws IOException, CQL2PgJSONException {
     cql2pgJsonException(new CQL2PgJSON("users.user_data", Arrays.asList()),
-        "Jane", IllegalStateException.class, "serverChoiceIndex");
+        "Jane", QueryValidationException.class, "serverChoiceIndex");
     cql2pgJsonException(new CQL2PgJSON("users.user_data", (List<String>) null),
-        "Jane", IllegalStateException.class, "serverChoiceIndex");
+        "Jane", QueryValidationException.class, "serverChoiceIndex");
     cql2pgJsonException(new CQL2PgJSON("users.user_data", "{}"),
-        "Jane", IllegalStateException.class, "serverChoiceIndex");
+        "Jane", QueryValidationException.class, "serverChoiceIndex");
   }
 
   @Test
