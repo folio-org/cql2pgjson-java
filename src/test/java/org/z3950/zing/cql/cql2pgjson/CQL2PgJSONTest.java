@@ -460,6 +460,8 @@ public class CQL2PgJSONTest {
     "address.zip>=18                # h",
     "address.zip>=19                #",
     "address.zip<>5                 # a; b; c; d; f; g; h",
+    "address.zip=1                  # a",  // must not match 17, 18
+    "address.zip==1                 # a",
   })
   public void compareNumber(String testcase) {
     select("special.sql", testcase);
