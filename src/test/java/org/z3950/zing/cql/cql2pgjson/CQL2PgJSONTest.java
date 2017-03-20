@@ -2,8 +2,12 @@ package org.z3950.zing.cql.cql2pgjson;
 
 import static org.junit.Assert.*;
 import org.junit.runner.RunWith;
+import org.z3950.zing.cql.CQLRelation;
+import org.z3950.zing.cql.CQLTermNode;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -467,10 +471,12 @@ public class CQL2PgJSONTest {
     select("special.sql", testcase);
   }
 
-  @Test
-  public void compareNumberNotImplemented() throws FieldException, RuntimeException {
-    cql2pgJsonException(new CQL2PgJSON("users.user_data"), "address.zip adj 5",
-        CQLFeatureUnsupportedException.class, "Relation", "adj");
+  @Test(expected = CQLFeatureUnsupportedException.class)
+  public void compareNumberNotImplemented() throws Exception {
+    // We test unreachable code because CQL2PgJSON.match(CQLTermNode) throws an exception
+    // before. We test it anyway.
+    CQLTermNode node = new CQLTermNode("zip", new CQLRelation("adj"), "12");
+    CQL2PgJSON.getNumberMatch(node);
   }
 
   @Test
