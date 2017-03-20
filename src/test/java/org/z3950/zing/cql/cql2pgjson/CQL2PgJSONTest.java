@@ -417,6 +417,25 @@ public class CQL2PgJSONTest {
 
   @Test
   @Parameters({
+    "address.city= /respectCase/respectAccents Søvang # Lea Long",
+    "address.city==/respectCase/respectAccents Søvang # Lea Long",
+    "address.city= /respectCase/respectAccents SØvang #",
+    "address.city==/respectCase/respectAccents SØvang #",
+    "address.city= /respectCase/respectAccents Sovang #",
+    "address.city==/respectCase/respectAccents Sovang #",
+    "address.city= /respectCase/respectAccents SOvang #",
+    "address.city==/respectCase/respectAccents SOvang #",
+    "address.city= /respectCase/respectAccents Sövang #",
+    "address.city==/respectCase/respectAccents Sövang #",
+    "address.city= /respectCase/respectAccents SÖvang #",
+    "address.city==/respectCase/respectAccents SÖvang #",
+  })
+  public void unicodeCaseAccents(String testcase) {
+    select(testcase);
+  }
+
+  @Test
+  @Parameters({
     "example sortBy name                         # Jo Jane; Ka Keller; Lea Long",
     "example sortBy name/sort.ascending          # Jo Jane; Ka Keller; Lea Long",
     "example sortBy name/sort.descending         # Lea Long; Ka Keller; Jo Jane",

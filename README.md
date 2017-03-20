@@ -30,14 +30,16 @@ Setting server choice indexes is possible:
 
 Only these relations have been implemented yet:
 
-* = (substring match)
-* == (exact match)
-* > >= < <= <> (comparison for both strings and numbers)
+* `=` (substring match)
+* `==` (exact match)
+* `>` `>=` `<` `<=` `<>` (comparison for both strings and numbers)
 
 Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
 
 Functional modifiers: `ignoreCase`, `respectCase` and `ignoreAccents`, `respectAccents`
 are implemented for all characters (ASCII and Unicode). Default is `ignoreCase` and `ignoreAccents`.
+Example for respecting case and accents:
+`groupId=/respectCase/respectAccents 'd0faefc6-68c0-4612-8ee2-8aeaf058349d'`
 
 Matching modifiers: Only `masked` is implemented, not `unmasked`, `regexp`,
 `honorWhitespace`, `substring`.
