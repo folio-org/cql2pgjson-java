@@ -2,8 +2,12 @@ package org.z3950.zing.cql.cql2pgjson;
 
 import static org.junit.Assert.*;
 import org.junit.runner.RunWith;
+import org.z3950.zing.cql.CQLRelation;
+import org.z3950.zing.cql.CQLTermNode;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -417,6 +421,25 @@ public class CQL2PgJSONTest {
 
   @Test
   @Parameters({
+    "address.city= /respectCase/respectAccents Søvang # Lea Long",
+    "address.city==/respectCase/respectAccents Søvang # Lea Long",
+    "address.city= /respectCase/respectAccents SØvang #",
+    "address.city==/respectCase/respectAccents SØvang #",
+    "address.city= /respectCase/respectAccents Sovang #",
+    "address.city==/respectCase/respectAccents Sovang #",
+    "address.city= /respectCase/respectAccents SOvang #",
+    "address.city==/respectCase/respectAccents SOvang #",
+    "address.city= /respectCase/respectAccents Sövang #",
+    "address.city==/respectCase/respectAccents Sövang #",
+    "address.city= /respectCase/respectAccents SÖvang #",
+    "address.city==/respectCase/respectAccents SÖvang #",
+  })
+  public void unicodeCaseAccents(String testcase) {
+    select(testcase);
+  }
+
+  @Test
+  @Parameters({
     "example sortBy name                         # Jo Jane; Ka Keller; Lea Long",
     "example sortBy name/sort.ascending          # Jo Jane; Ka Keller; Lea Long",
     "example sortBy name/sort.descending         # Lea Long; Ka Keller; Jo Jane",
@@ -441,15 +464,19 @@ public class CQL2PgJSONTest {
     "address.zip>=18                # h",
     "address.zip>=19                #",
     "address.zip<>5                 # a; b; c; d; f; g; h",
+    "address.zip=1                  # a",  // must not match 17, 18
+    "address.zip==1                 # a",
   })
   public void compareNumber(String testcase) {
     select("special.sql", testcase);
   }
 
-  @Test
-  public void compareNumberNotImplemented() throws FieldException, RuntimeException {
-    cql2pgJsonException(new CQL2PgJSON("users.user_data"), "address.zip adj 5",
-        CQLFeatureUnsupportedException.class, "Relation", "adj");
+  @Test(expected = CQLFeatureUnsupportedException.class)
+  public void compareNumberNotImplemented() throws Exception {
+    // We test unreachable code because CQL2PgJSON.match(CQLTermNode) throws an exception
+    // before. We test it anyway.
+    CQLTermNode node = new CQLTermNode("zip", new CQLRelation("adj"), "12");
+    CQL2PgJSON.getNumberMatch(node);
   }
 
   @Test
@@ -482,6 +509,12 @@ public class CQL2PgJSONTest {
         "Jane", QueryValidationException.class, "serverChoiceIndex");
     cql2pgJsonException(new CQL2PgJSON("users.user_data", "{}"),
         "Jane", QueryValidationException.class, "serverChoiceIndex");
+  }
+
+  @Test
+  public void prefixNotImplemented() throws FieldException, RuntimeException {
+    cql2pgJsonException(new CQL2PgJSON("users.user_data"),
+        "> n = name n=Ka", CQLFeatureUnsupportedException.class, "CQLPrefixNode");
   }
 
   @Test

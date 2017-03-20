@@ -428,7 +428,7 @@ public class CQL2PgJSON {
    * @return  the comparison or null
    * @throws CQLFeatureUnsupportedException if cql query attempts to use unsupported operators.
    */
-  private static String getNumberMatch(CQLTermNode node) throws CQLFeatureUnsupportedException {
+  static String getNumberMatch(CQLTermNode node) throws CQLFeatureUnsupportedException {
     if (! isJsonNumber(node.getTerm())) {
       return null;
     }
@@ -483,7 +483,7 @@ public class CQL2PgJSON {
    * @param matches  list of match expressions
    * @param numberMatch  match expression for numeric comparison (null for no numeric comparison)
    * @return SQL expression
-   * @throws QueryValidationException 
+   * @throws QueryValidationException
    */
   private String index2sql(String index, String [] matches, String numberMatch) throws QueryValidationException {
     StringBuilder s = new StringBuilder();
@@ -491,7 +491,7 @@ public class CQL2PgJSON {
       if (s.length() > 0) {
         s.append(" AND ");
       }
-      if (schema != null) 
+      if (schema != null)
         index = schema.mapFieldNameAgainstSchema(index);
       if (numberMatch == null) {
         s.append(index2sqlText(index)).append(match);
