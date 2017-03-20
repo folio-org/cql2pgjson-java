@@ -504,6 +504,12 @@ public class CQL2PgJSONTest {
   }
 
   @Test
+  public void prefixNotImplemented() throws FieldException, RuntimeException {
+    cql2pgJsonException(new CQL2PgJSON("users.user_data"),
+        "> n = name n=Ka", CQLFeatureUnsupportedException.class, "CQLPrefixNode");
+  }
+
+  @Test
   public void relationNotImplemented() throws FieldException, RuntimeException {
     cql2pgJsonException(new CQL2PgJSON("users.user_data"),
         "address.zip encloses 12", CQLFeatureUnsupportedException.class, "Relation", "encloses");
