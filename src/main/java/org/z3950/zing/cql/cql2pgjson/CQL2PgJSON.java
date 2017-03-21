@@ -516,6 +516,11 @@ public class CQL2PgJSON {
   private String pg(CQLTermNode node) throws QueryValidationException {
     String [] matches = match(node);
     String numberMatch = getNumberMatch(node);
+    if ("cql.allRecords".equalsIgnoreCase(node.getIndex())) {
+      if ("1".equals(node.getTerm()))
+        return "true";
+      return "false";
+    }
     if ("cql.serverChoice".equalsIgnoreCase(node.getIndex())) {
       if (serverChoiceIndexes.isEmpty()) {
         throw new QueryValidationException("cql.serverChoice requested, but no serverChoiceIndexes defined.");
