@@ -517,9 +517,7 @@ public class CQL2PgJSON {
     String [] matches = match(node);
     String numberMatch = getNumberMatch(node);
     if ("cql.allRecords".equalsIgnoreCase(node.getIndex())) {
-      if ("1".equals(node.getTerm()))
-        return "true";
-      return "false";
+      return "true";
     }
     if ("cql.serverChoice".equalsIgnoreCase(node.getIndex())) {
       if (serverChoiceIndexes.isEmpty()) {

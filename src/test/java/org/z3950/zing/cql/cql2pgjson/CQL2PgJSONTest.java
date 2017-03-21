@@ -468,8 +468,8 @@ public class CQL2PgJSONTest {
   @Parameters({
     "allRecords=1              # Jo Jane; Ka Keller; Lea Long",
     "allRecords=1 NOT name=Jo  # Ka Keller; Lea Long",
-    "allRecords=0              #",
-    "allRecords=0 OR name=Jo   # Jo Jane",
+    "allRecords=0              # Jo Jane; Ka Keller; Lea Long",
+    "allRecords=0 OR name=Jo   # Jo Jane; Ka Keller; Lea Long",
   })
   public void allRecords(String testcase) {
     select(testcase);
