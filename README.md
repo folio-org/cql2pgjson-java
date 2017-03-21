@@ -45,6 +45,11 @@ Matching modifiers: Only `masked` is implemented, not `unmasked`, `regexp`,
 Word begin and word end in JSON is only detected at whitespace and punctuation characters
 from the ASCII charset, not from other Unicode charsets.
 
+A search matching all records in the target index can be executed with a
+`cql.allRecords=1` query. `cql.allRecords=1` can be used alone, or as part of
+a more complex query. For example,
+`cql.allRecords=1 NOT name=Smith sortBy name/sort.ascending`
+
 All locally produced Exceptions are derived from a single parent so they can be caught collectively
 or individually. Methods that load a JSON data object model pass in the identity of the model as a
 resource file name, and may also throw a native `java.io.IOException`.
