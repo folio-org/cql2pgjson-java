@@ -491,6 +491,18 @@ public class CQL2PgJSONTest {
     select(testcase);
   }
 
+  @Test
+  @Parameters({
+    "cql.allRecords=1                             # Jo Jane; Ka Keller; Lea Long",
+    "cql.allRecords=1 NOT name=Jo                 # Ka Keller; Lea Long",
+    "cql.allRecords=0                             # Jo Jane; Ka Keller; Lea Long",
+    "cql.allRecords=0 OR name=Jo                  # Jo Jane; Ka Keller; Lea Long",
+    "cql.allRecords=1 sortBy name/sort.descending # Lea Long; Ka Keller; Jo Jane",
+  })
+  public void allRecords(String testcase) {
+    select(testcase);
+  }
+
   @Test(expected = FieldException.class)
   public void nullField() throws FieldException {
     new CQL2PgJSON(null);
