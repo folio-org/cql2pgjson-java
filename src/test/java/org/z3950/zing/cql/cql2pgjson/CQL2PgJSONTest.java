@@ -73,7 +73,7 @@ public class CQL2PgJSONTest {
         // often used local test database
         "jdbc:postgresql://127.0.0.1:5432/test?currentSchema=public&user=test&password=test",
         // local test database of folio.org CI environment
-        "jdbc:postgresql://127.0.0.1:5433/database?currentSchema=public&user=postgres&password=postgres"
+        "jdbc:postgresql://127.0.0.1:5433/test?currentSchema=public&user=postgres&password=postgres"
     };
     for (String url : urls) {
       try {
