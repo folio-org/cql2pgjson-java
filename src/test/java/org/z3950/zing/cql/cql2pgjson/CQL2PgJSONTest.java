@@ -11,6 +11,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -46,6 +47,7 @@ public class CQL2PgJSONTest {
   }
 
   private static void setupDatabase() throws IOException, SQLException {
+    List<String> urls = new ArrayList<>(3);
     int port = 5432;
     try {
       port = Integer.parseInt(System.getenv("DB_PORT"));
@@ -54,33 +56,27 @@ public class CQL2PgJSONTest {
     }
     String username = nonNull(System.getenv("DB_USERNAME"));
     if (! username.isEmpty()) {
-      try {
-        String url = url(
-            System.getenv("DB_HOST"),
-            port,
-            System.getenv("DB_DATABASE"),
-            System.getenv("DB_USERNAME"),
-            System.getenv("DB_PASSWORD")
-            );
-        conn = DriverManager.getConnection(url);
-        return;
-      } catch (SQLException e) {
-        // ignore and try next
-      }
+      urls.add(url(
+          System.getenv("DB_HOST"),
+          port,
+          System.getenv("DB_DATABASE"),
+          System.getenv("DB_USERNAME"),
+          System.getenv("DB_PASSWORD")
+          ));
     }
 
-    String [] urls = {
-        // often used local test database
-        "jdbc:postgresql://127.0.0.1:5432/test?currentSchema=public&user=test&password=test",
-        // local test database of folio.org CI environment
-        "jdbc:postgresql://127.0.0.1:5433/test?currentSchema=public&user=postgres&password=postgres"
-    };
+    // often used local test database
+    urls.add("jdbc:postgresql://127.0.0.1:5432/test?currentSchema=public&user=test&password=test");
+    // local test database of folio.org CI environment
+    urls.add("jdbc:postgresql://127.0.0.1:5433/test?currentSchema=public&user=postgres&password=postgres");
     for (String url : urls) {
       try {
+        System.out.println(url);
         conn = DriverManager.getConnection(url);
         return;
       }
       catch (SQLException e) {
+        System.out.println(e.getMessage());
         // ignore and try next
       }
     }
