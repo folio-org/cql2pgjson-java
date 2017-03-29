@@ -6,8 +6,6 @@ import org.z3950.zing.cql.CQLRelation;
 import org.z3950.zing.cql.CQLTermNode;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -227,8 +225,6 @@ public class CQL2PgJSONTest {
     "email<>example.com             # Jo Jane; Ka Keller; Lea Long",
     "name == \"Lea Long\"           # Lea Long",
     "name <> \"Lea Long\"           # Jo Jane; Ka Keller",
-    // whitespace is removed, empty string matches anything (including email without whitespace)
-    "email=\" \"                    # Jo Jane; Ka Keller; Lea Long",
   })
   public void basic(String testcase) {
     select(testcase);
@@ -338,6 +334,22 @@ public class CQL2PgJSONTest {
   })
   public void special(String testcase) {
     select("special.sql", testcase);
+  }
+
+  @Test
+  @Parameters({
+    // The = operator is word based. An empty string or string with whitespace only contains no word at all so
+    // there is no matching restriction - resulting in matching anything (that is defined and not null).
+    "email=\"\"                         # e2; e3; e4",
+    "email=\" \t \t \"                  # e2; e3; e4",
+    "email==\"\"                        # e2",      // the == operator matches the complete string
+    "email<>\"\"                        # e3; e4",  // the <> operator matches the complete string
+    "address.city =  \"\"               # c2; c3; c4",
+    "address.city == \"\"               # c2",
+    "address.city <> \"\"               # c3; c4",  // same as example from CQL spec: dc.identifier <> ""
+  })
+  public void fieldExistsOrEmpty(String testcase) throws FieldException {
+    select("existsEmpty.sql", testcase);
   }
 
   @Test
