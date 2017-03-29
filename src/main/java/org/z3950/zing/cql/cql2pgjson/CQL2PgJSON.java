@@ -364,25 +364,25 @@ public class CQL2PgJSON {
   }
 
   /**
-   * Return a POSIX regexp expression for each cql expression in cql.
+   * Return a POSIX regexp expression for each word in cql. Words are delimited by whitespace.
    * @param modifiers  CqlModifiers to use
-   * @param cql   expression to convert
+   * @param cql   words to convert
    * @return resulting regexps
    */
-  private static String [] cql2regexp(CqlModifiers modifiers, String cql) {
-    String [] split = cql.split("\\s+");  // split at whitespace
-    if (split.length == 0) {
-      // cql contains whitespace only.
-      // honorWhitespace is not implemented yet,
-      // whitespace only results in empty string and matches anything
-      return new String [] { " ~ ''" };
+  private static String [] wordRegexp(CqlModifiers modifiers, String cql) {
+    String [] split = cql.trim().split("\\s+");  // split at whitespace
+    if (split.length == 1 && "".equals(split[0])) {
+      // The variable cql contains whitespace only. honorWhitespace is not implemented yet.
+      // So there is no word at all. Therefore no restrictions for matching - anything matches.
+      return new String [] { " ~ ''" };  // matches any (existing non-null) value
     }
     Unicode unicode = unicode(modifiers);
     for (int i=0; i<split.length; i++) {
+      // A word is delimited by any of: the beginning ^ or the end $ of the field or
+      // by punctuation or by whitespace.
       split[i] = " ~ '(^|[[:punct:]]|[[:space:]])"
           + regexp(unicode, split[i])
           + "($|[[:punct:]]|[[:space:]])'";
-
     }
     return split;
   }
@@ -401,7 +401,7 @@ public class CQL2PgJSON {
     case "<>":
       return new String [] { " !~ '^" + regexp(modifiers, node.getTerm()) + "$'" };
     case "=":
-      return cql2regexp(modifiers, node.getTerm());
+      return wordRegexp(modifiers, node.getTerm());
     case "<":
     case "<=":
     case ">":
