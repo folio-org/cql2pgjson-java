@@ -30,12 +30,12 @@ import ru.yandex.qatools.embed.postgresql.config.PostgresConfig;
 
 @RunWith(JUnitParamsRunner.class)
 public class CQL2PgJSONTest {
-  static PostgresProcess postgresProcess;
-  static Connection conn;
-  static final String embeddedDbName = "test";
-  static final String embeddedUsername = "test";
-  static final String embeddedPassword = "test";
-  static CQL2PgJSON cql2pgJson;
+  private static PostgresProcess postgresProcess;
+  private static Connection conn;
+  private static final String dbName = "test_cql2pgjson";
+  private static final String embeddedUsername = "test";
+  private static final String embeddedPassword = "test";
+  private static CQL2PgJSON cql2pgJson;
 
   private static String nonNull(String s) {
     return StringUtils.defaultString(s);
@@ -68,11 +68,20 @@ public class CQL2PgJSONTest {
     // often used local test database
     urls.add("jdbc:postgresql://127.0.0.1:5432/test?currentSchema=public&user=test&password=test");
     // local test database of folio.org CI environment
-    urls.add("jdbc:postgresql://127.0.0.1:5433/cql2pgjson?currentSchema=public&user=postgres&password=postgres");
+    urls.add("jdbc:postgresql://127.0.0.1:5433/postgres?currentSchema=public&user=postgres&password=postgres");
     for (String url : urls) {
       try {
         System.out.println(url);
         conn = DriverManager.getConnection(url);
+        if ("postgres".equals(conn.getCatalog())) {
+          Statement stmt = conn.createStatement();
+          stmt.executeUpdate("DROP DATABASE IF EXISTS " + dbName);
+          stmt.executeUpdate("CREATE DATABASE " + dbName);
+          conn.close();
+          String url2 = url.replaceFirst("/postgres\\b", "/" + dbName);
+          System.out.println(url2);
+          conn = DriverManager.getConnection(url);
+        }
         return;
       }
       catch (SQLException e) {
@@ -83,7 +92,7 @@ public class CQL2PgJSONTest {
 
     // start embedded Postgres
     final PostgresStarter<PostgresExecutable, PostgresProcess> runtime = PostgresStarter.getDefaultInstance();
-    final PostgresConfig config = PostgresConfig.defaultWithDbName(embeddedDbName, embeddedUsername, embeddedPassword);
+    final PostgresConfig config = PostgresConfig.defaultWithDbName(dbName, embeddedUsername, embeddedPassword);
     String url = url(
         config.net().host(),
         config.net().port(),
