@@ -350,6 +350,9 @@ public class CQL2PgJSONTest {
     "address.city =  \"\"               # c2; c3; c4",
     "address.city == \"\"               # c2",
     "address.city <> \"\"               # c3; c4",  // same as example from CQL spec: dc.identifier <> ""
+    "email=e                            # e4",
+    "cql.allRecords=1 NOT email=e       # c0; c1; c2; c3; c4; e1; e2; e3; l1; l2; l3; n",
+    "email=\"\"       NOT email=e       # e2; e3",
   })
   public void fieldExistsOrEmpty(String testcase) throws FieldException {
     select("existsEmpty.sql", testcase);
