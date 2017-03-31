@@ -76,7 +76,7 @@ public class CQL2PgJSONTest {
         if ("postgres".equals(conn.getCatalog())) {
           try(Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("DROP DATABASE IF EXISTS " + dbName);
-            stmt.executeUpdate("CREATE DATABASE " + dbName);
+            stmt.executeUpdate("CREATE DATABASE " + dbName + " ENCODING='UTF8' LC_COLLATE='C' LC_CTYPE='C'");
           }
           catch (SQLException e) {
             // ignore because the database might already be there and some other connection is open
