@@ -6,6 +6,7 @@ import org.z3950.zing.cql.CQLRelation;
 import org.z3950.zing.cql.CQLTermNode;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -46,6 +47,27 @@ public class CQL2PgJSONTest {
         nonNull(host), port, nonNull(db), nonNull(username), nonNull(password));
   }
 
+  /**
+   * @param version  the version string to check
+   * @throws UnsupportedEncodingException  if version string is less than 9.6
+   */
+  private static void checkVersion(String version) throws UnsupportedEncodingException {
+    final String msg = "Unicode features of PostgreSQL >= 9.6 required, version is ";
+    String number [] = version.split("\\.");
+    int a = Integer.parseInt(number[0]);
+    if (a > 9) {
+      return;
+    }
+    if (a < 9) {
+      throw new UnsupportedEncodingException(msg + version);
+    }
+    int b = Integer.parseInt(number[1]);
+    if (b >= 6) {
+      return;
+    }
+    throw new UnsupportedEncodingException(msg + version);
+  }
+
   private static void setupDatabase() throws IOException, SQLException {
     List<String> urls = new ArrayList<>(3);
     int port = 5432;
@@ -73,6 +95,7 @@ public class CQL2PgJSONTest {
       try {
         System.out.println(url);
         conn = DriverManager.getConnection(url + "&ApplicationName=" + CQL2PgJSONTest.class.getName());
+        checkVersion(conn.getMetaData().getDatabaseProductVersion());
         if ("postgres".equals(conn.getCatalog())) {
           try (Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("DROP DATABASE IF EXISTS " + dbName);
@@ -89,7 +112,7 @@ public class CQL2PgJSONTest {
         }
         return;
       }
-      catch (SQLException e) {
+      catch (SQLException|UnsupportedEncodingException e) {
         System.out.println(e.getMessage());
         // ignore and try next
       }
