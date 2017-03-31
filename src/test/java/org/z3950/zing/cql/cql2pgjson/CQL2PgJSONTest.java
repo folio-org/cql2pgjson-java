@@ -6,6 +6,7 @@ import org.z3950.zing.cql.CQLRelation;
 import org.z3950.zing.cql.CQLTermNode;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -30,12 +31,12 @@ import ru.yandex.qatools.embed.postgresql.config.PostgresConfig;
 
 @RunWith(JUnitParamsRunner.class)
 public class CQL2PgJSONTest {
-  static PostgresProcess postgresProcess;
-  static Connection conn;
-  static final String embeddedDbName = "test";
-  static final String embeddedUsername = "test";
-  static final String embeddedPassword = "test";
-  static CQL2PgJSON cql2pgJson;
+  private static PostgresProcess postgresProcess;
+  private static Connection conn;
+  private static final String dbName = "test_cql2pgjson";
+  private static final String embeddedUsername = "test";
+  private static final String embeddedPassword = "test";
+  private static CQL2PgJSON cql2pgJson;
 
   private static String nonNull(String s) {
     return StringUtils.defaultString(s);
@@ -44,6 +45,27 @@ public class CQL2PgJSONTest {
   private static String url(String host, int port, String db, String username, String password) {
     return String.format("jdbc:postgresql://%s:%s/%s?currentSchema=public&user=%s&password=%s",
         nonNull(host), port, nonNull(db), nonNull(username), nonNull(password));
+  }
+
+  /**
+   * @param version  the version string to check
+   * @throws UnsupportedEncodingException  if version string is less than 9.6
+   */
+  private static void checkVersion(String version) throws UnsupportedEncodingException {
+    final String msg = "Unicode features of PostgreSQL >= 9.6 required, version is ";
+    String number [] = version.split("\\.");
+    int a = Integer.parseInt(number[0]);
+    if (a > 9) {
+      return;
+    }
+    if (a < 9) {
+      throw new UnsupportedEncodingException(msg + version);
+    }
+    int b = Integer.parseInt(number[1]);
+    if (b >= 6) {
+      return;
+    }
+    throw new UnsupportedEncodingException(msg + version);
   }
 
   private static void setupDatabase() throws IOException, SQLException {
@@ -68,14 +90,29 @@ public class CQL2PgJSONTest {
     // often used local test database
     urls.add("jdbc:postgresql://127.0.0.1:5432/test?currentSchema=public&user=test&password=test");
     // local test database of folio.org CI environment
-    urls.add("jdbc:postgresql://127.0.0.1:5433/test?currentSchema=public&user=postgres&password=postgres");
+    urls.add("jdbc:postgresql://127.0.0.1:5433/postgres?currentSchema=public&user=postgres&password=postgres");
     for (String url : urls) {
       try {
         System.out.println(url);
-        conn = DriverManager.getConnection(url);
+        conn = DriverManager.getConnection(url + "&ApplicationName=" + CQL2PgJSONTest.class.getName());
+        checkVersion(conn.getMetaData().getDatabaseProductVersion());
+        if ("postgres".equals(conn.getCatalog())) {
+          try (Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate("DROP DATABASE IF EXISTS " + dbName);
+            stmt.executeUpdate("CREATE DATABASE " + dbName + " TEMPLATE=template0 ENCODING='UTF8' LC_COLLATE='C' LC_CTYPE='C'");
+          }
+          catch (SQLException e) {
+            System.out.println(e.getMessage());
+            // ignore because the database might already be there and some other connection is open
+          }
+          conn.close();
+          String url2 = url.replaceFirst("/postgres\\b", "/" + dbName);
+          System.out.println(url2);
+          conn = DriverManager.getConnection(url);
+        }
         return;
       }
-      catch (SQLException e) {
+      catch (SQLException|UnsupportedEncodingException e) {
         System.out.println(e.getMessage());
         // ignore and try next
       }
@@ -83,7 +120,7 @@ public class CQL2PgJSONTest {
 
     // start embedded Postgres
     final PostgresStarter<PostgresExecutable, PostgresProcess> runtime = PostgresStarter.getDefaultInstance();
-    final PostgresConfig config = PostgresConfig.defaultWithDbName(embeddedDbName, embeddedUsername, embeddedPassword);
+    final PostgresConfig config = PostgresConfig.defaultWithDbName(dbName, embeddedUsername, embeddedPassword);
     String url = url(
         config.net().host(),
         config.net().port(),
