@@ -72,13 +72,14 @@ public class CQL2PgJSONTest {
     for (String url : urls) {
       try {
         System.out.println(url);
-        conn = DriverManager.getConnection(url);
+        conn = DriverManager.getConnection(url + "&ApplicationName=" + CQL2PgJSONTest.class.getName());
         if ("postgres".equals(conn.getCatalog())) {
-          try(Statement stmt = conn.createStatement()) {
+          try (Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("DROP DATABASE IF EXISTS " + dbName);
             stmt.executeUpdate("CREATE DATABASE " + dbName + " ENCODING='UTF8' LC_COLLATE='C' LC_CTYPE='C'");
           }
           catch (SQLException e) {
+            System.out.println(e.getMessage());
             // ignore because the database might already be there and some other connection is open
           }
           conn.close();
