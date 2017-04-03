@@ -351,11 +351,28 @@ public class CQL2PgJSONTest {
     "address.city == \"\"               # c2",
     "address.city <> \"\"               # c3; c4",  // same as example from CQL spec: dc.identifier <> ""
     "email=e                            # e4",
-    "cql.allRecords=1 NOT email=e       # c0; c1; c2; c3; c4; e1; e2; e3; l1; l2; l3; n",
+    "cql.allRecords=1 NOT email=e       # c0; c1; c2; c3; c4; e1; e2; e3; n",
     "email=\"\"       NOT email=e       # e2; e3",
   })
   public void fieldExistsOrEmpty(String testcase) throws FieldException {
     select("existsEmpty.sql", testcase);
+  }
+
+  @Test
+  @Parameters({
+    "                     lang ==/respectAccents []     # a",
+    "cql.allRecords=1 NOT lang <>/respectAccents []     # a; n",
+    "lang =/respectCase/respectAccents en               # b; c; d; f; g; h; i",
+
+    // note that \"en\" also matches case f ["\"en"]
+    "                     lang =/respectCase/respectAccents \\\"en\\\"   # b; f; i",  // without Java quoting: \"en\"
+    "cql.allRecords=1 NOT lang =/respectCase/respectAccents \\\"en\\\"   # a; c; d; e; g; h; n",
+    "lang = \"\"      NOT lang =/respectCase/respectAccents \\\"en\\\"   # a; c; d; e; g; h",
+    "lang = \"\"                                                         # a; b; c; d; e; f; g; h; i",
+    "cql.allRecords=1 NOT lang = \"\"                                    # n",
+  })
+  public void array(String testcase) throws FieldException {
+    select("array.sql", testcase);
   }
 
   @Test

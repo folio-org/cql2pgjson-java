@@ -9,7 +9,4 @@ INSERT INTO users (user_data) VALUES
     ('{"name": "c1", "address": { "city": null } }'),
     ('{"name": "c2", "address": { "city": ""   } }'),
     ('{"name": "c3", "address": { "city": "  " } }'),
-    ('{"name": "c4", "address": { "city": "c"  } }'),
-    ('{"name": "l1", "lang": [          ] }'),
-    ('{"name": "l2", "lang": ["en"      ] }'),
-    ('{"name": "l3", "lang": ["en", "dk"] }');
+    ('{"name": "c4", "address": { "city": "c"  } }');
