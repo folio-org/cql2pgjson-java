@@ -282,9 +282,19 @@ public class CQL2PgJSON {
   }
 
   private String pg(CQLBooleanNode node) throws QueryValidationException {
+    String operator = sqlOperator(node);
+    String isNotTrue = "";
+
+    if ("AND NOT".equals(operator)) {
+      operator = "AND (";
+      isNotTrue = ") IS NOT TRUE";
+      // NOT TRUE is (FALSE or NULL) to catch the NULL case when the field does not exist.
+      // This completely inverts the right operand.
+    }
+
     return "(" + pg(node.getLeftOperand()) + ") "
-        + sqlOperator(node)
-        + " (" + pg(node.getRightOperand()) + ")";
+        + operator
+        + " (" + pg(node.getRightOperand()) + isNotTrue + ")";
   }
 
   /**
