@@ -53,7 +53,7 @@
           "gender"        : { "type" : "string" },
           "pet"           : {
             "type" : "array",
-            "items": { 
+            "items": {
               "type" : "object",
               "properties" : {
                 "name"   : { "type" : "string" },
@@ -64,6 +64,6 @@
           }
         }
       }
-    } 
+    }
   }
 }

@@ -55,10 +55,10 @@ public class Schema {
    * looking up 'zip' may return 'address.zip'.
    * @param index
    * @return fully-specified version of field value.
-   * @throws QueryValidationException 
+   * @throws QueryValidationException
    */
   public String mapFieldNameAgainstSchema(String index) throws QueryValidationException {
-    if (! byNodeName.containsKey(index)) 
+    if (! byNodeName.containsKey(index))
       throw new QueryValidationException( "Field name '"+index+"' not present in index." );
     JsonPath path = byNodeName.get(index);
     if (path instanceof MultipleJsonPath) {
@@ -77,7 +77,7 @@ public class Schema {
    * @param index
    * @param type
    * @return fully-specified version of field value.
-   * @throws QueryValidationException 
+   * @throws QueryValidationException
    */
   public String mapFieldNameAndTypeAgainstSchema(String index, String type) throws QueryValidationException {
     if (! byNodeName.containsKey(index))
@@ -177,7 +177,7 @@ public class Schema {
   private String getItems(JsonParser jp, List<String> breadcrumbs) throws IOException, SchemaException {
     JsonToken jt = jp.nextToken();
     String type = null;
-    if (!jt.equals(JsonToken.START_OBJECT)) 
+    if (!jt.equals(JsonToken.START_OBJECT))
       throw new SchemaException(itemsUsage);
     while ( ! jp.isClosed() && ! jt.equals(JsonToken.END_OBJECT)) {
       jt = jp.nextToken();
