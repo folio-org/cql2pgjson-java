@@ -85,6 +85,9 @@ resource file name, and may also throw a native `java.io.IOException`.
 
 * Further [CQL](http://dev.folio.org/doc/glossary#cql) information.
 
+* See project [FOLIO](https://issues.folio.org/browse/FOLIO)
+at the [FOLIO issue tracker](http://dev.folio.org/community/guide-issues).
+
 * Other FOLIO Developer documentation is at [dev.folio.org](http://dev.folio.org/)
 
 * To run the unit tests in your IDE the Unicode input files must have been produced by running maven,
