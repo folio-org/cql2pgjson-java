@@ -3,7 +3,7 @@ package org.z3950.zing.cql.cql2pgjson;
 public class CQL2PgJSONException extends Exception {
 
   /**
-   * 
+   *
    */
   private static final long serialVersionUID = 1L;
 

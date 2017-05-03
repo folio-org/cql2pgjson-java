@@ -25,8 +25,8 @@ public class SchemaTest {
     assertEquals(s.mapFieldNameAgainstSchema("type"),          "child.pet.type");
     assertEquals(s.mapFieldNameAgainstSchema("pet.type"),      "child.pet.type");
     assertEquals(s.mapFieldNameAgainstSchema("child.pet.type"),"child.pet.type");
-    assertEquals(s.mapFieldNameAgainstSchema("properties"),    "parent.properties");    
-    assertEquals(s.mapFieldNameAgainstSchema("favoriteColor"), "child.favoriteColor");    
+    assertEquals(s.mapFieldNameAgainstSchema("properties"),    "parent.properties");
+    assertEquals(s.mapFieldNameAgainstSchema("favoriteColor"), "child.favoriteColor");
   }
 
   @Test

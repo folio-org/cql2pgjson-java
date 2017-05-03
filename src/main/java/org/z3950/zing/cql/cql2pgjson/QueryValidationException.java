@@ -1,9 +1,9 @@
 package org.z3950.zing.cql.cql2pgjson;
 
 public class QueryValidationException extends CQL2PgJSONException {
- 
+
   /**
-   * 
+   *
    */
   private static final long serialVersionUID = 2171623606570086123L;
 
