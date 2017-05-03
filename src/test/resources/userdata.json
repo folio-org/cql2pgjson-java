@@ -1,31 +1,31 @@
 {
-    "title" : "User Schema",
-    "type" : "object",
-    "properties" : {
-        "name" : {
-            "type" : "string",
-            "required" : true
+  "title": "User Schema",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "email": {
+      "type": "string",
+      "required": true
+    },
+    "address": {
+      "type": "object",
+      "properties": {
+        "city": {
+          "type": "string"
         },
-        "email" : {
-            "type" : "string",
-            "required" : true
-        },
-        "address" : {
-            "type" : "object",
-            "properties" : {
-                "city" : {
-                    "type" : "string"
-                },
-                "zip" : {
-                    "type" : "string"
-                }
-            }
-        },
-        "lang" : {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
+        "zip": {
+          "type": "string"
         }
+      }
+    },
+    "lang": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
+  }
 }
