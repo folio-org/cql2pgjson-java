@@ -577,7 +577,8 @@ public class CQL2PgJSONTest {
 
   @Test(expected = FieldException.class)
   public void nullField() throws FieldException {
-    new CQL2PgJSON(null);
+    String s = null;
+    new CQL2PgJSON(s);
   }
 
   @Test(expected = FieldException.class)

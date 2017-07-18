@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.z3950.zing.cql.CQLAndNode;
@@ -179,6 +180,70 @@ public class CQL2PgJSON {
     this(field);
     setSchema(schema);
     setServerChoiceIndexes(serverChoiceIndexes);
+  }
+
+  /**
+   * Create an instance for the specified list of schemas.
+   *
+   * @param fields Field names of the JSON fields, may include schema and table name (e.g. tenant1.user_table.json).
+   *   Must conform to SQL identifier requirements (characters, not a keyword), or properly
+   *   quoted using double quotes.
+   * @throws FieldException (subclass of CQL2PgJSONException) - provided field is not valid
+   */
+  public CQL2PgJSON(List<String> fields) throws FieldException {
+  }
+
+  /**
+   * Create an instance for the specified list of schemas.
+   *
+   * @param fields Field names of the JSON fields, may include schema and table name (e.g. tenant1.user_table.json).
+   *   Must conform to SQL identifier requirements (characters, not a keyword), or properly
+   *   quoted using double quotes.
+   * @param serverChoiceIndexes  List of field names, may be empty, must not contain null,
+   *                             names must not contain double quote or single quote and must identify the jsonb
+   *                             field to which they apply. (e.g. "group_jsonb.patronGroup.group" )
+   * @throws FieldException (subclass of CQL2PgJSONException) - provided field is not valid
+   * @throws ServerChoiceIndexesException (subclass of CQL2PgJSONException) - provided serverChoiceIndexes is not valid
+   */
+  public CQL2PgJSON(List<String> fields, List<String> serverChoiceIndexes)
+      throws ServerChoiceIndexesException, FieldException {
+    setServerChoiceIndexes(serverChoiceIndexes);
+  }
+
+  /**
+   * Create an instance for the specified list of schemas.
+   *
+   * @param fieldsAndSchemas Field names of the JSON fields as keys, 
+   *   JSON String representing the schema of the field the CQL queries against as values.
+   *   Field names may include schema and table name, (e.g. tenant1.user_table.json) and must conform to
+   *   SQL identifier requirements (characters, not a keyword), or properly quoted using double quotes.
+   *   Schemas values may be null if a particular field has no available schema.
+   * @throws IOException if the JSON structure is invalid
+   * @throws FieldException (subclass of CQL2PgJSONException) - provided field is not valid
+   * @throws SchemaException (subclass of CQL2PgJSONException) provided JSON schema not valid
+   */
+  public CQL2PgJSON(Map<String,String> fieldsAndSchemas) throws FieldException, IOException, SchemaException {
+  }
+
+  /**
+   * Create an instance for the specified list of schemas.
+   *
+   * @param fieldsAndSchemas Field names of the JSON fields as keys, 
+   *   JSON String representing the schema of the field the CQL queries against as values.
+   *   Field names may include schema and table name, (e.g. tenant1.user_table.json) and must conform to
+   *   SQL identifier requirements (characters, not a keyword), or properly quoted using double quotes.
+   *   Schemas values may be null if a particular field has no available schema.
+   * @param serverChoiceIndexes  List of field names, may be empty, must not contain null,
+   *                             names must not contain double quote or single quote and must either identify the
+   *                             jsonb field to which they apply (e.g. "group_jsonb.patronGroup.group" ) or if
+   *                             all included fields have schemas provided they must be entirely unambiguous.
+   * @throws IOException if the JSON structure is invalid
+   * @throws FieldException (subclass of CQL2PgJSONException) - provided field is not valid
+   * @throws SchemaException (subclass of CQL2PgJSONException) provided JSON schema not valid
+   * @throws ServerChoiceIndexesException (subclass of CQL2PgJSONException) - provided serverChoiceIndexes is not valid
+   */
+  public CQL2PgJSON(Map<String,String> fieldsAndSchemas, List<String> serverChoiceIndexes)
+      throws FieldException, IOException, SchemaException, ServerChoiceIndexesException  {
   }
 
   /**
