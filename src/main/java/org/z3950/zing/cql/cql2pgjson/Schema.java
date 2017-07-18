@@ -32,13 +32,13 @@ public class Schema {
    * Run a schema validation on the specified JSON file, producing errors if the file
    * is either invalid JSON, or merely incorrectly structured for the purpose of defining
    * the JSON data storage structure.
-   * @param schemaFile
+   * @param schemaJson
    * @throws IOException
    * @throws SchemaException
    */
-  public Schema (String schemaFile) throws IOException, SchemaException {
+  public Schema (String schemaJson) throws IOException, SchemaException {
     JsonFactory jsonFactory = new JsonFactory();
-    try ( JsonParser jp = jsonFactory.createParser(schemaFile) ) {
+    try ( JsonParser jp = jsonFactory.createParser(schemaJson) ) {
       while (!jp.isClosed()) {
         JsonToken jt = jp.nextToken();
         if (jt == null) break;

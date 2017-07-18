@@ -3,8 +3,10 @@ package org.z3950.zing.cql.cql2pgjson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.regex.Pattern;
 
 import org.z3950.zing.cql.CQLAndNode;
@@ -31,9 +33,11 @@ public class CQL2PgJSON {
    * Must conform to SQL identifier requirements (characters, not a keyword), or properly
    * quoted using double quotes.
    */
-  private String jsonField;
+  private String jsonField = null;
+  private List<String> jsonFields = null;
   /** Local data model of JSON schema */
   private Schema schema;
+  private Map<String,Schema> schemas;
 
   /** JSON number, see spec at http://json.org/ */
   private static final Pattern jsonNumber = Pattern.compile("-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?");
@@ -135,14 +139,14 @@ public class CQL2PgJSON {
    * @param field Name of the JSON field, may include schema and table name (e.g. tenant1.user_table.json).
    *   Must conform to SQL identifier requirements (characters, not a keyword), or properly
    *   quoted using double quotes.
-   * @param schema JSON String representing the schema of the field the CQL queries against.
+   * @param schemaJson JSON String representing the schema of the field the CQL queries against.
    * @throws IOException if the JSON structure is invalid
    * @throws FieldException (subclass of CQL2PgJSONException) provided field is not valid
    * @throws SchemaException (subclass of CQL2PgJSONException) provided JSON schema not valid
    */
-  public CQL2PgJSON(String field, String schema) throws IOException, FieldException, SchemaException {
+  public CQL2PgJSON(String field, String schemaJson) throws IOException, FieldException, SchemaException {
     this(field);
-    setSchema(schema);
+    setSchema(schemaJson);
   }
 
   /**
@@ -167,7 +171,7 @@ public class CQL2PgJSON {
    * @param field Name of the JSON field, may include schema and table name (e.g. tenant1.user_table.json).
    *   Must conform to SQL identifier requirements (characters, not a keyword), or properly
    *   quoted using double quotes.
-   * @param schema JSON String representing the schema of the field the CQL queries against.
+   * @param schemaJson JSON String representing the schema of the field the CQL queries against.
    * @param serverChoiceIndexes       List of field names, may be empty, must not contain null,
    *                                  names must not contain double quote or single quote.
    * @throws IOException if the JSON structure is invalid
@@ -175,15 +179,16 @@ public class CQL2PgJSON {
    * @throws SchemaException (subclass of CQL2PgJSONException) provided JSON schema not valid
    * @throws ServerChoiceIndexesException (subclass of CQL2PgJSONException) - provided serverChoiceIndexes is not valid
    */
-  public CQL2PgJSON(String field, String schema, List<String> serverChoiceIndexes)
+  public CQL2PgJSON(String field, String schemaJson, List<String> serverChoiceIndexes)
       throws IOException, SchemaException, ServerChoiceIndexesException, FieldException {
     this(field);
-    setSchema(schema);
+    setSchema(schemaJson);
     setServerChoiceIndexes(serverChoiceIndexes);
   }
 
   /**
-   * Create an instance for the specified list of schemas.
+   * Create an instance for the specified list of schemas. If only one field name is provided, queries will
+   * default to the handling of single field queries.
    *
    * @param fields Field names of the JSON fields, may include schema and table name (e.g. tenant1.user_table.json).
    *   Must conform to SQL identifier requirements (characters, not a keyword), or properly
@@ -191,6 +196,16 @@ public class CQL2PgJSON {
    * @throws FieldException (subclass of CQL2PgJSONException) - provided field is not valid
    */
   public CQL2PgJSON(List<String> fields) throws FieldException {
+    if (fields == null || fields.size() == 0)
+      throw new FieldException( "fields list must not be empty" );
+    this.jsonFields = new ArrayList<>();
+    for (String field : fields) {
+      if (field == null || field.trim().isEmpty())
+        throw new FieldException( "field names must not be empty" );
+      this.jsonFields.add(field.trim());
+    }
+    if (this.jsonFields.size() == 1)
+      this.jsonField = this.jsonFields.get(0);
   }
 
   /**
@@ -207,13 +222,15 @@ public class CQL2PgJSON {
    */
   public CQL2PgJSON(List<String> fields, List<String> serverChoiceIndexes)
       throws ServerChoiceIndexesException, FieldException {
+    this(fields);
     setServerChoiceIndexes(serverChoiceIndexes);
   }
 
   /**
-   * Create an instance for the specified list of schemas.
+   * Create an instance for the specified list of schemas. If only one field name is provided, queries will
+   * default to the handling of single field queries.
    *
-   * @param fieldsAndSchemas Field names of the JSON fields as keys, 
+   * @param fieldsAndSchemaJsons Field names of the JSON fields as keys, 
    *   JSON String representing the schema of the field the CQL queries against as values.
    *   Field names may include schema and table name, (e.g. tenant1.user_table.json) and must conform to
    *   SQL identifier requirements (characters, not a keyword), or properly quoted using double quotes.
@@ -222,13 +239,33 @@ public class CQL2PgJSON {
    * @throws FieldException (subclass of CQL2PgJSONException) - provided field is not valid
    * @throws SchemaException (subclass of CQL2PgJSONException) provided JSON schema not valid
    */
-  public CQL2PgJSON(Map<String,String> fieldsAndSchemas) throws FieldException, IOException, SchemaException {
+  public CQL2PgJSON(Map<String,String> fieldsAndSchemaJsons) throws FieldException, IOException, SchemaException {
+    if (fieldsAndSchemaJsons == null || fieldsAndSchemaJsons.size() == 0)
+      throw new FieldException( "fields map must not be empty" );
+    this.jsonFields = new ArrayList<>();
+    this.schemas = new HashMap<>();
+    for (Entry<String,String> e : fieldsAndSchemaJsons.entrySet()) {
+      String field = e.getKey();
+      if (field == null || field.trim().isEmpty())
+        throw new FieldException( "field names must not be empty" );
+      this.jsonFields.add(field);
+      String schemaJson = e.getValue();
+      if (schemaJson == null || schemaJson.trim().isEmpty())
+        continue;
+      Schema schema = new Schema( e.getValue() );
+      this.schemas.put(field, schema);
+    }
+    if (this.jsonFields.size() == 1) {
+      this.jsonField = this.jsonFields.get(0);
+      if (this.schemas.containsKey(this.jsonField))
+        this.schema = this.schemas.get(this.jsonField);
+    }
   }
 
   /**
    * Create an instance for the specified list of schemas.
    *
-   * @param fieldsAndSchemas Field names of the JSON fields as keys, 
+   * @param fieldsAndSchemaJsons Field names of the JSON fields as keys, 
    *   JSON String representing the schema of the field the CQL queries against as values.
    *   Field names may include schema and table name, (e.g. tenant1.user_table.json) and must conform to
    *   SQL identifier requirements (characters, not a keyword), or properly quoted using double quotes.
@@ -242,8 +279,10 @@ public class CQL2PgJSON {
    * @throws SchemaException (subclass of CQL2PgJSONException) provided JSON schema not valid
    * @throws ServerChoiceIndexesException (subclass of CQL2PgJSONException) - provided serverChoiceIndexes is not valid
    */
-  public CQL2PgJSON(Map<String,String> fieldsAndSchemas, List<String> serverChoiceIndexes)
+  public CQL2PgJSON(Map<String,String> fieldsAndSchemaJsons, List<String> serverChoiceIndexes)
       throws FieldException, IOException, SchemaException, ServerChoiceIndexesException  {
+    this(fieldsAndSchemaJsons);
+    setServerChoiceIndexes(serverChoiceIndexes);
   }
 
   /**

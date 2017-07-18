@@ -391,7 +391,7 @@ public class CQL2PgJSONTest {
     "cql.allRecords=1 NOT email=e       # c0; c1; c2; c3; c4; e1; e2; e3; n",
     "email=\"\"       NOT email=e       # e2; e3",
   })
-  public void fieldExistsOrEmpty(String testcase) throws FieldException {
+  public void fieldExistsOrEmpty(String testcase) {
     select("existsEmpty.sql", testcase);
   }
 
@@ -408,7 +408,7 @@ public class CQL2PgJSONTest {
     "lang = \"\"                                                         # a; b; c; d; e; f; g; h; i",
     "cql.allRecords=1 NOT lang = \"\"                                    # n",
   })
-  public void array(String testcase) throws FieldException {
+  public void array(String testcase) {
     select("array.sql", testcase);
   }
 
