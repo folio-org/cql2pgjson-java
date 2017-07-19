@@ -370,7 +370,7 @@ public class CQL2PgJSON {
         order.append(", ");
       }
       String index = modifierSet.getBase();
-      if (this.jsonField == null) {
+      if (this.jsonField != null) {
         order.append(index2sqlJson(this.jsonField, index));
       } else {
         // multifield
