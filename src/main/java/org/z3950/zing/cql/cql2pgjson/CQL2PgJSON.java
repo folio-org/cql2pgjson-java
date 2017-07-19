@@ -212,6 +212,7 @@ public class CQL2PgJSON {
     }
     if (this.jsonFields.size() == 1)
       this.jsonField = this.jsonFields.get(0);
+    this.schemas = new HashMap<>();
   }
 
   /**
@@ -629,11 +630,11 @@ public class CQL2PgJSON {
       } else {
         if (schema != null)
           index = schema.mapFieldNameAgainstSchema(index);
-      }
-      if (numberMatch == null) {
-        s.append(index2sqlText(this.jsonField, index)).append(match);
         vals.indexJson = index2sqlJson(this.jsonField, index);
         vals.indexText = index2sqlText(this.jsonField, index);
+      }
+      if (numberMatch == null) {
+        s.append(vals.indexText).append(match);
       } else {
         /* CASE jsonb_typeof(jsonb->amount)
          * WHEN 'number' then (jsonb->>amount)::numeric = 100
@@ -658,9 +659,11 @@ public class CQL2PgJSON {
     // processing for case where index is prefixed with json field name
     for (String jsonField : this.jsonFields)
       if (index.startsWith(jsonField+'.')) {
-        String indexTermWithinField = this.schemas.containsKey(jsonField)
-            ? this.schemas.get(jsonField).mapFieldNameAgainstSchema( index.substring(jsonField.length()+1) )
-                : index.substring(jsonField.length()+1);
+        String indexTermWithinField;
+        if (this.schemas.containsKey(jsonField))
+            indexTermWithinField = this.schemas.get(jsonField).mapFieldNameAgainstSchema( index.substring(jsonField.length()+1) );
+        else
+            indexTermWithinField = index.substring(jsonField.length()+1);
         vals.indexJson = index2sqlJson(jsonField, indexTermWithinField);
         vals.indexText = index2sqlText(jsonField, indexTermWithinField);
         return vals;
