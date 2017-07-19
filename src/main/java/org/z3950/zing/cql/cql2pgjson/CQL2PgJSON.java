@@ -64,6 +64,11 @@ public class CQL2PgJSON {
     MASKED, UNMASKED, SUBSTRING, REGEXP;
   }
 
+  private class IndexTextAndJsonValues {
+    String indexText;
+    String indexJson;
+  }
+
   private class CqlModifiers {
     CqlSort    cqlSort    = CqlSort   .ASCENDING;
     CqlCase    cqlCase    = CqlCase   .IGNORE_CASE;
@@ -360,8 +365,13 @@ public class CQL2PgJSON {
         order.append(", ");
       }
       String index = modifierSet.getBase();
-      order.append(jsonField).append("->'").append(index.replace(".", "'->'")).append("'");
-
+      if (this.jsonField == null) {
+        order.append(index2sqlJson(this.jsonField, index));
+      } else {
+        // multifield
+        IndexTextAndJsonValues vals = multiFieldProcessing( index );
+        order.append(vals.indexJson);
+      }
       CqlModifiers modifiers = new CqlModifiers(modifierSet);
       if (modifiers.cqlSort == CqlSort.DESCENDING) {
         order.append(" DESC");
@@ -569,11 +579,12 @@ public class CQL2PgJSON {
    * Convert index name to SQL term of type text.
    * Example result for field=user and index=foo.bar:
    * user->'foo'->>'bar'
-   *
+   * @param jsonField
    * @param index name to convert
+   *
    * @return SQL term
    */
-  private String index2sqlText(String index) {
+  private static String index2sqlText(String jsonField, String index) {
     String result = jsonField + "->'" + index.replace(".", "'->'") + "'";
     int lastArrow = result.lastIndexOf("->'");
     return result.substring(0,  lastArrow) + "->>" + result.substring(lastArrow + 2);
@@ -583,11 +594,12 @@ public class CQL2PgJSON {
    * Convert index name to SQL term of type json.
    * Example result for field=user and index=foo.bar:
    * user->'foo'->'bar'
-   *
+   * @param jsonField
    * @param index name to convert
+   *
    * @return SQL term
    */
-  private String index2sqlJson(String index) {
+  private static String index2sqlJson(String jsonField, String index) {
     return jsonField + "->'" + index.replace(".", "'->'") + "'";
   }
 
@@ -605,26 +617,69 @@ public class CQL2PgJSON {
       if (s.length() > 0) {
         s.append(" AND ");
       }
-      if (schema != null)
-        index = schema.mapFieldNameAgainstSchema(index);
+      IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
+      if (jsonField == null) {
+        // multiField processing
+        vals = multiFieldProcessing( index );
+      } else {
+        if (schema != null)
+          index = schema.mapFieldNameAgainstSchema(index);
+      }
       if (numberMatch == null) {
-        s.append(index2sqlText(index)).append(match);
+        s.append(index2sqlText(this.jsonField, index)).append(match);
+        vals.indexJson = index2sqlJson(this.jsonField, index);
+        vals.indexText = index2sqlText(this.jsonField, index);
       } else {
         /* CASE jsonb_typeof(jsonb->amount)
          * WHEN 'number' then (jsonb->>amount)::numeric = 100
          * ELSE jsonb->>amount ~ '(^|[[:punct:]]|[[:space:]])100($|[[:punct:]]|[[:space:]])'
          * END
          */
-        s.append(" CASE jsonb_typeof(").append(index2sqlJson(index)).append(")")
-         .append(" WHEN 'number' then (").append(index2sqlText(index)).append(")::numeric ").append(numberMatch)
-         .append(" ELSE ").append(index2sqlText(index)).append(match)
-         .append(" END");
+        s.append(" CASE jsonb_typeof(").append(vals.indexJson).append(")")
+        .append(" WHEN 'number' then (").append(vals.indexText).append(")::numeric ").append(numberMatch)
+        .append(" ELSE ").append(vals.indexText).append(match)
+        .append(" END");
       }
     }
     if (matches.length <= 1) {
       return s.toString();
     }
     return "(" + s.toString() + ")";
+  }
+
+  private IndexTextAndJsonValues multiFieldProcessing( String index ) throws QueryValidationException {
+    IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
+    boolean identifiedMatchingField = false;
+    for (String jsonField : this.jsonFields)
+      if (index.startsWith(jsonField+'.')) {
+        vals.indexJson = index2sqlJson(jsonField, index.substring(jsonField.length()+1));
+        vals.indexText = index2sqlText(jsonField, index.substring(jsonField.length()+1));
+        identifiedMatchingField = true;
+        break;
+      }
+    if ( ! identifiedMatchingField ) {
+      for (String jsonField : this.jsonFields) {
+        if (this.schemas.containsKey(jsonField)) {
+          String potentialIndex = null;
+          try {
+            potentialIndex = this.schemas.get(jsonField).mapFieldNameAgainstSchema(index);
+          } catch (QueryValidationException e) {
+            // Not a match on this jsonField. This is a good thing as long as field matches exactly one jsonField.
+          }
+          if (potentialIndex != null) {
+            if (identifiedMatchingField)
+              throw new QueryValidationException(
+                  "Field "+index+" in CQL query is ambiguous across included json fields.");
+            vals.indexJson = index2sqlJson(jsonField, potentialIndex);
+            vals.indexText = index2sqlText(jsonField, potentialIndex);
+            identifiedMatchingField = true;
+          }
+        }
+      }
+    }
+    if ( ! identifiedMatchingField )
+      throw new QueryValidationException("Field "+index+" is not found in included json fields.");
+    return vals;
   }
 
   private String pg(CQLTermNode node) throws QueryValidationException {
