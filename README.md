@@ -28,19 +28,25 @@ Setting server choice indexes is possible:
     String where = cql2pgJson.cql2pgJson(cql);
     String sql = "select * from users where " + where;
 
-Searching across multiple JSONB fields works like this:
+Searching across multiple JSONB fields works like this. The _first_ json field specified
+in the constructor will be applied to any query arguments that aren't prefixed with the appropriate
+field name: 
 
+	 // Instantiation without schemas
     CQL2PgJSON cql2pgJson = new CQL2PgJSON(Arrays.asList("users.user_data","users.group_data"));
-    String where = cql2pgJson.cql2pgJson( "users.user_data.name=Miller" );
-    // Without schemas, json fields must be identified with every search field
-
-    Map<String,String> fieldsAndSchemas = new HashMap<>();
-    fieldsAndSchemas.put("jsonb1",schemaJson1);
-    fieldsAndSchemas.put("jsonb2",schemaJson2);
+    
+    // Instantiation with schemas
+    LinkedHashMap<String,String> fieldsAndSchemas = new LinkedHashMap<>();
+    fieldsAndSchemas.put("users.user_data",         userSchemaJson);
+    fieldsAndSchemas.put("users.group_data",        groupSchemaJson);
+    fieldsAndSchemas.put("users.uncontrolled_data", null);
     cql2pgJson = new CQL2PgJSON( fieldsAndSchemas );
-    where = cql2pgJson.cql2pgJson( "jsonb1.name=Miller" );
-    where = cql2pgJson.cql2pgJson( "name=Miller" );
-    // With schemas, json fields may be omitted iff they cannot be applied to multiple schemas
+    
+    // Query processing
+    where = cql2pgJson.cql2pgJson( "users.user_data.name=Miller" );
+    where = cql2pgJson.cql2pgJson( "users.group_data.name=Students" );
+    where = cql2pgJson.cql2pgJson( "users.uncontrolled_data.name=Zanzibar" );
+    where = cql2pgJson.cql2pgJson( "name=Miller" ); // implies users.user_data
 
 Only these relations have been implemented yet:
 

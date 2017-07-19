@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -196,8 +197,8 @@ public class CQL2PgJSON {
    * default to the handling of single field queries.
    *
    * @param fields Field names of the JSON fields, may include schema and table name (e.g. tenant1.user_table.json).
-   *   Must conform to SQL identifier requirements (characters, not a keyword), or properly
-   *   quoted using double quotes.
+   *  Must conform to SQL identifier requirements (characters, not a keyword), or properly quoted using double quotes.
+   *  The first field name on the list will be the default field for terms in queries that don't specify a json field.
    * @throws FieldException (subclass of CQL2PgJSONException) - provided field is not valid
    */
   public CQL2PgJSON(List<String> fields) throws FieldException {
@@ -214,11 +215,12 @@ public class CQL2PgJSON {
   }
 
   /**
-   * Create an instance for the specified list of schemas.
+   * Create an instance for the specified list of schemas. If only one field name is provided, queries will
+   * default to the handling of single field queries.
    *
    * @param fields Field names of the JSON fields, may include schema and table name (e.g. tenant1.user_table.json).
-   *   Must conform to SQL identifier requirements (characters, not a keyword), or properly
-   *   quoted using double quotes.
+   *  Must conform to SQL identifier requirements (characters, not a keyword), or properly quoted using double quotes.
+   *  The first field name on the list will be the default field for terms in queries that don't specify a json field.
    * @param serverChoiceIndexes  List of field names, may be empty, must not contain null,
    *                             names must not contain double quote or single quote and must identify the jsonb
    *                             field to which they apply. (e.g. "group_jsonb.patronGroup.group" )
@@ -236,15 +238,17 @@ public class CQL2PgJSON {
    * default to the handling of single field queries.
    *
    * @param fieldsAndSchemaJsons Field names of the JSON fields as keys, 
-   *   JSON String representing the schema of the field the CQL queries against as values.
-   *   Field names may include schema and table name, (e.g. tenant1.user_table.json) and must conform to
-   *   SQL identifier requirements (characters, not a keyword), or properly quoted using double quotes.
-   *   Schemas values may be null if a particular field has no available schema.
+   *  JSON String representing the schema of the field the CQL queries against as values.
+   *  Field names may include schema and table name, (e.g. tenant1.user_table.json) and must conform to
+   *  SQL identifier requirements (characters, not a keyword), or properly quoted using double quotes.
+   *  Schemas values may be null if a particular field has no available schema.
+   *  The first field name in the map will be the default field for terms in queries that don't specify a json field.
    * @throws IOException if the JSON structure is invalid
    * @throws FieldException (subclass of CQL2PgJSONException) - provided field is not valid
    * @throws SchemaException (subclass of CQL2PgJSONException) provided JSON schema not valid
    */
-  public CQL2PgJSON(Map<String,String> fieldsAndSchemaJsons) throws FieldException, IOException, SchemaException {
+  public CQL2PgJSON(LinkedHashMap<String,String> fieldsAndSchemaJsons)
+      throws FieldException, IOException, SchemaException {
     if (fieldsAndSchemaJsons == null || fieldsAndSchemaJsons.size() == 0)
       throw new FieldException( "fields map must not be empty" );
     this.jsonFields = new ArrayList<>();
@@ -275,6 +279,7 @@ public class CQL2PgJSON {
    *   Field names may include schema and table name, (e.g. tenant1.user_table.json) and must conform to
    *   SQL identifier requirements (characters, not a keyword), or properly quoted using double quotes.
    *   Schemas values may be null if a particular field has no available schema.
+   *  The first field name on the list will be the default field for terms in queries that don't specify a json field.
    * @param serverChoiceIndexes  List of field names, may be empty, must not contain null,
    *                             names must not contain double quote or single quote and must either identify the
    *                             jsonb field to which they apply (e.g. "group_jsonb.patronGroup.group" ) or if
@@ -284,7 +289,7 @@ public class CQL2PgJSON {
    * @throws SchemaException (subclass of CQL2PgJSONException) provided JSON schema not valid
    * @throws ServerChoiceIndexesException (subclass of CQL2PgJSONException) - provided serverChoiceIndexes is not valid
    */
-  public CQL2PgJSON(Map<String,String> fieldsAndSchemaJsons, List<String> serverChoiceIndexes)
+  public CQL2PgJSON(LinkedHashMap<String,String> fieldsAndSchemaJsons, List<String> serverChoiceIndexes)
       throws FieldException, IOException, SchemaException, ServerChoiceIndexesException  {
     this(fieldsAndSchemaJsons);
     setServerChoiceIndexes(serverChoiceIndexes);
@@ -649,36 +654,24 @@ public class CQL2PgJSON {
 
   private IndexTextAndJsonValues multiFieldProcessing( String index ) throws QueryValidationException {
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-    boolean identifiedMatchingField = false;
+
+    // processing for case where index is prefixed with json field name
     for (String jsonField : this.jsonFields)
       if (index.startsWith(jsonField+'.')) {
-        vals.indexJson = index2sqlJson(jsonField, index.substring(jsonField.length()+1));
-        vals.indexText = index2sqlText(jsonField, index.substring(jsonField.length()+1));
-        identifiedMatchingField = true;
-        break;
+        String indexTermWithinField = this.schemas.containsKey(jsonField)
+            ? this.schemas.get(jsonField).mapFieldNameAgainstSchema( index.substring(jsonField.length()+1) )
+                : index.substring(jsonField.length()+1);
+        vals.indexJson = index2sqlJson(jsonField, indexTermWithinField);
+        vals.indexText = index2sqlText(jsonField, indexTermWithinField);
+        return vals;
       }
-    if ( ! identifiedMatchingField ) {
-      for (String jsonField : this.jsonFields) {
-        if (this.schemas.containsKey(jsonField)) {
-          String potentialIndex = null;
-          try {
-            potentialIndex = this.schemas.get(jsonField).mapFieldNameAgainstSchema(index);
-          } catch (QueryValidationException e) {
-            // Not a match on this jsonField. This is a good thing as long as field matches exactly one jsonField.
-          }
-          if (potentialIndex != null) {
-            if (identifiedMatchingField)
-              throw new QueryAmbiguousException(
-                  "Field "+index+" in CQL query is ambiguous across included json fields.");
-            vals.indexJson = index2sqlJson(jsonField, potentialIndex);
-            vals.indexText = index2sqlText(jsonField, potentialIndex);
-            identifiedMatchingField = true;
-          }
-        }
-      }
-    }
-    if ( ! identifiedMatchingField )
-      throw new QueryValidationException("Field "+index+" is not found in included json fields.");
+
+    // if no json field name prefix is found, the default field name gets applied.
+    String defaultJsonField = this.jsonFields.get(0);
+    if (this.schemas.containsKey(defaultJsonField))
+      index = this.schemas.get(defaultJsonField).mapFieldNameAgainstSchema(index);
+    vals.indexJson = index2sqlJson(defaultJsonField, index);
+    vals.indexText = index2sqlText(defaultJsonField, index);
     return vals;
   }
 
