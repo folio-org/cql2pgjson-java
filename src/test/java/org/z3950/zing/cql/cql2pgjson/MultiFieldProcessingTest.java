@@ -88,8 +88,10 @@ public class MultiFieldProcessingTest {
         + " AND (field1->>'email' ~ '(^|[[:punct:]]|[[:space:]])[Gg][Mm][Aa][Iiı][Ll]\\.[Cc][Oo][Mm]($|[[:punct:]]|[[:space:]])')"
         + " ORDER BY field2->'name'";
     assertEquals(expected,
-        converter.cql2pgJson("name =/respectCase/respectAccents Smith"
-        + " AND email =/respectAccents gmail.com sortBy field2.name/sort.ascending").replaceAll("\"", "\\\\\""));
+        converter.cql2pgJson(
+            "name =/respectCase/respectAccents Smith"
+                + " AND email =/respectAccents gmail.com"
+                + " sortBy field2.name/sort.ascending"));
   }
 
 }
