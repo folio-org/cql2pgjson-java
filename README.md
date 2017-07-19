@@ -28,6 +28,20 @@ Setting server choice indexes is possible:
     String where = cql2pgJson.cql2pgJson(cql);
     String sql = "select * from users where " + where;
 
+Searching across multiple JSONB fields works like this:
+
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON(Arrays.asList("users.user_data","users.group_data"));
+    String where = cql2pgJson.cql2pgJson( "users.user_data.name=Miller" );
+    // Without schemas, json fields must be identified with every search field
+
+    Map<String,String> fieldsAndSchemas = new HashMap<>();
+    fieldsAndSchemas.put("jsonb1",schemaJson1);
+    fieldsAndSchemas.put("jsonb2",schemaJson2);
+    cql2pgJson = new CQL2PgJSON( fieldsAndSchemas );
+    where = cql2pgJson.cql2pgJson( "jsonb1.name=Miller" );
+    where = cql2pgJson.cql2pgJson( "name=Miller" );
+    // With schemas, json fields may be omitted iff they cannot be applied to multiple schemas
+
 Only these relations have been implemented yet:
 
 * `=` (substring match)
