@@ -1,6 +1,6 @@
 package org.z3950.zing.cql.cql2pgjson;
 
-public class QueryAmbiguousExeption extends QueryValidationException {
+public class QueryAmbiguousException extends QueryValidationException {
 
   /**
    *
@@ -10,7 +10,7 @@ public class QueryAmbiguousExeption extends QueryValidationException {
   /**
   * The CQL query provided identifies search fields ambiguously.
   */
-  public QueryAmbiguousExeption( String message ) {
+  public QueryAmbiguousException( String message ) {
     super(message);
   }
 }

@@ -668,7 +668,7 @@ public class CQL2PgJSON {
           }
           if (potentialIndex != null) {
             if (identifiedMatchingField)
-              throw new QueryValidationException(
+              throw new QueryAmbiguousException(
                   "Field "+index+" in CQL query is ambiguous across included json fields.");
             vals.indexJson = index2sqlJson(jsonField, potentialIndex);
             vals.indexText = index2sqlText(jsonField, potentialIndex);
