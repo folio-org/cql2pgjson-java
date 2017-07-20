@@ -51,12 +51,12 @@ public class SchemaTest {
     s.mapFieldNameAndTypeAgainstSchema("city","integer");
   }
 
-  @Test(expected=QueryAmbiguousExeption.class)
+  @Test(expected=QueryAmbiguousException.class)
   public void ambiguousQueryTest() throws QueryValidationException, IOException, SchemaException {
     Schema s = new Schema( Util.getResource("complex.json") );
     s.mapFieldNameAgainstSchema("size");
   }
-  @Test(expected=QueryAmbiguousExeption.class)
+  @Test(expected=QueryAmbiguousException.class)
   public void ambiguousQueryTestWithType() throws QueryValidationException, IOException, SchemaException {
     Schema s = new Schema( Util.getResource("complex.json") );
     s.mapFieldNameAndTypeAgainstSchema("size","integer");
@@ -68,7 +68,7 @@ public class SchemaTest {
     try {
       s.mapFieldNameAgainstSchema("color");
       fail("QueryAmbiguousExeption not thrown");
-    } catch (QueryAmbiguousExeption e) {
+    } catch (QueryAmbiguousException e) {
       assertEquals(e.getMessage(),
           "Field name 'color' was ambiguous in index. "
           + "(parent.shirt.color, parent.pants.color, parent.shoes.color, child.pet.color)");
