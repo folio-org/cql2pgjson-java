@@ -105,7 +105,7 @@ resource file name, and may also throw a native `java.io.IOException`.
 
 * Further [CQL](http://dev.folio.org/doc/glossary#cql) information.
 
-* See project [FOLIO](https://issues.folio.org/browse/FOLIO)
+* See project [CQLPG](https://issues.folio.org/browse/CQLPG)
 at the [FOLIO issue tracker](http://dev.folio.org/community/guide-issues).
 
 * Other FOLIO Developer documentation is at [dev.folio.org](http://dev.folio.org/)
