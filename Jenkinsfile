@@ -1,0 +1,4 @@
+
+buildMvnMod { 
+  mvnDeploy = 'yes'
+}
