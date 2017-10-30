@@ -523,6 +523,14 @@ public class CQL2PgJSONTest {
 
   @Test
   @Parameters({
+    "cql.allRecords=1 sortBy address.zip  # a; b; c; d; e; f; g; h",
+  })
+  public void sortNumber(String testcase) {
+    select("special.sql", testcase);
+  }
+
+  @Test
+  @Parameters({
     "address.zip<1                  #",
     "address.zip<2                  # a",
     "address.zip<3                  # a; b",
