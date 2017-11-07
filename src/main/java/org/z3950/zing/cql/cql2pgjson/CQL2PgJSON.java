@@ -238,7 +238,7 @@ public class CQL2PgJSON {
    * Create an instance for the specified list of schemas. If only one field name is provided, queries will
    * default to the handling of single field queries.
    *
-   * @param fieldsAndSchemaJsons Field names of the JSON fields as keys, 
+   * @param fieldsAndSchemaJsons Field names of the JSON fields as keys,
    *  JSON String representing the schema of the field the CQL queries against as values.
    *  Field names may include schema and table name, (e.g. tenant1.user_table.json) and must conform to
    *  SQL identifier requirements (characters, not a keyword), or properly quoted using double quotes.
@@ -275,7 +275,7 @@ public class CQL2PgJSON {
   /**
    * Create an instance for the specified list of schemas.
    *
-   * @param fieldsAndSchemaJsons Field names of the JSON fields as keys, 
+   * @param fieldsAndSchemaJsons Field names of the JSON fields as keys,
    *   JSON String representing the schema of the field the CQL queries against as values.
    *   Field names may include schema and table name, (e.g. tenant1.user_table.json) and must conform to
    *   SQL identifier requirements (characters, not a keyword), or properly quoted using double quotes.
@@ -418,20 +418,20 @@ public class CQL2PgJSON {
   }
 
   /**
-   * unicode.getEquivalents(c) but with \ and " masked using backslash.
+   * unicode.getEquivalents(c) but with \ and ? masked using backslash.
    * @param unicode quivalence to use
    * @param c  character to use
    * @return masked equivalents
    */
   private static String equivalents(Unicode unicode, char c) {
     String s = unicode.getEquivalents(c);
-    // JSON requires special quoting of \ and ".
-    // The blackslash needs to be doubled for Java, Postgres and JSON each (2*2*2=8)
+    // JSON requires special quoting of \ (the backslash).
+    // The blackslash needs to be doubled for each Java and Postgres each
     if (s.startsWith("[\\")) {  // s == [\﹨＼]
       return "(\\\\|[" + s.substring(2) + ")";
     }
-    if (s.startsWith("[\"")) {  // s == ["＂]
-      return "(\\\\\"|[" + s.substring(2) + ")";
+    if (s.equals("?")) {
+      return "\\?";   // replace ? by \?
     }
 
     return s;
