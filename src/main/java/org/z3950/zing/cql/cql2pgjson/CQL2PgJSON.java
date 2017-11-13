@@ -617,6 +617,7 @@ public class CQL2PgJSON {
    * @return SQL expression
    * @throws QueryValidationException
    */
+  @SuppressWarnings("squid:S1192")  // suppress "String literals should not be duplicated"
   private String index2sql(String index, String [] matches, String numberMatch) throws QueryValidationException {
     StringBuilder s = new StringBuilder();
     for (String match : matches) {
@@ -628,10 +629,12 @@ public class CQL2PgJSON {
         // multiField processing
         vals = multiFieldProcessing( index );
       } else {
-        if (schema != null)
-          index = schema.mapFieldNameAgainstSchema(index);
-        vals.indexJson = index2sqlJson(this.jsonField, index);
-        vals.indexText = index2sqlText(this.jsonField, index);
+        String finalIndex = index;
+        if (schema != null) {
+          finalIndex = schema.mapFieldNameAgainstSchema(index);
+        }
+        vals.indexJson = index2sqlJson(this.jsonField, finalIndex);
+        vals.indexText = index2sqlText(this.jsonField, finalIndex);
       }
       if (numberMatch == null) {
         s.append(vals.indexText).append(match);
