@@ -238,7 +238,7 @@ public class CQL2PgJSON {
    * Create an instance for the specified list of schemas. If only one field name is provided, queries will
    * default to the handling of single field queries.
    *
-   * @param fieldsAndSchemaJsons Field names of the JSON fields as keys, 
+   * @param fieldsAndSchemaJsons Field names of the JSON fields as keys,
    *  JSON String representing the schema of the field the CQL queries against as values.
    *  Field names may include schema and table name, (e.g. tenant1.user_table.json) and must conform to
    *  SQL identifier requirements (characters, not a keyword), or properly quoted using double quotes.
@@ -275,7 +275,7 @@ public class CQL2PgJSON {
   /**
    * Create an instance for the specified list of schemas.
    *
-   * @param fieldsAndSchemaJsons Field names of the JSON fields as keys, 
+   * @param fieldsAndSchemaJsons Field names of the JSON fields as keys,
    *   JSON String representing the schema of the field the CQL queries against as values.
    *   Field names may include schema and table name, (e.g. tenant1.user_table.json) and must conform to
    *   SQL identifier requirements (characters, not a keyword), or properly quoted using double quotes.
@@ -636,15 +636,20 @@ public class CQL2PgJSON {
       if (numberMatch == null) {
         s.append(vals.indexText).append(match);
       } else {
-        /* CASE jsonb_typeof(jsonb->amount)
-         * WHEN 'number' then (jsonb->>amount)::numeric = 100
-         * ELSE jsonb->>amount ~ '(^|[[:punct:]]|[[:space:]])100($|[[:punct:]]|[[:space:]])'
-         * END
+        /* (   ( jsonb_typeof(jsonb->'amount')= 'numeric' AND (jsonb->>'amount')::numeric = 100 )
+         *  OR ( jsonb_typeof(jsonb->'amount')<>'numeric' AND  jsonb->'amount'            ='100')
+         * )
          */
-        s.append(" CASE jsonb_typeof(").append(vals.indexJson).append(")")
-        .append(" WHEN 'number' then (").append(vals.indexText).append(")::numeric ").append(numberMatch)
-        .append(" ELSE ").append(vals.indexText).append(match)
-        .append(" END");
+        s
+        .append("((")
+        .append("jsonb_typeof(").append(vals.indexJson).append(")='number'")
+        .append(" AND ")
+        .append("(").append(vals.indexText).append(")::numeric ").append(numberMatch)
+        .append(") OR (")
+        .append("jsonb_typeof(").append(vals.indexJson).append(")<>'number'")
+        .append(" AND ")
+        .append(vals.indexText).append(match)
+        .append("))");
       }
     }
     if (matches.length <= 1) {
