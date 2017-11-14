@@ -553,7 +553,7 @@ public class CQL2PgJSON {
   }
 
   /**
-   * Returns a numeric match like ">=17" if the node term is a JSON number, null otherwise.
+   * Returns a numeric match like >='"17"' if the node term is a JSON number, null otherwise.
    * @param node  the node to get the comparator operator and the term from
    * @return  the comparison or null
    * @throws CQLFeatureUnsupportedException if cql query attempts to use unsupported operators.
@@ -578,7 +578,7 @@ public class CQL2PgJSON {
       throw new CQLFeatureUnsupportedException("Relation " + node.getRelation().getBase()
           + " not implemented yet: " + node.toString());
     }
-    return comparator + node.getTerm();
+    return comparator + "'\"" +  node.getTerm() + "\"'";
   }
 
   /**
@@ -607,6 +607,20 @@ public class CQL2PgJSON {
    */
   private static String index2sqlJson(String jsonField, String index) {
     return jsonField + "->'" + index.replace(".", "'->'") + "'";
+  }
+
+  /**
+   * Append all strings to the stringBuilder.
+   * <p>
+   * append(sb, "abc", "123") is more easy to read than
+   * sb.append("abc").append("123).
+   * @param stringBuilder where to append
+   * @param strings what to append
+   */
+  private void append(StringBuilder stringBuilder, String ... strings) {
+    for (String string : strings) {
+      stringBuilder.append(string);
+    }
   }
 
   /**
@@ -639,20 +653,24 @@ public class CQL2PgJSON {
       if (numberMatch == null) {
         s.append(vals.indexText).append(match);
       } else {
-        /* (   ( jsonb_typeof(jsonb->'amount')= 'numeric' AND (jsonb->>'amount')::numeric = 100 )
-         *  OR ( jsonb_typeof(jsonb->'amount')<>'numeric' AND  jsonb->'amount'            ='100')
+        // numberMatch: Both sides of the comparison operator are JSONB expressions.
+
+        // A JSONB with a string is bigger than any JSONB with a number.
+        // Therefore we need to check the jsonb_typeof, which is supported by a
+        // ((jsonb->'amount')) index.
+
+        /* (   ( jsonb_typeof(jsonb->'amount')= 'numeric' AND jsonb->'amount' <  '100'  )
+         *  OR ( jsonb_typeof(jsonb->'amount')<>'numeric' AND jsonb->'amount' < '"100"' )
          * )
          */
-        s
-        .append("((")
-        .append("jsonb_typeof(").append(vals.indexJson).append(")='number'")
-        .append(" AND ")
-        .append("(").append(vals.indexText).append(")::numeric ").append(numberMatch)
-        .append(") OR (")
-        .append("jsonb_typeof(").append(vals.indexJson).append(")<>'number'")
-        .append(" AND ")
-        .append(vals.indexText).append(match)
-        .append("))");
+        append(s,
+            "((",
+            "jsonb_typeof(", vals.indexJson, ")='number'",
+            " AND ", vals.indexJson, numberMatch.replace("\"", ""),
+            ") OR (",
+            "jsonb_typeof(", vals.indexJson, ")<>'number'",
+            " AND ", vals.indexJson, numberMatch,
+            "))");
       }
     }
     if (matches.length <= 1) {
