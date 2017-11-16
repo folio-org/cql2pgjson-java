@@ -656,7 +656,7 @@ public class CQL2PgJSON {
   }
 
   /**
-   * Returns a numeric match like ">=17" if the node term is a JSON number, null otherwise.
+   * Returns a numeric match like >='"17"' if the node term is a JSON number, null otherwise.
    * @param node  the node to get the comparator operator and the term from
    * @return  the comparison or null
    * @throws CQLFeatureUnsupportedException if cql query attempts to use unsupported operators.
@@ -681,7 +681,7 @@ public class CQL2PgJSON {
       throw new CQLFeatureUnsupportedException("Relation " + node.getRelation().getBase()
           + " not implemented yet: " + node.toString());
     }
-    return comparator + node.getTerm();
+    return comparator + "'\"" +  node.getTerm() + "\"'";
   }
 
   /**
@@ -713,6 +713,20 @@ public class CQL2PgJSON {
   }
 
   /**
+   * Append all strings to the stringBuilder.
+   * <p>
+   * append(sb, "abc", "123") is more easy to read than
+   * sb.append("abc").append("123).
+   * @param stringBuilder where to append
+   * @param strings what to append
+   */
+  private void append(StringBuilder stringBuilder, String ... strings) {
+    for (String string : strings) {
+      stringBuilder.append(string);
+    }
+  }
+
+  /**
    * Create an SQL expression where index is applied to all matches.
    * @param index  index to use
    * @param matches  list of match expressions
@@ -720,6 +734,7 @@ public class CQL2PgJSON {
    * @return SQL expression
    * @throws QueryValidationException
    */
+  @SuppressWarnings("squid:S1192")  // suppress "String literals should not be duplicated"
   private String index2sql(String index, String [] matches, String numberMatch) throws QueryValidationException {
     StringBuilder s = new StringBuilder();
     for (String match : matches) {
@@ -744,7 +759,7 @@ public class CQL2PgJSON {
         // numberMatch: Both sides of the comparison operator are JSONB expressions.
 
         // When comparing two JSONBs a JSONB containing any string is bigger than
-        // any JSONB containging any number.
+        // any JSONB containing any number.
         // Therefore we need to check the jsonb_typeof, which is supported by a
         // ((jsonb->'amount')) index.
 
@@ -752,10 +767,14 @@ public class CQL2PgJSON {
          *  OR ( jsonb_typeof(jsonb->'amount')<>'numeric' AND jsonb->'amount' < '"100"' )
          * )
          */
-        s.append(" CASE jsonb_typeof(").append(vals.indexJson).append(")")
-        .append(" WHEN 'number' then (").append(vals.indexText).append(")::numeric ").append(numberMatch)
-        .append(" ELSE ").append(vals.indexText).append(match)
-        .append(" END");
+        append(s,
+            "((",
+            "jsonb_typeof(", vals.indexJson, ")='number'",
+            " AND ", vals.indexJson, numberMatch.replace("\"", ""),
+            ") OR (",
+            "jsonb_typeof(", vals.indexJson, ")<>'number'",
+            " AND ", vals.indexJson, numberMatch,
+            "))");
       }
     }
     if (matches.length <= 1) {
