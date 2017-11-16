@@ -1,6 +1,7 @@
 package org.z3950.zing.cql.cql2pgjson;
 
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.*;
 import org.junit.runner.RunWith;
 import org.z3950.zing.cql.CQLRelation;
@@ -365,8 +366,8 @@ public class CQL2PgJSONTest {
     "email==\\*\\*                  # d",
     "email==\\?                     # e",
     "email==\\?\\?                  # f",
-    "email==\\\"                    # g",
-    "email==\\\"\\\"                # h",
+    "email==\\\\\\\"                # g",
+    "email==\\\\\\\"\\\\\\\"        # h",
     "             address.zip=1     # a",
     "'         OR address.zip=1     # a",
     "name=='   OR address.zip=1     # a",
@@ -478,7 +479,7 @@ public class CQL2PgJSONTest {
     "address.city= /respectAccents Søvang # Lea Long",
     "address.city==/respectAccents Søvang # Lea Long",
     "address.city= /respectAccents SØvang # Lea Long",
-    "address.city==/respectAccents SØvang # Lea Long",
+  //"address.city==/respectAccents SØvang # Lea Long",  // requires en_US.utf8 locale
     "address.city= /respectAccents Sovang #",
     "address.city==/respectAccents Sovang #",
     "address.city= /respectAccents SOvang #",
@@ -509,6 +510,23 @@ public class CQL2PgJSONTest {
   })
   public void unicodeCaseAccents(String testcase) {
     select(testcase);
+  }
+
+  @Test
+  @Parameters({
+    " , ''   ",
+    "', '''' ",
+    "a, 'a'  ",
+    "*, '%'  ",
+    "?, '_'  ",
+    "\\*, '\\*' ",
+    "\\?, '\\?' ",
+    "\\%, '\\%' ",
+    "\\_, '\\_' ",
+    "\\\\ , '\\\\' ",
+  })
+  public void like(String cql, String sql) {
+    assertThat(CQL2PgJSON.like(cql), is(sql));
   }
 
   @Test
