@@ -2,6 +2,9 @@ package org.z3950.zing.cql.cql2pgjson;
 
 import static org.junit.Assert.fail;
 
+import java.sql.SQLException;
+import java.sql.Statement;
+
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -18,25 +21,33 @@ import junitparams.Parameters;
  */
 @RunWith(JUnitParamsRunner.class)
 public class IndexPerformanceTest extends DatabaseTestBase {
+  private static String valueJsonbToFind = "'\"a1b2c3d4e5f6 xxxx\"'";
+  private static String valueStringToFind = valueJsonbToFind.replace("\"", "");
+
   @BeforeClass
   public static void createData() {
     Assume.assumeTrue("TEST_PERFORMANCE=yes", "yes".equals(System.getenv("TEST_PERFORMANCE")));
     setupDatabase();
-    runSql(
-        "CREATE EXTENSION IF NOT EXISTS pgcrypto;",
-        "DROP TABLE IF EXISTS config_data;",
-        "CREATE TABLE config_data (",
-        "   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),",
-        "   jsonb jsonb NOT NULL);",
-        "INSERT INTO config_data",
-        "  SELECT id, jsonb_build_object('id',id, 'module','circulation', 'configName','loans',",
-        "    'code',id2, 'description',description, 'value',value, 'default',true,",
-        "    'enabled',true)",
-        "  FROM (  select gen_random_uuid() AS id,",
-        "          generate_series(1, 1000004) AS id2,",
-        "          (md5(random()::text) || ' 123445 4ewfsdfqw' || now()) AS description,",
-        "          (md5(random()::text) || now()) AS value",
-        "       ) AS alias;");
+    runSqlFile("indexPerformanceTest.sql");
+  }
+
+  static class Analyse {
+    String msg;
+    /** execution time in ms */
+    float executionTime;
+    public Analyse(String msg, float executionTime) {
+      this.msg = msg;
+      this.executionTime = executionTime;
+    }
+  }
+
+  private Analyse analyse(String sql) {
+    try (Statement statement = conn.createStatement()) {
+      statement.execute(sql);
+    } catch (SQLException e) {
+      throw new SQLRuntimeException(sql, e);
+    }
+    return new Analyse("", 0);
   }
 
   private void in100ms(String where) {
@@ -53,8 +64,8 @@ public class IndexPerformanceTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "jsonb->>'value'",
     "jsonb->'value'",
+    "jsonb->>'value'",
     "(jsonb->'value')::text",
     "lower(jsonb->>'value')",
     "lower((jsonb->'value')::text)",
@@ -65,5 +76,34 @@ public class IndexPerformanceTest extends DatabaseTestBase {
     in100ms("WHERE TRUE LIMIT 30;");
     in100ms("WHERE TRUE ORDER BY " + index + " ASC  LIMIT 30;");
     in100ms("WHERE TRUE ORDER BY " + index + " DESC LIMIT 30;");
+    String match = valueStringToFind;
+    if (index.contains("->'")) {
+      match = valueJsonbToFind;
+    }
+    in100ms("WHERE " + index + " = " + match);
+  }
+
+  private void like(String index, String sort) {
+    String match = "'\"a1%\"'";
+    if (index.contains("->>")) {
+      match = match.replace("\"", "");
+    }
+    in100ms("WHERE lower(f_unaccent(" + index + ")) LIKE " + match
+        + " ORDER BY lower(f_unaccent(" + index + ")) " + sort + ", " + index + sort + "LIMIT 30;");
+  }
+
+  @Test
+  @Parameters({
+    "jsonb->>'value'",
+    "(jsonb->'value')::text",
+  })
+  public void like(String index) {
+    runSqlStatement("DROP INDEX IF EXISTS idx_value;");
+    runSqlStatement("CREATE INDEX idx_value ON config_data ((lower(f_unaccent(" + index + "))) text_pattern_ops);");
+    in100ms("WHERE TRUE LIMIT 30;");
+    String [] sorts = { " ASC  ", " DESC " };
+    for (String sort : sorts) {
+      like(index, sort);
+    }
   }
 }
