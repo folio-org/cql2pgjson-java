@@ -1,4 +1,4 @@
 
-buildMvnMod { 
+buildMvn { 
   mvnDeploy = 'yes'
 }
