@@ -71,6 +71,11 @@ public class IndexPerformanceTest extends DatabaseTestBase {
     }
   }
 
+  private void in100msAfterDry(String where) {
+    runSqlStatement("SELECT * FROM config_data " + where);  // dry run
+    in100ms(where);  // actual run
+  }
+
   @Test
   @Parameters({
     "jsonb->'value'",
@@ -96,8 +101,8 @@ public class IndexPerformanceTest extends DatabaseTestBase {
     if (index.contains("->>")) {
       match = match.replace("\"", "");
     }
-    in100ms("WHERE lower(f_unaccent(" + index + ")) LIKE " + match
-        + " ORDER BY lower(f_unaccent(" + index + ")) " + sort + ", " + index + sort + "LIMIT 30;");
+    in100msAfterDry("WHERE lower(f_unaccent(" + index + ")) LIKE " + match
+        +       " ORDER BY lower(f_unaccent(" + index + ")) " + sort + ", " + index + sort + "LIMIT 30;");
   }
 
   @Test
@@ -109,9 +114,6 @@ public class IndexPerformanceTest extends DatabaseTestBase {
     runSqlStatement("DROP INDEX IF EXISTS idx_value;");
     String finalIndex = "lower(f_unaccent(" + index + "))";
     runSqlStatement("CREATE INDEX idx_value ON config_data ((" + finalIndex + ") text_pattern_ops);");
-    // dry run without time measurement to get the index into memory
-    runSqlStatement("SELECT * FROM config_data ORDER BY " + finalIndex + ", " + index + " LIMIT 30;");
-    // run with time measurement
     String [] sorts = { " ASC  ", " DESC " };
     for (String sort : sorts) {
       like(index, sort);
