@@ -553,10 +553,14 @@ public class CQL2PgJSONTest {
 
   @Test
   @Parameters({
-    "example sortBy name                         # Jo Jane; Ka Keller; Lea Long",
-    "example sortBy name/sort.ascending          # Jo Jane; Ka Keller; Lea Long",
-    "example sortBy name/sort.descending         # Lea Long; Ka Keller; Jo Jane",
-    "example sortBy notExistingIndex address.zip # Ka Keller; Jo Jane; Lea Long",
+    "example   sortBy name                         # Jo Jane; Ka Keller; Lea Long",
+    "example   sortBy name/sort.ascending          # Jo Jane; Ka Keller; Lea Long",
+    "example   sortBy name/sort.descending         # Lea Long; Ka Keller; Jo Jane",
+    "example   sortBy notExistingIndex address.zip # Ka Keller; Jo Jane; Lea Long",
+    "name==*a* sortBy name                         # Jo Jane; Ka Keller; Lea Long",
+    "name==*a* sortBy name/sort.ascending          # Jo Jane; Ka Keller; Lea Long",
+    "name==*a* sortBy name/sort.descending         # Lea Long; Ka Keller; Jo Jane",
+    "name==*a* sortBy notExistingIndex address.zip # Ka Keller; Jo Jane; Lea Long",
   })
   public void sort(String testcase) {
     select(testcase);

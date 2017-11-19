@@ -382,18 +382,24 @@ public class CQL2PgJSON {
       } else {
         order.append(", ");
       }
+
+      String desc = "";
+      CqlModifiers modifiers = new CqlModifiers(modifierSet);
+      if (modifiers.cqlSort == CqlSort.DESCENDING) {
+        desc = " DESC";
+      }  // ASC not needed, it's Postgres' default
+
       String index = modifierSet.getBase();
       if (this.jsonField != null) {
-        order.append(index2sqlJson(this.jsonField, index));
+        index = index2sqlText(this.jsonField, index);
       } else {
         // multifield
         IndexTextAndJsonValues vals = multiFieldProcessing( index );
-        order.append(vals.indexJson);
+        index = vals.indexText;
       }
-      CqlModifiers modifiers = new CqlModifiers(modifierSet);
-      if (modifiers.cqlSort == CqlSort.DESCENDING) {
-        order.append(" DESC");
-      }  // ASC not needed, it's Postgres' default
+      // TODO: if (not string type) index=vals.indexJson; order.append(index + desc);
+      // else
+      order.append("lower(f_unaccent(" + index + "))" + desc + ", " + index + desc);
     }
     return order.toString();
   }

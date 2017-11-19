@@ -86,7 +86,7 @@ public class MultiFieldProcessingTest {
     String expected = 
         "(field1->>'name' ~ '(^|[[:punct:]]|[[:space:]])Smith($|[[:punct:]]|[[:space:]])')"
         + " AND (field1->>'email' ~ '(^|[[:punct:]]|[[:space:]])[Gg][Mm][Aa][Iiı][Ll]\\.[Cc][Oo][Mm]($|[[:punct:]]|[[:space:]])')"
-        + " ORDER BY field2->'name'";
+        + " ORDER BY lower(f_unaccent(field2->>'name')), field2->>'name'";
     assertEquals(expected,
         converter.cql2pgJson(
             "name =/respectCase/respectAccents Smith"
