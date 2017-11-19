@@ -5,6 +5,7 @@ import static org.junit.Assert.fail;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import org.junit.AfterClass;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -25,10 +26,15 @@ public class IndexPerformanceTest extends DatabaseTestBase {
   private static String valueStringToFind = valueJsonbToFind.replace("\"", "");
 
   @BeforeClass
-  public static void createData() {
+  public static void beforeClass() {
     Assume.assumeTrue("TEST_PERFORMANCE=yes", "yes".equals(System.getenv("TEST_PERFORMANCE")));
     setupDatabase();
     runSqlFile("indexPerformanceTest.sql");
+  }
+
+  @AfterClass
+  public static void afterClass() {
+    closeDatabase();
   }
 
   static class Analyse {
@@ -52,13 +58,16 @@ public class IndexPerformanceTest extends DatabaseTestBase {
 
   private void in100ms(String where) {
     long t1 = System.currentTimeMillis();
-    runSql("SELECT * FROM config_data " + where);
+    String analyse = explainAnalyseSql("SELECT * FROM config_data " + where);
     long t2 = System.currentTimeMillis();
     long ms = t2 - t1;
-    System.out.println(String.format("%6d ms %s", ms, where));
+    System.out.println(String.format("%6d ms %s\n%s", ms, where, analyse));
     final long MAX = 100;
     if (ms > MAX) {
       fail("Expected at most " + MAX + " ms, but it runs " + ms + " ms: " + where);
+    }
+    if (! analyse.contains(" idx_value ")) {
+      fail("Query plan does not use idx_value: " + where);
     }
   }
 
@@ -73,7 +82,6 @@ public class IndexPerformanceTest extends DatabaseTestBase {
   public void valueIndex(String index) {
     runSqlStatement("DROP INDEX IF EXISTS idx_value;");
     runSqlStatement("CREATE INDEX idx_value ON config_data ((" + index + "))");
-    in100ms("WHERE TRUE LIMIT 30;");
     in100ms("WHERE TRUE ORDER BY " + index + " ASC  LIMIT 30;");
     in100ms("WHERE TRUE ORDER BY " + index + " DESC LIMIT 30;");
     String match = valueStringToFind;
@@ -99,8 +107,11 @@ public class IndexPerformanceTest extends DatabaseTestBase {
   })
   public void like(String index) {
     runSqlStatement("DROP INDEX IF EXISTS idx_value;");
-    runSqlStatement("CREATE INDEX idx_value ON config_data ((lower(f_unaccent(" + index + "))) text_pattern_ops);");
-    in100ms("WHERE TRUE LIMIT 30;");
+    String finalIndex = "lower(f_unaccent(" + index + "))";
+    runSqlStatement("CREATE INDEX idx_value ON config_data ((" + finalIndex + ") text_pattern_ops);");
+    // dry run without time measurement to get the index into memory
+    runSqlStatement("SELECT * FROM config_data ORDER BY " + finalIndex + ", " + index + " LIMIT 30;");
+    // run with time measurement
     String [] sorts = { " ASC  ", " DESC " };
     for (String sort : sorts) {
       like(index, sort);

@@ -4,9 +4,11 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
@@ -81,7 +83,7 @@ public class DatabaseTestBase {
   /**
    * Set conn to the test database.
    * <p>
-   * Try to use the first working connection of these:<br>
+   * It tries to use the first working connection of these:<br>
    * environment variables DB_HOST, DB_PORT (default 5432), DB_DATABASE, DB_USERNAME, DB_PASSWORD<br>
    * jdbc:postgresql://127.0.0.1:5432/test?currentSchema=public&user=test&password=test<br>
    * jdbc:postgresql://127.0.0.1:5433/postgres?currentSchema=public&user=postgres&password=postgres<br>
@@ -141,6 +143,12 @@ public class DatabaseTestBase {
     try {
       final PostgresStarter<PostgresExecutable, PostgresProcess> runtime = PostgresStarter.getDefaultInstance();
       final PostgresConfig config = PostgresConfig.defaultWithDbName(DB_NAME, EMBEDDED_USERNAME, EMBEDDED_PASSWORD);
+      config.getAdditionalInitDbParams().addAll(Arrays.asList(  // no not use the operating system's locale
+          "-E", "UTF-8",
+          "--locale=C",
+          "--lc-collate=C",
+          "--lc-ctype=C"
+      ));
       String url = url(
           config.net().host(),
           config.net().port(),
@@ -184,6 +192,25 @@ public class DatabaseTestBase {
   static void runSqlStatement(String sqlStatement) {
     try (Statement statement = conn.createStatement()) {
       statement.execute(sqlStatement);
+    } catch (SQLException e) {
+      throw new SQLRuntimeException(sqlStatement, e);
+    }
+  }
+
+  /**
+   * Run the SQL statement on conn with EXPLAIN ANALYSE.
+   * @param sqlStatement  the SQL command to run (without prepended EXPLAIN ANALYSE).
+   * @return the answer from the database
+   * @throws RuntimeException on SQLException
+   */
+  static String explainAnalyseSql(String sqlStatement) {
+    try (Statement statement = conn.createStatement()) {
+      ResultSet resultSet = statement.executeQuery("EXPLAIN ANALYSE " + sqlStatement);
+      StringBuilder result = new StringBuilder();
+      while (resultSet.next()) {
+        result.append(resultSet.getString(1)).append('\n');
+      }
+      return result.toString();
     } catch (SQLException e) {
       throw new SQLRuntimeException(sqlStatement, e);
     }
