@@ -595,6 +595,7 @@ public class CQL2PgJSON {
    * @param trueOnMatch boolean result in case of match. true for LIKE and false for NOT LIKE.
    * @return the sql match expression
    */
+  @SuppressWarnings("squid:S1192")  // suppress "String literals should not be duplicated"
   private static String [] fullMatch(String textIndex, CqlModifiers modifiers, String s, boolean trueOnMatch) {
     String likeOperator = trueOnMatch ? " LIKE " : " NOT LIKE ";
     String like = like(s);
