@@ -371,6 +371,7 @@ public class CQL2PgJSON {
     throw new CQLFeatureUnsupportedException("Not implemented yet: " + node.getClass().getName());
   }
 
+  @SuppressWarnings("squid:S1192")  // suppress "String literals should not be duplicated"
   private String pg(CQLSortNode node) throws QueryValidationException {
     StringBuilder order = new StringBuilder();
     order.append(pg(node.getSubtree()))
