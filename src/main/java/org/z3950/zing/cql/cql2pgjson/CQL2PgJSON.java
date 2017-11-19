@@ -4,12 +4,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.StringUtils;
 import org.z3950.zing.cql.CQLAndNode;
 import org.z3950.zing.cql.CQLBooleanNode;
 import org.z3950.zing.cql.CQLNode;
@@ -22,13 +22,13 @@ import org.z3950.zing.cql.CQLTermNode;
 import org.z3950.zing.cql.Modifier;
 import org.z3950.zing.cql.ModifierSet;
 
+/**
+ * Converter from CQL to SQL using PostgreSQL's JSON fields.
+ *
+ * Contextual Query Language (CQL) Specification:
+ * https://www.loc.gov/standards/sru/cql/spec.html
+ */
 public class CQL2PgJSON {
-  /*
-   * Contextual Query Language (CQL) Specification:
-   * https://www.loc.gov/standards/sru/cql/spec.html
-   * https://docs.oasis-open.org/search-ws/searchRetrieve/v1.0/os/part5-cql/searchRetrieve-v1.0-os-part5-cql.html
-   */
-
   /**
    * Name of the JSON field, may include schema and table name (e.g. tenant1.user_table.json).
    * Must conform to SQL identifier requirements (characters, not a keyword), or properly
@@ -70,7 +70,7 @@ public class CQL2PgJSON {
     String indexJson;
   }
 
-  private class CqlModifiers {
+  private static class CqlModifiers {
     CqlSort    cqlSort    = CqlSort   .ASCENDING;
     CqlCase    cqlCase    = CqlCase   .IGNORE_CASE;
     CqlAccents cqlAccents = CqlAccents.IGNORE_ACCENTS;
@@ -133,10 +133,7 @@ public class CQL2PgJSON {
    * @throws FieldException provided field is not valid
    */
   public CQL2PgJSON(String field) throws FieldException {
-    if (field == null || field.trim().isEmpty()) {
-      throw new FieldException("field (containing tableName) must not be empty");
-    }
-    this.jsonField = field;
+    this.jsonField = trimNotEmpty(field);
   }
 
   /**
@@ -202,17 +199,17 @@ public class CQL2PgJSON {
    * @throws FieldException (subclass of CQL2PgJSONException) - provided field is not valid
    */
   public CQL2PgJSON(List<String> fields) throws FieldException {
-    if (fields == null || fields.size() == 0)
-      throw new FieldException( "fields list must not be empty" );
-    this.jsonFields = new ArrayList<>();
-    for (String field : fields) {
-      if (field == null || field.trim().isEmpty())
-        throw new FieldException( "field names must not be empty" );
-      this.jsonFields.add(field.trim());
+    if (fields == null || fields.isEmpty()) {
+      throw new FieldException("fields list must not be empty");
     }
-    if (this.jsonFields.size() == 1)
-      this.jsonField = this.jsonFields.get(0);
-    this.schemas = new HashMap<>();
+    jsonFields = new ArrayList<>();
+    for (String field : fields) {
+      jsonFields.add(trimNotEmpty(field));
+    }
+    if (jsonFields.size() == 1) {
+      jsonField = jsonFields.get(0);
+    }
+    schemas = new HashMap<>();
   }
 
   /**
@@ -248,27 +245,27 @@ public class CQL2PgJSON {
    * @throws FieldException (subclass of CQL2PgJSONException) - provided field is not valid
    * @throws SchemaException (subclass of CQL2PgJSONException) provided JSON schema not valid
    */
-  public CQL2PgJSON(LinkedHashMap<String,String> fieldsAndSchemaJsons)
+  public CQL2PgJSON(Map<String,String> fieldsAndSchemaJsons)
       throws FieldException, IOException, SchemaException {
-    if (fieldsAndSchemaJsons == null || fieldsAndSchemaJsons.size() == 0)
+    if (fieldsAndSchemaJsons == null || fieldsAndSchemaJsons.isEmpty()) {
       throw new FieldException( "fields map must not be empty" );
-    this.jsonFields = new ArrayList<>();
-    this.schemas = new HashMap<>();
-    for (Entry<String,String> e : fieldsAndSchemaJsons.entrySet()) {
-      String field = e.getKey();
-      if (field == null || field.trim().isEmpty())
-        throw new FieldException( "field names must not be empty" );
-      this.jsonFields.add(field);
-      String schemaJson = e.getValue();
-      if (schemaJson == null || schemaJson.trim().isEmpty())
-        continue;
-      Schema schema = new Schema( e.getValue() );
-      this.schemas.put(field, schema);
     }
-    if (this.jsonFields.size() == 1) {
-      this.jsonField = this.jsonFields.get(0);
-      if (this.schemas.containsKey(this.jsonField))
-        this.schema = this.schemas.get(this.jsonField);
+    jsonFields = new ArrayList<>();
+    schemas = new HashMap<>();
+    for (Entry<String,String> e : fieldsAndSchemaJsons.entrySet()) {
+      String field = trimNotEmpty(e.getKey());
+      jsonFields.add(field);
+      String schemaJson = StringUtils.trimToNull(e.getValue());
+      if (schemaJson == null) {
+        continue;
+      }
+      schemas.put(field, new Schema(schemaJson));
+    }
+    if (jsonFields.size() == 1) {
+      jsonField = jsonFields.get(0);
+      if (schemas.containsKey(jsonField)) {
+        schema = schemas.get(jsonField);
+      }
     }
   }
 
@@ -290,10 +287,28 @@ public class CQL2PgJSON {
    * @throws SchemaException (subclass of CQL2PgJSONException) provided JSON schema not valid
    * @throws ServerChoiceIndexesException (subclass of CQL2PgJSONException) - provided serverChoiceIndexes is not valid
    */
-  public CQL2PgJSON(LinkedHashMap<String,String> fieldsAndSchemaJsons, List<String> serverChoiceIndexes)
+  public CQL2PgJSON(Map<String,String> fieldsAndSchemaJsons, List<String> serverChoiceIndexes)
       throws FieldException, IOException, SchemaException, ServerChoiceIndexesException  {
     this(fieldsAndSchemaJsons);
     setServerChoiceIndexes(serverChoiceIndexes);
+  }
+
+  /**
+   * Return field.trim() and ensure that it is not empty.
+   *
+   * @param field  the field name to trim
+   * @return field trimmed
+   * @throws FieldException  if field is null or the trimmed field name is empty
+   */
+  private String trimNotEmpty(String field) throws FieldException {
+    if (field == null) {
+      throw new FieldException("a field name must not be null");
+    }
+    String fieldTrimmed = field.trim();
+    if (fieldTrimmed.isEmpty()) {
+      throw new FieldException("a field name must not be empty");
+    }
+    return fieldTrimmed;
   }
 
   /**
@@ -336,6 +351,12 @@ public class CQL2PgJSON {
     this.serverChoiceIndexes = serverChoiceIndexes;
   }
 
+  /**
+   * Convert a CQL query into a SQL query.
+   * @param cql  the CQL query
+   * @return the SQL query
+   * @throws QueryValidationException  when the input violates CQL syntax
+   */
   public String cql2pgJson(String cql) throws QueryValidationException {
     try {
       CQLParser parser = new CQLParser();
@@ -346,7 +367,7 @@ public class CQL2PgJSON {
     }
   }
 
-  private String pg(CQLNode node) throws QueryValidationException, CQLFeatureUnsupportedException {
+  private String pg(CQLNode node) throws QueryValidationException {
     if (node instanceof CQLTermNode) {
       return pg((CQLTermNode) node);
     }
@@ -371,8 +392,8 @@ public class CQL2PgJSON {
         order.append(", ");
       }
       String index = modifierSet.getBase();
-      if (this.jsonField != null) {
-        order.append(index2sqlJson(this.jsonField, index));
+      if (jsonField != null) {
+        order.append(index2sqlJson(jsonField, index));
       } else {
         // multifield
         IndexTextAndJsonValues vals = multiFieldProcessing( index );
@@ -517,7 +538,7 @@ public class CQL2PgJSON {
     return split;
   }
 
-  private String [] match(CQLTermNode node) throws CQLFeatureUnsupportedException {
+  private static String [] match(CQLTermNode node) throws CQLFeatureUnsupportedException {
     CqlModifiers modifiers = new CqlModifiers(node);
     if (modifiers.cqlMasking != CqlMasking.MASKED) {
       throw new CQLFeatureUnsupportedException("This masking is not implemented yet: " + modifiers.cqlMasking);
@@ -647,8 +668,8 @@ public class CQL2PgJSON {
         if (schema != null) {
           finalIndex = schema.mapFieldNameAgainstSchema(index);
         }
-        vals.indexJson = index2sqlJson(this.jsonField, finalIndex);
-        vals.indexText = index2sqlText(this.jsonField, finalIndex);
+        vals.indexJson = index2sqlJson(jsonField, finalIndex);
+        vals.indexText = index2sqlText(jsonField, finalIndex);
       }
       if (numberMatch == null) {
         s.append(vals.indexText).append(match);
@@ -683,24 +704,27 @@ public class CQL2PgJSON {
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
 
     // processing for case where index is prefixed with json field name
-    for (String jsonField : this.jsonFields)
-      if (index.startsWith(jsonField+'.')) {
+    for (String field : jsonFields)
+      if (index.startsWith(field+'.')) {
         String indexTermWithinField;
-        if (this.schemas.containsKey(jsonField))
-            indexTermWithinField = this.schemas.get(jsonField).mapFieldNameAgainstSchema( index.substring(jsonField.length()+1) );
-        else
-            indexTermWithinField = index.substring(jsonField.length()+1);
-        vals.indexJson = index2sqlJson(jsonField, indexTermWithinField);
-        vals.indexText = index2sqlText(jsonField, indexTermWithinField);
+        if (schemas.containsKey(field)) {
+            indexTermWithinField = schemas.get(field).mapFieldNameAgainstSchema( index.substring(field.length()+1) );
+        } else {
+            indexTermWithinField = index.substring(field.length()+1);
+        }
+        vals.indexJson = index2sqlJson(field, indexTermWithinField);
+        vals.indexText = index2sqlText(field, indexTermWithinField);
         return vals;
       }
 
     // if no json field name prefix is found, the default field name gets applied.
-    String defaultJsonField = this.jsonFields.get(0);
-    if (this.schemas.containsKey(defaultJsonField))
-      index = this.schemas.get(defaultJsonField).mapFieldNameAgainstSchema(index);
-    vals.indexJson = index2sqlJson(defaultJsonField, index);
-    vals.indexText = index2sqlText(defaultJsonField, index);
+    String defaultJsonField = jsonFields.get(0);
+    String finalIndex = index;
+    if (schemas.containsKey(defaultJsonField)) {
+      finalIndex = schemas.get(defaultJsonField).mapFieldNameAgainstSchema(index);
+    }
+    vals.indexJson = index2sqlJson(defaultJsonField, finalIndex);
+    vals.indexText = index2sqlText(defaultJsonField, finalIndex);
     return vals;
   }
 
@@ -715,8 +739,9 @@ public class CQL2PgJSON {
         throw new QueryValidationException("cql.serverChoice requested, but no serverChoiceIndexes defined.");
       }
       List<String> sqlPieces = new ArrayList<>();
-      for(String index : serverChoiceIndexes)
+      for(String index : serverChoiceIndexes) {
         sqlPieces.add(index2sql(index, matches, numberMatch));
+      }
       return String.join(" OR ", sqlPieces);
     }
     return index2sql(node.getIndex(), matches, numberMatch);
