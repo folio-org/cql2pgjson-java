@@ -400,7 +400,22 @@ public class CQL2PgJSON {
       }
       // TODO: if (not string type) index=vals.indexJson; order.append(index + desc);
       // else
-      order.append("lower(f_unaccent(" + index + "))" + desc + ", " + index + desc);
+
+      // We assume that a CREATE INDEX for this has been installed.
+      String useCreatedIndex = "lower(f_unaccent(" + index + "))";
+      order.append(useCreatedIndex + desc);
+
+      // finalIndex is a tie without lower and/or f_unaccent
+      String finalIndex = index;
+      if (modifiers.cqlAccents != CqlAccents.RESPECT_ACCENTS) {
+        finalIndex = "f_unaccent(" + finalIndex + ")";
+      }
+      if (modifiers.cqlCase != CqlCase.RESPECT_CASE) {
+        finalIndex = "lower(" + finalIndex + ")";
+      }
+      if (! finalIndex.equals(useCreatedIndex)) {
+        order.append(", " + finalIndex + desc);
+      }
     }
     return order.toString();
   }
