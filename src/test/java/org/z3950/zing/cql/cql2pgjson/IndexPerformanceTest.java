@@ -122,7 +122,10 @@ public class IndexPerformanceTest extends DatabaseTestBase {
 
   @Test
   public void cqlSortBy() throws CQL2PgJSONException {
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("value");
+    runSqlStatement("DROP INDEX IF EXISTS idx_value;");
+    runSqlStatement("CREATE INDEX idx_value ON config_data "
+        + "((lower(f_unaccent(jsonb->>'value'))) text_pattern_ops);");
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb");
     String where = "WHERE " + cql2pgJson.cql2pgJson("value == a1* sortBy value");
     in100msAfterDry(where);
   }
