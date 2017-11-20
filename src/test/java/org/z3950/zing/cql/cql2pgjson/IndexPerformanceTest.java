@@ -119,4 +119,11 @@ public class IndexPerformanceTest extends DatabaseTestBase {
       like(index, sort);
     }
   }
+
+  @Test
+  public void cqlSortBy() throws CQL2PgJSONException {
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("value");
+    String where = "WHERE " + cql2pgJson.cql2pgJson("value == a1* sortBy value");
+    in100msAfterDry(where);
+  }
 }
