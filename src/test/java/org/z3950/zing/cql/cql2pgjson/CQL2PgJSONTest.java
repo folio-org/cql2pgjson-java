@@ -358,22 +358,31 @@ public class CQL2PgJSONTest {
 
   @Test
   @Parameters({
-    "email==\\\\                    # a",
-    "email==\\\\\\\\                # b",
-    "email==\\*                     # c",
-    "email==\\*\\*                  # d",
-    "email==\\?                     # e",
-    "email==\\?\\?                  # f",
-    "email==\\\"                    # g",
-    "email==\\\"\\\"                # h",
-    "             address.zip=1     # a",
-    "'         OR address.zip=1     # a",
-    "name=='   OR address.zip=1     # a",
-    "name==\\  OR address.zip=1     # a",
+    "email==\\\\                    # a",  // \
+    "email==\\\\\\\\                # b",  // \\
+    "email==\\*                     # c",  // \*
+    "email==\\*\\*                  # d",  // \*\*
+    "email==\\?                     # e",  // \?
+    "email==\\?\\?                  # f",  // \?\?
+    "email==\\\"                    # g",  // \"
+    "email==\"\\\"\"                # g",  // "\""
+    "email==\\\"\\\"                # h",  // \"\"
+    "email==\"\\\"\\\"\"            # h",  // "\"\""
+    "email=='                       # i",
+    "email==''                      # j",
+    "city==\\*\\?\\*                # a; b",
+    "city==\\?\\\\\\?               # c; d",
+    "city=='\\*'                    # i",
+    "city=='\\?'                    # j",
+    "             address.zip=18    # a",
+    "'         OR address.zip=18    # a; i; j",
+    "name=='   OR address.zip=18    # a",
+    "name==\\  OR address.zip=18    # a",
     "\\a                            # a",
   })
   public void special(String testcase) {
     select("special.sql", testcase);
+    select("special.sql", testcase.replace("==", "==/respectCase/respectAccents "));
   }
 
   @Test
@@ -524,20 +533,20 @@ public class CQL2PgJSONTest {
   @Test
   @Parameters({
     "address.zip<1                  #",
-    "address.zip<2                  # a",
-    "address.zip<3                  # a; b",
+    "address.zip<2                  # j",
+    "address.zip<3                  # i; j",
     "address.zip<=0                 #",
-    "address.zip<=1                 # a",
-    "address.zip<=2                 # a; b",
-    "address.zip>16                 # g; h",
-    "address.zip>17                 # h",
+    "address.zip<=1                 # j",
+    "address.zip<=2                 # i; j",
+    "address.zip>16                 # a; b",
+    "address.zip>17                 # a",
     "address.zip>18                 #",
-    "address.zip>=17                # g; h",
-    "address.zip>=18                # h",
+    "address.zip>=17                # a; b",
+    "address.zip>=18                # a",
     "address.zip>=19                #",
-    "address.zip<>5                 # a; b; c; d; f; g; h",
-    "address.zip=1                  # a",  // must not match 17, 18
-    "address.zip==1                 # a",
+    "address.zip<>5                 # a; b; c; d; e; g; h; i; j",
+    "address.zip=1                  # j",  // must not match 17, 18
+    "address.zip==1                 # j",
   })
   public void compareNumber(String testcase) {
     select("special.sql", testcase);
