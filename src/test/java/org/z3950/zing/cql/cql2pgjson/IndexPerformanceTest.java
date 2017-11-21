@@ -15,7 +15,8 @@ import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
 
 /**
- * Performance test of index usage.
+ * Performance test of index usage.  This tests how Postgres uses indexes, it does
+ * not test any other class or function.
  * <p>
  * Only runs if environment variable TEST_PERFORMANCE=yes, for example <br>
  * TEST_PERFORMANCE=yes mvn test
@@ -37,23 +38,34 @@ public class IndexPerformanceTest extends DatabaseTestBase {
     closeDatabase();
   }
 
-  static class Analyse {
+  static class AnalyseResult {
+    /** analyse message from Postgres */
     String msg;
     /** execution time in ms */
     float executionTime;
-    public Analyse(String msg, float executionTime) {
+    /**
+     * Set msg and executionTime
+     * @param msg  analyse message from Postgres
+     * @param executionTime  execution time in ms
+     */
+    public AnalyseResult(String msg, float executionTime) {
       this.msg = msg;
       this.executionTime = executionTime;
     }
   }
 
-  private Analyse analyse(String sql) {
+  /**
+   * Run sql with "EXPLAIN ANALYSE " prepended.
+   * @param sql  SQL command to run and analyse
+   * @return analyse result of the sql query
+   */
+  private AnalyseResult analyse(String sql) {
     try (Statement statement = conn.createStatement()) {
       statement.execute(sql);
     } catch (SQLException e) {
       throw new SQLRuntimeException(sql, e);
     }
-    return new Analyse("", 0);
+    return new AnalyseResult("", 0);
   }
 
   private void in100ms(String where) {
