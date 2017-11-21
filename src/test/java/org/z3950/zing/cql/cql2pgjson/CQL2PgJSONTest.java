@@ -1,5 +1,6 @@
 package org.z3950.zing.cql.cql2pgjson;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.*;
 import org.junit.runner.RunWith;
 import org.z3950.zing.cql.CQLRelation;
@@ -508,6 +509,28 @@ public class CQL2PgJSONTest {
   })
   public void unicodeCaseAccents(String testcase) {
     select(testcase);
+  }
+
+  @Test
+  @Parameters({
+    "address.city==/respectCase/respectAccents S*      # Jo Jane; Lea Long",
+    "address.city<>/respectCase/respectAccents S*      # Ka Keller",
+    "address.city==/respectCase/respectAccents S*g     # Lea Long",
+    "address.city<>/respectCase/respectAccents S*g     # Jo Jane; Ka Keller",
+    "address.city==/respectCase/respectAccents Sø*     # Lea Long",
+    "address.city==/respectCase/respectAccents Sø*g    # Lea Long",
+    "address.city==/respectCase/respectAccents ?øvang  # Lea Long",
+    "address.city==/respectCase/respectAccents S?vang  # Lea Long",
+    "address.city==/respectCase/respectAccents Søvan?  # Lea Long",
+    "address.city==/respectCase/respectAccents *Søvang # Lea Long",
+    "address.city==/respectCase/respectAccents **v**   # Jo Jane; Lea Long",
+    "address.city==/respectCase/respectAccents **?y?** # Jo Jane",
+    "address.city==/respectCase/respectAccents søvang  #",         // lowercase
+  })
+  public void like(String testcase) throws QueryValidationException {
+    select(testcase);
+    String sql = cql2pgJson.cql2pgJson(testcase.substring(0, testcase.indexOf('#')));
+    assertThat(sql, containsString(" LIKE "));
   }
 
   @Test
