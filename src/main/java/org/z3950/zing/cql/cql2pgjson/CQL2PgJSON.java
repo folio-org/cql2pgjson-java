@@ -806,8 +806,11 @@ public class CQL2PgJSON {
           " AND ", vals.indexJson, numberMatch.replace("\"", ""),
           ") OR (",
           "jsonb_typeof(", vals.indexJson, ")<>'number'",
-          " AND ", vals.indexJson, numberMatch,
-          "))");
+          " AND ", vals.indexJson, numberMatch);
+      if (numberMatch.startsWith("=")) {
+        append(s, " AND lower(f_unaccent(", vals.indexText, "))", numberMatch);
+      }
+      append(s, "))");
       return s.toString();
     }
 
