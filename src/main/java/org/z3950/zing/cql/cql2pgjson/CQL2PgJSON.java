@@ -371,6 +371,7 @@ public class CQL2PgJSON {
     throw new CQLFeatureUnsupportedException("Not implemented yet: " + node.getClass().getName());
   }
 
+  @SuppressWarnings("squid:S1192")  // suppress "String literals should not be duplicated"
   private String pg(CQLSortNode node) throws QueryValidationException {
     StringBuilder order = new StringBuilder();
     order.append(pg(node.getSubtree()))
@@ -382,18 +383,39 @@ public class CQL2PgJSON {
       } else {
         order.append(", ");
       }
+
+      String desc = "";
+      CqlModifiers modifiers = new CqlModifiers(modifierSet);
+      if (modifiers.cqlSort == CqlSort.DESCENDING) {
+        desc = " DESC";
+      }  // ASC not needed, it's Postgres' default
+
       String index = modifierSet.getBase();
       if (this.jsonField != null) {
-        order.append(index2sqlJson(this.jsonField, index));
+        index = index2sqlText(this.jsonField, index);
       } else {
         // multifield
         IndexTextAndJsonValues vals = multiFieldProcessing( index );
-        order.append(vals.indexJson);
+        index = vals.indexText;
       }
-      CqlModifiers modifiers = new CqlModifiers(modifierSet);
-      if (modifiers.cqlSort == CqlSort.DESCENDING) {
-        order.append(" DESC");
-      }  // ASC not needed, it's Postgres' default
+      // TODO: if (not string type) index=vals.indexJson; order.append(index + desc);
+      // else
+
+      // We assume that a CREATE INDEX for this has been installed.
+      String useCreatedIndex = "lower(f_unaccent(" + index + "))";
+      order.append(useCreatedIndex + desc);
+
+      // finalIndex is a tie without lower and/or f_unaccent
+      String finalIndex = index;
+      if (modifiers.cqlAccents != CqlAccents.RESPECT_ACCENTS) {
+        finalIndex = "f_unaccent(" + finalIndex + ")";
+      }
+      if (modifiers.cqlCase != CqlCase.RESPECT_CASE) {
+        finalIndex = "lower(" + finalIndex + ")";
+      }
+      if (! finalIndex.equals(useCreatedIndex)) {
+        order.append(", " + finalIndex + desc);
+      }
     }
     return order.toString();
   }
@@ -450,79 +472,75 @@ public class CQL2PgJSON {
   }
 
   /**
-   * c if it can be expressed as a LIKE expression, null otherwise.
-   * For example ignore case for 'A' returns null because LIKE is
-   * case sensitive.
-   * @param unicode  what equivalences of c are required
-   * @param c  character to use
-   * @return c or null
+   * Convert a CQL string to an SQL LIKE string.
+   * CQL escapes * ? ^ \ and SQL LIKE escapes \ % _.
+   *
+   * @param s  CQL string without leading or trailing double quote
+   * @return SQL LIKE string including leading and trailing single quote
    */
-  private static String likeEquivalents(Unicode unicode, char c) {
-    String equivalents = unicode.getEquivalents(c);
-    if (equivalents.charAt(0) == '(' || equivalents.charAt(0) == '[') {
-      return null;
-    }
-    return equivalents;
-  }
-
-  private static String like(Unicode unicode, String s) {
-    StringBuilder like = new StringBuilder();
+  static String cql2like(String s) {
+    StringBuilder like = new StringBuilder("'");
+    /** true if the previous character is an escaping backslash */
     boolean backslash = false;
     for (char c : s.toCharArray()) {
-      if (backslash) {
-        // Backslash (\) is used to escape '*', '?', quote (") and '^' , as well as itself.
-        // Backslash followed by any other characters is an error (see cql spec), but
-        // we handle it gracefully matching that character.
-        String equivalents = likeEquivalents(unicode, c);
-        if (equivalents == null) {
-          return null;
-        }
-        like.append(equivalents);
-        backslash = false;
-        continue;
-      }
       switch (c) {
       case '\\':
-        backslash = true;
+        if (backslash) {
+          like.append("\\\\");
+          backslash = false;
+        } else {
+          backslash = true;
+        }
         break;
       case '%':
-        like.append("\\%");  // mask LIKE character
-        break;
       case '_':
-        like.append("\\_");  // mask LIKE character
+        like.append('\\').append(c);  // mask LIKE character
+        backslash = false;
         break;
       case '?':
-        like.append('_');
+        if (backslash) {
+          like.append("\\?");
+          backslash = false;
+        } else {
+          like.append('_');
+        }
         break;
       case '*':
-        like.append('%');
+        if (backslash) {
+          like.append("\\*");
+          backslash = false;
+        } else {
+          like.append('%');
+        }
         break;
-      case '\'':
-        // mask ' used for quoting postgres strings
+      case '\'':   // a single quote '
+        // postgres requires to double a ' inside a ' terminated string.
         like.append("''");
+        backslash = false;
         break;
       default:
-        String equivalents = likeEquivalents(unicode, c);
-        if (equivalents == null) {
-          return null;
-        }
-        like.append(equivalents);
+        like.append(c);
+        backslash = false;
+        break;
       }
     }
 
     if (backslash) {
       // a single backslash at the end is an error but we handle it gracefully matching one.
-      String equivalents = likeEquivalents(unicode, '\\');
-      if (equivalents == null) {
-        return null;
-      }
-      like.append(equivalents);
+      like.append("\\\\");
     }
 
+    like.append('\'');  // a postgres string is terminated by a single quote
     return like.toString();
   }
 
-  private static String regexp(Unicode unicode, String s) {
+  /**
+   * Convert a cql string to a SQL regexp string.
+   * @param unicode  unicode equivalent class to use
+   * @param s  string to convert
+   * @return sql string
+   */
+  private static String cql2regexp(Unicode unicode, String s) {
     StringBuilder regexp = new StringBuilder();
     boolean backslash = false;
     for (char c : s.toCharArray()) {
@@ -580,49 +598,75 @@ public class CQL2PgJSON {
   }
 
   /**
-   * A LIKE or regexp SQL expression for matching a string.
+   * The LIKE expressions for matching a string. The caller needs to AND them.
+   * <p>
+   * Example 1: IGNORE_ACCENTS, IGNORE_CASE, trueOnMatch=true, s="Sövan*"<br>
+   * { "lower(f_unaccent(textIndex)) LIKE lower(f_unaccent('Sövan%'))" }
+   * <p>
+   * Example 2: IGNORE_ACCENTS, IGNORE_CASE, trueOnMatch=true, s="Sövan*"<br>
+   * { "lower(f_unaccent(textIndex)) NOT LIKE lower(f_unaccent('Sövan%'))" }
+   * <p>
+   * Example 3: RESPECT_ACCENTS, RESPECT_CASE, trueOnMatch=true, s="Sövan*"<br>
+   * { "lower(f_unaccent(textIndex)) LIKE lower(f_unaccent('Sövan%'))",
+   *   "textIndex LIKE 'Sövan%'" }<br>
+   * The first LIKE uses the index, the second ensures accents and case.
    *
+   * @param textIndex  JSONB field to match against
    * @param modifiers CqlModifiers to use
    * @param s string to match
-   * @param trueOnMatch boolean result in case of match. !trueOnMatch is the boolean result on mismatch.
-   * @return the sql match expression, for example " !~ '^Sövang$'"
+   * @param trueOnMatch boolean result in case of match. true for LIKE and false for NOT LIKE.
+   * @return the sql match expression
    */
-  private static String fullMatch(CqlModifiers modifiers, String s, boolean trueOnMatch) {
-    Unicode unicode = unicode(modifiers);
-    String fullMatch = like(unicode, s);
-    if (fullMatch != null) {
-      return (trueOnMatch ? " LIKE " : " NOT LIKE ") + "'" + fullMatch + "'";
+  @SuppressWarnings("squid:S1192")  // suppress "String literals should not be duplicated"
+  private static String [] fullMatch(String textIndex, CqlModifiers modifiers, String s, boolean trueOnMatch) {
+    String likeOperator = trueOnMatch ? " LIKE " : " NOT LIKE ";
+    String like = cql2like(s);
+    String indexMatch = "lower(f_unaccent(" + textIndex + "))"
+        + likeOperator + "lower(f_unaccent(" + like + "))";
+    if (modifiers.cqlAccents == CqlAccents.IGNORE_ACCENTS &&
+        modifiers.cqlCase    == CqlCase.IGNORE_CASE         ) {
+      return new String [] { indexMatch };
+    }
+    if (modifiers.cqlAccents == CqlAccents.RESPECT_ACCENTS &&
+        modifiers.cqlCase    == CqlCase.RESPECT_CASE         ) {
+      return new String [] { indexMatch, textIndex + likeOperator + like };
     }
 
-    fullMatch = regexp(unicode, s);
-    return (trueOnMatch ? " ~ " : " !~ ") + "'^" + fullMatch + "$'";
+    if (modifiers.cqlAccents == CqlAccents.RESPECT_ACCENTS) {
+      return new String [] { indexMatch,
+          "lower(" + textIndex + ")" + likeOperator + "lower(" + like + ")" };
+    } else {
+      return new String [] { indexMatch,
+          "f_unaccent(" + textIndex + ")" + likeOperator + "f_unaccent(" + like + ")" };
+    }
   }
 
   /**
    * Return a POSIX regexp expression for each word in cql. Words are delimited by whitespace.
+   * @param textIndex  JSONB field to match against
    * @param modifiers  CqlModifiers to use
    * @param cql   words to convert
    * @return resulting regexps
    */
-  private static String [] wordRegexp(CqlModifiers modifiers, String cql) {
+  private static String [] wordRegexp(String textIndex, CqlModifiers modifiers, String cql) {
     String [] split = cql.trim().split("\\s+");  // split at whitespace
     if (split.length == 1 && "".equals(split[0])) {
       // The variable cql contains whitespace only. honorWhitespace is not implemented yet.
       // So there is no word at all. Therefore no restrictions for matching - anything matches.
-      return new String [] { " ~ ''" };  // matches any (existing non-null) value
+      return new String [] { textIndex + " ~ ''" };  // matches any (existing non-null) value
     }
     Unicode unicode = unicode(modifiers);
     for (int i=0; i<split.length; i++) {
       // A word is delimited by any of: the beginning ^ or the end $ of the field or
       // by punctuation or by whitespace.
-      split[i] = " ~ '(^|[[:punct:]]|[[:space:]])"
-          + regexp(unicode, split[i])
+      split[i] = textIndex + " ~ '(^|[[:punct:]]|[[:space:]])"
+          + cql2regexp(unicode, split[i])
           + "($|[[:punct:]]|[[:space:]])'";
     }
     return split;
   }
 
-  private String [] match(CQLTermNode node) throws CQLFeatureUnsupportedException {
+  private String [] match(String textIndex, CQLTermNode node) throws CQLFeatureUnsupportedException {
     CqlModifiers modifiers = new CqlModifiers(node);
     if (modifiers.cqlMasking != CqlMasking.MASKED) {
       throw new CQLFeatureUnsupportedException("This masking is not implemented yet: " + modifiers.cqlMasking);
@@ -630,16 +674,16 @@ public class CQL2PgJSON {
     String comparator = node.getRelation().getBase();
     switch (comparator) {
     case "==":
-      return new String [] { fullMatch(modifiers, node.getTerm(), true) };
+      return fullMatch(textIndex, modifiers, node.getTerm(), true);
     case "<>":
-      return new String [] { fullMatch(modifiers, node.getTerm(), false) };
+      return fullMatch(textIndex, modifiers, node.getTerm(), false);
     case "=":
-      return wordRegexp(modifiers, node.getTerm());
+      return wordRegexp(textIndex, modifiers, node.getTerm());
     case "<":
     case "<=":
     case ">":
     case ">=":
-      return new String [] { comparator + "'" + node.getTerm().replace("'", "''") + "'" };
+      return new String [] { textIndex + " " + comparator + "'" + node.getTerm().replace("'", "''") + "'" };
     default:
       throw new CQLFeatureUnsupportedException("Relation " + node.getRelation().getBase()
           + " not implemented yet: " + node.toString());
@@ -735,52 +779,54 @@ public class CQL2PgJSON {
    * @throws QueryValidationException
    */
   @SuppressWarnings("squid:S1192")  // suppress "String literals should not be duplicated"
-  private String index2sql(String index, String [] matches, String numberMatch) throws QueryValidationException {
-    StringBuilder s = new StringBuilder();
-    for (String match : matches) {
-      if (s.length() > 0) {
-        s.append(" AND ");
+  private String index2sql(String index, CQLTermNode node, String numberMatch) throws QueryValidationException {
+    IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
+    if (jsonField == null) {
+      // multiField processing
+      vals = multiFieldProcessing( index );
+    } else {
+      String finalIndex = index;
+      if (schema != null) {
+        finalIndex = schema.mapFieldNameAgainstSchema(index);
       }
-      IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-      if (jsonField == null) {
-        // multiField processing
-        vals = multiFieldProcessing( index );
-      } else {
-        String finalIndex = index;
-        if (schema != null) {
-          finalIndex = schema.mapFieldNameAgainstSchema(index);
-        }
-        vals.indexJson = index2sqlJson(this.jsonField, finalIndex);
-        vals.indexText = index2sqlText(this.jsonField, finalIndex);
-      }
-      if (numberMatch == null) {
-        s.append(vals.indexText).append(match);
-      } else {
-        // numberMatch: Both sides of the comparison operator are JSONB expressions.
-
-        // When comparing two JSONBs a JSONB containing any string is bigger than
-        // any JSONB containing any number.
-        // Therefore we need to check the jsonb_typeof, which is supported by a
-        // ((jsonb->'amount')) index.
-
-        /* (   ( jsonb_typeof(jsonb->'amount')= 'numeric' AND jsonb->'amount' <  '100'  )
-         *  OR ( jsonb_typeof(jsonb->'amount')<>'numeric' AND jsonb->'amount' < '"100"' )
-         * )
-         */
-        append(s,
-            "((",
-            "jsonb_typeof(", vals.indexJson, ")='number'",
-            " AND ", vals.indexJson, numberMatch.replace("\"", ""),
-            ") OR (",
-            "jsonb_typeof(", vals.indexJson, ")<>'number'",
-            " AND ", vals.indexJson, numberMatch,
-            "))");
-      }
+      vals.indexJson = index2sqlJson(this.jsonField, finalIndex);
+      vals.indexText = index2sqlText(this.jsonField, finalIndex);
     }
-    if (matches.length <= 1) {
+
+    if (numberMatch != null) {
+      // numberMatch: Both sides of the comparison operator are JSONB expressions.
+
+      // When comparing two JSONBs a JSONB containing any string is bigger than
+      // any JSONB containing any number.
+      // Therefore we need to check the jsonb_typeof, which is supported by a
+      // ((jsonb->'amount')) index.
+
+      /* (   ( jsonb_typeof(jsonb->'amount')= 'numeric' AND jsonb->'amount' <  '100'  )
+       *  OR ( jsonb_typeof(jsonb->'amount')<>'numeric' AND jsonb->'amount' < '"100"' )
+       * )
+       */
+      StringBuilder s = new StringBuilder();
+      append(s,
+          "((",
+          "jsonb_typeof(", vals.indexJson, ")='number'",
+          " AND ", vals.indexJson, numberMatch.replace("\"", ""),
+          ") OR (",
+          "jsonb_typeof(", vals.indexJson, ")<>'number'",
+          " AND ", vals.indexJson, numberMatch);
+      if (numberMatch.startsWith("=")) {
+        append(s, " AND lower(f_unaccent(", vals.indexText, "))", numberMatch);
+      }
+      append(s, "))");
       return s.toString();
     }
-    return "(" + s.toString() + ")";
+
+    String [] matches = match(vals.indexText, node);
+    String s = String.join(" AND ", matches);
+    if (matches.length <= 1) {
+      return s;
+    } else {
+      return "(" + s + ")";
+    }
   }
 
   private IndexTextAndJsonValues multiFieldProcessing( String index ) throws QueryValidationException {
@@ -813,7 +859,6 @@ public class CQL2PgJSON {
   }
 
   private String pg(CQLTermNode node) throws QueryValidationException {
-    String [] matches = match(node);
     String numberMatch = getNumberMatch(node);
     if ("cql.allRecords".equalsIgnoreCase(node.getIndex())) {
       return "true";
@@ -824,9 +869,9 @@ public class CQL2PgJSON {
       }
       List<String> sqlPieces = new ArrayList<>();
       for(String index : serverChoiceIndexes)
-        sqlPieces.add(index2sql(index, matches, numberMatch));
+        sqlPieces.add(index2sql(index, node, numberMatch));
       return String.join(" OR ", sqlPieces);
     }
-    return index2sql(node.getIndex(), matches, numberMatch);
+    return index2sql(node.getIndex(), node, numberMatch);
   }
 }

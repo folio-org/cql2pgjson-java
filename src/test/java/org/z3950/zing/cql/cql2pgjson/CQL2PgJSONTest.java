@@ -1,6 +1,7 @@
 package org.z3950.zing.cql.cql2pgjson;
 
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.*;
 import org.junit.runner.RunWith;
 import org.z3950.zing.cql.CQLRelation;
@@ -365,8 +366,8 @@ public class CQL2PgJSONTest {
     "email==\\*\\*                  # d",
     "email==\\?                     # e",
     "email==\\?\\?                  # f",
-    "email==\\\"                    # g",
-    "email==\\\"\\\"                # h",
+    "email==\\\\\\\"                # g",
+    "email==\\\\\\\"\\\\\\\"        # h",
     "             address.zip=1     # a",
     "'         OR address.zip=1     # a",
     "name=='   OR address.zip=1     # a",
@@ -478,7 +479,7 @@ public class CQL2PgJSONTest {
     "address.city= /respectAccents Søvang # Lea Long",
     "address.city==/respectAccents Søvang # Lea Long",
     "address.city= /respectAccents SØvang # Lea Long",
-    "address.city==/respectAccents SØvang # Lea Long",
+  //"address.city==/respectAccents SØvang # Lea Long",  // requires en_US.utf8 locale
     "address.city= /respectAccents Sovang #",
     "address.city==/respectAccents Sovang #",
     "address.city= /respectAccents SOvang #",
@@ -513,6 +514,23 @@ public class CQL2PgJSONTest {
 
   @Test
   @Parameters({
+    " , ''   ",
+    "', '''' ",
+    "a, 'a'  ",
+    "*, '%'  ",
+    "?, '_'  ",
+    "\\*, '\\*' ",
+    "\\?, '\\?' ",
+    "\\%, '\\%' ",
+    "\\_, '\\_' ",
+    "\\\\ , '\\\\' ",
+  })
+  public void cql2like(String cql, String sql) {
+    assertThat(CQL2PgJSON.cql2like(cql), is(sql));
+  }
+
+  @Test
+  @Parameters({
     "address.city==/respectCase/respectAccents S*      # Jo Jane; Lea Long",
     "address.city<>/respectCase/respectAccents S*      # Ka Keller",
     "address.city==/respectCase/respectAccents S*g     # Lea Long",
@@ -535,10 +553,14 @@ public class CQL2PgJSONTest {
 
   @Test
   @Parameters({
-    "example sortBy name                         # Jo Jane; Ka Keller; Lea Long",
-    "example sortBy name/sort.ascending          # Jo Jane; Ka Keller; Lea Long",
-    "example sortBy name/sort.descending         # Lea Long; Ka Keller; Jo Jane",
-    "example sortBy notExistingIndex address.zip # Ka Keller; Jo Jane; Lea Long",
+    "example   sortBy name                         # Jo Jane; Ka Keller; Lea Long",
+    "example   sortBy name/sort.ascending          # Jo Jane; Ka Keller; Lea Long",
+    "example   sortBy name/sort.descending         # Lea Long; Ka Keller; Jo Jane",
+    "example   sortBy notExistingIndex address.zip # Ka Keller; Jo Jane; Lea Long",
+    "name==*a* sortBy name                         # Jo Jane; Ka Keller; Lea Long",
+    "name==*a* sortBy name/sort.ascending          # Jo Jane; Ka Keller; Lea Long",
+    "name==*a* sortBy name/sort.descending         # Lea Long; Ka Keller; Jo Jane",
+    "name==*a* sortBy notExistingIndex address.zip # Ka Keller; Jo Jane; Lea Long",
   })
   public void sort(String testcase) {
     select(testcase);
