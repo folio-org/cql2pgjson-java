@@ -15,7 +15,8 @@ import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
 
 /**
- * Performance test of index usage.
+ * Performance test of index usage.  This tests how Postgres uses indexes, it does
+ * not test any other class or function.
  * <p>
  * Only runs if environment variable TEST_PERFORMANCE=yes, for example <br>
  * TEST_PERFORMANCE=yes mvn test
@@ -37,23 +38,34 @@ public class IndexPerformanceTest extends DatabaseTestBase {
     closeDatabase();
   }
 
-  static class Analyse {
+  static class AnalyseResult {
+    /** analyse message from Postgres */
     String msg;
     /** execution time in ms */
     float executionTime;
-    public Analyse(String msg, float executionTime) {
+    /**
+     * Set msg and executionTime
+     * @param msg  analyse message from Postgres
+     * @param executionTime  execution time in ms
+     */
+    public AnalyseResult(String msg, float executionTime) {
       this.msg = msg;
       this.executionTime = executionTime;
     }
   }
 
-  private Analyse analyse(String sql) {
+  /**
+   * Run sql with "EXPLAIN ANALYSE " prepended.
+   * @param sql  SQL command to run and analyse
+   * @return analyse result of the sql query
+   */
+  private AnalyseResult analyse(String sql) {
     try (Statement statement = conn.createStatement()) {
       statement.execute(sql);
     } catch (SQLException e) {
       throw new SQLRuntimeException(sql, e);
     }
-    return new Analyse("", 0);
+    return new AnalyseResult("", 0);
   }
 
   private void in100ms(String where) {
@@ -84,7 +96,7 @@ public class IndexPerformanceTest extends DatabaseTestBase {
     "lower(jsonb->>'value')",
     "lower((jsonb->'value')::text)",
   })
-  public void valueIndex(String index) {
+  public void trueOrderByUsesIndex(String index) {
     runSqlStatement("DROP INDEX IF EXISTS idx_value;");
     runSqlStatement("CREATE INDEX idx_value ON config_data ((" + index + "))");
     in100ms("WHERE TRUE ORDER BY " + index + " ASC  LIMIT 30;");
@@ -96,7 +108,7 @@ public class IndexPerformanceTest extends DatabaseTestBase {
     in100ms("WHERE " + index + " = " + match);
   }
 
-  private void like(String index, String sort) {
+  private void likeUsesIndex(String index, String sort) {
     String match = "'\"a1%\"'";
     if (index.contains("->>")) {
       match = match.replace("\"", "");
@@ -110,13 +122,13 @@ public class IndexPerformanceTest extends DatabaseTestBase {
     "jsonb->>'value'",
     "(jsonb->'value')::text",
   })
-  public void like(String index) {
+  public void likeUsesIndex(String index) {
     runSqlStatement("DROP INDEX IF EXISTS idx_value;");
     String finalIndex = "lower(f_unaccent(" + index + "))";
     runSqlStatement("CREATE INDEX idx_value ON config_data ((" + finalIndex + ") text_pattern_ops);");
     String [] sorts = { " ASC  ", " DESC " };
     for (String sort : sorts) {
-      like(index, sort);
+      likeUsesIndex(index, sort);
     }
   }
 

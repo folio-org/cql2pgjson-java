@@ -400,7 +400,22 @@ public class CQL2PgJSON {
       }
       // TODO: if (not string type) index=vals.indexJson; order.append(index + desc);
       // else
-      order.append("lower(f_unaccent(" + index + "))" + desc + ", " + index + desc);
+
+      // We assume that a CREATE INDEX for this has been installed.
+      String useCreatedIndex = "lower(f_unaccent(" + index + "))";
+      order.append(useCreatedIndex + desc);
+
+      // finalIndex is a tie without lower and/or f_unaccent
+      String finalIndex = index;
+      if (modifiers.cqlAccents != CqlAccents.RESPECT_ACCENTS) {
+        finalIndex = "f_unaccent(" + finalIndex + ")";
+      }
+      if (modifiers.cqlCase != CqlCase.RESPECT_CASE) {
+        finalIndex = "lower(" + finalIndex + ")";
+      }
+      if (! finalIndex.equals(useCreatedIndex)) {
+        order.append(", " + finalIndex + desc);
+      }
     }
     return order.toString();
   }
@@ -463,7 +478,7 @@ public class CQL2PgJSON {
    * @param s  CQL string without leading or trailing double quote
    * @return SQL LIKE string including leading and trailing single quote
    */
-  static String like(String s) {
+  static String cql2like(String s) {
     StringBuilder like = new StringBuilder("'");
     /** true if the previous character is an escaping backslash */
     boolean backslash = false;
@@ -519,7 +534,13 @@ public class CQL2PgJSON {
     return like.toString();
   }
 
-  private static String regexp(Unicode unicode, String s) {
+  /**
+   * Convert a cql string to a SQL regexp string.
+   * @param unicode  unicode equivalent class to use
+   * @param s  string to convert
+   * @return sql string
+   */
+  private static String cql2regexp(Unicode unicode, String s) {
     StringBuilder regexp = new StringBuilder();
     boolean backslash = false;
     for (char c : s.toCharArray()) {
@@ -599,7 +620,7 @@ public class CQL2PgJSON {
   @SuppressWarnings("squid:S1192")  // suppress "String literals should not be duplicated"
   private static String [] fullMatch(String textIndex, CqlModifiers modifiers, String s, boolean trueOnMatch) {
     String likeOperator = trueOnMatch ? " LIKE " : " NOT LIKE ";
-    String like = like(s);
+    String like = cql2like(s);
     String indexMatch = "lower(f_unaccent(" + textIndex + "))"
         + likeOperator + "lower(f_unaccent(" + like + "))";
     if (modifiers.cqlAccents == CqlAccents.IGNORE_ACCENTS &&
@@ -639,7 +660,7 @@ public class CQL2PgJSON {
       // A word is delimited by any of: the beginning ^ or the end $ of the field or
       // by punctuation or by whitespace.
       split[i] = textIndex + " ~ '(^|[[:punct:]]|[[:space:]])"
-          + regexp(unicode, split[i])
+          + cql2regexp(unicode, split[i])
           + "($|[[:punct:]]|[[:space:]])'";
     }
     return split;
@@ -791,8 +812,11 @@ public class CQL2PgJSON {
           " AND ", vals.indexJson, numberMatch.replace("\"", ""),
           ") OR (",
           "jsonb_typeof(", vals.indexJson, ")<>'number'",
-          " AND ", vals.indexJson, numberMatch,
-          "))");
+          " AND ", vals.indexJson, numberMatch);
+      if (numberMatch.startsWith("=")) {
+        append(s, " AND lower(f_unaccent(", vals.indexText, "))", numberMatch);
+      }
+      append(s, "))");
       return s.toString();
     }
 

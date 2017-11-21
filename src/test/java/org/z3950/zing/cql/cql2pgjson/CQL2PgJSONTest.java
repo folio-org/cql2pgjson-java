@@ -398,8 +398,8 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "\\_, '\\_' ",
     "\\\\ , '\\\\' ",
   })
-  public void like(String cql, String sql) {
-    assertThat(CQL2PgJSON.like(cql), is(sql));
+  public void cql2like(String cql, String sql) {
+    assertThat(CQL2PgJSON.cql2like(cql), is(sql));
   }
 
   @Test
