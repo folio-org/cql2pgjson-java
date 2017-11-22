@@ -371,6 +371,34 @@ public class CQL2PgJSON {
     throw new CQLFeatureUnsupportedException("Not implemented yet: " + node.getClass().getName());
   }
 
+  /**
+   * Return "lower(f_unaccent(" + term + "))".
+   * @param term  String to wrap
+   * @return wrapped term
+   */
+  private static String wrapInLowerUnaccent(String term) {
+    return "lower(f_unaccent(" + term + "))";
+  }
+
+  /**
+   * Return $term, lower($term), f_unaccent($term) or lower(f_unaccent($term))
+   * according to the cqlModifiers.  If undefined use CqlAccents.IGNORE_ACCENTS
+   * and CqlCase.IGNORE_CASE as default.
+   * @param term  the String to wrap
+   * @param cqlModifiers  what functions to use
+   * @return wrapped term
+   */
+  private static String wrapInLowerUnaccent(String term, CqlModifiers cqlModifiers) {
+    String result = term;
+    if (cqlModifiers.cqlAccents != CqlAccents.RESPECT_ACCENTS) {
+      result = "f_unaccent(" + result + ")";
+    }
+    if (cqlModifiers.cqlCase != CqlCase.RESPECT_CASE) {
+      result = "lower(" + result + ")";
+    }
+    return result;
+  }
+
   @SuppressWarnings("squid:S1192")  // suppress "String literals should not be duplicated"
   private String pg(CQLSortNode node) throws QueryValidationException {
     StringBuilder order = new StringBuilder();
@@ -472,69 +500,6 @@ public class CQL2PgJSON {
   }
 
   /**
-   * Convert a CQL string to an SQL LIKE string.
-   * CQL escapes * ? ^ \ and SQL LIKE escapes \ % _.
-   *
-   * @param s  CQL string without leading or trailing double quote
-   * @return SQL LIKE string including leading and trailing single quote
-   */
-  static String cql2like(String s) {
-    StringBuilder like = new StringBuilder("'");
-    /** true if the previous character is an escaping backslash */
-    boolean backslash = false;
-    for (char c : s.toCharArray()) {
-      switch (c) {
-      case '\\':
-        if (backslash) {
-          like.append("\\\\");
-          backslash = false;
-        } else {
-          backslash = true;
-        }
-        break;
-      case '%':
-      case '_':
-        like.append('\\').append(c);  // mask LIKE character
-        backslash = false;
-        break;
-      case '?':
-        if (backslash) {
-          like.append("\\?");
-          backslash = false;
-        } else {
-          like.append('_');
-        }
-        break;
-      case '*':
-        if (backslash) {
-          like.append("\\*");
-          backslash = false;
-        } else {
-          like.append('%');
-        }
-        break;
-      case '\'':   // a single quote '
-        // postgres requires to double a ' inside a ' terminated string.
-        like.append("''");
-        backslash = false;
-        break;
-      default:
-        like.append(c);
-        backslash = false;
-        break;
-      }
-    }
-
-    if (backslash) {
-      // a single backslash at the end is an error but we handle it gracefully matching one.
-      like.append("\\\\");
-    }
-
-    like.append('\'');  // a postgres string is terminated by a single quote
-    return like.toString();
-  }
-
-  /**
    * Convert a cql string to a SQL regexp string.
    * @param unicode  unicode equivalent class to use
    * @param s  string to convert
@@ -620,25 +585,15 @@ public class CQL2PgJSON {
   @SuppressWarnings("squid:S1192")  // suppress "String literals should not be duplicated"
   private static String [] fullMatch(String textIndex, CqlModifiers modifiers, String s, boolean trueOnMatch) {
     String likeOperator = trueOnMatch ? " LIKE " : " NOT LIKE ";
-    String like = cql2like(s);
+    String like = "'" + Cql2SqlUtil.cql2like(s) + "'";
     String indexMatch = "lower(f_unaccent(" + textIndex + "))"
         + likeOperator + "lower(f_unaccent(" + like + "))";
     if (modifiers.cqlAccents == CqlAccents.IGNORE_ACCENTS &&
         modifiers.cqlCase    == CqlCase.IGNORE_CASE         ) {
       return new String [] { indexMatch };
     }
-    if (modifiers.cqlAccents == CqlAccents.RESPECT_ACCENTS &&
-        modifiers.cqlCase    == CqlCase.RESPECT_CASE         ) {
-      return new String [] { indexMatch, textIndex + likeOperator + like };
-    }
-
-    if (modifiers.cqlAccents == CqlAccents.RESPECT_ACCENTS) {
-      return new String [] { indexMatch,
-          "lower(" + textIndex + ")" + likeOperator + "lower(" + like + ")" };
-    } else {
-      return new String [] { indexMatch,
-          "f_unaccent(" + textIndex + ")" + likeOperator + "f_unaccent(" + like + ")" };
-    }
+    return new String [] { indexMatch,
+        wrapInLowerUnaccent(textIndex, modifiers) + likeOperator + wrapInLowerUnaccent(like, modifiers) };
   }
 
   /**
@@ -654,14 +609,20 @@ public class CQL2PgJSON {
       // The variable cql contains whitespace only. honorWhitespace is not implemented yet.
       // So there is no word at all. Therefore no restrictions for matching - anything matches.
       return new String [] { textIndex + " ~ ''" };  // matches any (existing non-null) value
+      // don't use "TRUE" because that also matches when the field is not defined or is null
     }
-    Unicode unicode = unicode(modifiers);
     for (int i=0; i<split.length; i++) {
       // A word is delimited by any of: the beginning ^ or the end $ of the field or
       // by punctuation or by whitespace.
-      split[i] = textIndex + " ~ '(^|[[:punct:]]|[[:space:]])"
-          + cql2regexp(unicode, split[i])
+      String regexp = "'(^|[[:punct:]]|[[:space:]])"
+          + Cql2SqlUtil.cql2regexp(split[i])
           + "($|[[:punct:]]|[[:space:]])'";
+      split[i] = wrapInLowerUnaccent(textIndex) + " ~ " + wrapInLowerUnaccent(regexp);
+      if (modifiers.cqlAccents == CqlAccents.RESPECT_ACCENTS ||
+          modifiers.cqlCase == CqlCase.RESPECT_CASE) {
+        split[i] += " AND " + wrapInLowerUnaccent(textIndex, modifiers)
+                    + " ~ " + wrapInLowerUnaccent(regexp,    modifiers);
+      }
     }
     return split;
   }
