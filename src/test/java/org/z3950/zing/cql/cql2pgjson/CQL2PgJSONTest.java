@@ -18,7 +18,6 @@ import java.util.Locale;
 import java.util.Map;
 
 import org.junit.AfterClass;
-import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -148,6 +147,52 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "name <> \"Lea Long\"           # Jo Jane; Ka Keller",
   })
   public void basic(String testcase) {
+    select(testcase);
+  }
+
+  @Test
+  @Parameters({
+    "name all \"\"                         # Jo Jane; Ka Keller; Lea Long",
+    "name all Lea                          # Lea Long",
+    "name all Long                         # Lea Long",
+    "name all \"Lea Long\"                 # Lea Long",
+    "name all \"Long Lea\"                 # Lea Long",
+    "email all \"com example ka\"          # Ka Keller",
+    "email all \"com example\"             # Jo Jane; Ka Keller; Lea Long",
+    "email all \"ka@example.\"             # Ka Keller",
+    "email all \"@example.com\"            # Jo Jane; Ka Keller; Lea Long",
+    "email all example.com                 # Jo Jane; Ka Keller; Lea Long",
+    "email all/respectCase example.com     # Jo Jane; Ka Keller; Lea Long",
+    "email all/respectCase Example.com     #",
+    "email all/respectAccents Example.com  # Jo Jane; Ka Keller; Lea Long",
+    "email all/respectAccents Exämple.com  #",
+  })
+  public void all(String testcase) {
+    select(testcase);
+  }
+
+  @Test
+  @Parameters({
+    "name adj \"\"                         # Jo Jane; Ka Keller; Lea Long",
+    "name adj Lea                          # Lea Long",
+    "name adj Long                         # Lea Long",
+    "name adj \"Lea Long\"                 # Lea Long",
+    "name adj \"Long Lea\"                 #",
+    "email adj \"ka example com\"          # Ka Keller",
+    "email adj \"ka example\"              # Ka Keller",
+    "email adj \"example com\"             # Jo Jane; Ka Keller; Lea Long",
+    "email adj \"ka@example.com\"          # Ka Keller",
+    "email adj \"ka@example\"              # Ka Keller",
+    "email adj \"ka@example.\"             # Ka Keller",
+    "email adj \"example.com\"             # Jo Jane; Ka Keller; Lea Long",
+    "email adj \"@example.com\"            # Jo Jane; Ka Keller; Lea Long",
+    "email adj example.com                 # Jo Jane; Ka Keller; Lea Long",
+    "email adj/respectCase example.com     # Jo Jane; Ka Keller; Lea Long",
+    "email adj/respectCase Example.com     #",
+    "email adj/respectAccents Example.com  # Jo Jane; Ka Keller; Lea Long",
+    "email adj/respectAccents Exämple.com  #",
+  })
+  public void adj(String testcase) {
     select(testcase);
   }
 
