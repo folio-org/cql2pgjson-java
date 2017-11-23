@@ -1,6 +1,9 @@
 package org.z3950.zing.cql.cql2pgjson;
 
+import static org.hamcrest.CoreMatchers.allOf;
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -23,15 +26,13 @@ public class MultiFieldProcessingTest {
   @Test
   public void testApplicationOfFieldNamesWithoutSchema() throws FieldException, QueryValidationException {
     CQL2PgJSON converter = new CQL2PgJSON( Arrays.asList("field1","field2") );
-    assertEquals(
-        "field1->>'name' ~ '(^|[[:punct:]]|[[:space:]])[VvᵛᵥṼṽṾṿⅤⅴⓋⓥⱽＶｖ]($|[[:punct:]]|[[:space:]])'",
-        converter.cql2pgJson("field1.name=v"));
-    assertEquals(
-        "field2->>'name' ~ '(^|[[:punct:]]|[[:space:]])[vᵛᵥṽṿⅴⓥｖ]($|[[:punct:]]|[[:space:]])'",
-        converter.cql2pgJson("field2.name=/respectCase v"));
-    assertEquals(
-        "field1->>'name' ~ '(^|[[:punct:]]|[[:space:]])[Vv]($|[[:punct:]]|[[:space:]])'",
-        converter.cql2pgJson("name=/respectAccents v"));
+    assertThat(converter.cql2pgJson("field1.name=v"),
+        containsString("lower(f_unaccent(field1->>'name')) ~ lower(f_unaccent('"));
+    assertThat(converter.cql2pgJson("field2.name=/respectCase v"),
+        containsString("f_unaccent(field2->>'name') ~ f_unaccent('"));
+    assertThat(converter.cql2pgJson("name=/respectAccents v"),
+        containsString("lower(field1->>'name') ~ lower('"));
+
   }
 
   @Test
@@ -41,15 +42,12 @@ public class MultiFieldProcessingTest {
     fieldsAndSchemas.put("field1", Util.getResource("userdata.json"));
     fieldsAndSchemas.put("field2", Util.getResource("userdata.json"));
     CQL2PgJSON converter = new CQL2PgJSON( fieldsAndSchemas );
-    assertEquals(
-        "field1->>'name' ~ '(^|[[:punct:]]|[[:space:]])[VvᵛᵥṼṽṾṿⅤⅴⓋⓥⱽＶｖ]($|[[:punct:]]|[[:space:]])'",
-        converter.cql2pgJson("field1.name=v"));
-    assertEquals(
-        "field2->>'name' ~ '(^|[[:punct:]]|[[:space:]])[vᵛᵥṽṿⅴⓥｖ]($|[[:punct:]]|[[:space:]])'",
-        converter.cql2pgJson("field2.name=/respectCase v"));
-    assertEquals(
-        "field1->>'name' ~ '(^|[[:punct:]]|[[:space:]])[Vv]($|[[:punct:]]|[[:space:]])'",
-        converter.cql2pgJson("name=/respectAccents v"));
+    assertThat(converter.cql2pgJson("field1.name=v"),
+        containsString("lower(f_unaccent(field1->>'name')) ~ lower(f_unaccent('"));
+    assertThat(converter.cql2pgJson("field2.name=/respectCase v"),
+        containsString("f_unaccent(field2->>'name') ~ f_unaccent('"));
+    assertThat(converter.cql2pgJson("name=/respectAccents v"),
+        containsString("lower(field1->>'name') ~ lower('"));
   }
 
   @Test
@@ -57,17 +55,14 @@ public class MultiFieldProcessingTest {
       throws FieldException, QueryValidationException, ServerChoiceIndexesException {
     CQL2PgJSON converter = new CQL2PgJSON( Arrays.asList("field1","field2") );
     converter.setServerChoiceIndexes(Arrays.asList("field1.name"));
-    assertEquals(
-        "field1->>'name' ~ '(^|[[:punct:]]|[[:space:]])[VvᵛᵥṼṽṾṿⅤⅴⓋⓥⱽＶｖ]($|[[:punct:]]|[[:space:]])'",
-        converter.cql2pgJson("v"));
+    assertThat(converter.cql2pgJson("v"),
+        containsString("lower(f_unaccent(field1->>'name')) ~ lower(f_unaccent('"));
     converter.setServerChoiceIndexes(Arrays.asList("field2.name"));
-    assertEquals(
-        "field2->>'name' ~ '(^|[[:punct:]]|[[:space:]])[VvᵛᵥṼṽṾṿⅤⅴⓋⓥⱽＶｖ]($|[[:punct:]]|[[:space:]])'",
-        converter.cql2pgJson("v"));
+    assertThat(converter.cql2pgJson("v"),
+        containsString("lower(f_unaccent(field2->>'name')) ~ lower(f_unaccent('"));
     converter.setServerChoiceIndexes(Arrays.asList("name"));
-    assertEquals(
-        "field1->>'name' ~ '(^|[[:punct:]]|[[:space:]])[VvᵛᵥṼṽṾṿⅤⅴⓋⓥⱽＶｖ]($|[[:punct:]]|[[:space:]])'",
-        converter.cql2pgJson("v"));
+    assertThat(converter.cql2pgJson("v"),
+        containsString("lower(f_unaccent(field1->>'name')) ~ lower(f_unaccent('"));
   }
 
   @Test(expected = QueryValidationException.class)
@@ -83,15 +78,13 @@ public class MultiFieldProcessingTest {
   @Test
   public void testMixedFieldQuery() throws FieldException, QueryValidationException {
     CQL2PgJSON converter = new CQL2PgJSON( Arrays.asList("field1","field2") );
-    String expected =
-        "(field1->>'name' ~ '(^|[[:punct:]]|[[:space:]])Smith($|[[:punct:]]|[[:space:]])')"
-        + " AND (field1->>'email' ~ '(^|[[:punct:]]|[[:space:]])[Gg][Mm][Aa][Iiı][Ll]\\.[Cc][Oo][Mm]($|[[:punct:]]|[[:space:]])')"
-        + " ORDER BY lower(f_unaccent(field2->>'name'))";
-    assertEquals(expected,
-        converter.cql2pgJson(
+    assertThat(converter.cql2pgJson(
             "name =/respectCase/respectAccents Smith"
                 + " AND email =/respectAccents gmail.com"
-                + " sortBy field2.name/sort.ascending"));
+                + " sortBy field2.name/sort.ascending"),
+        allOf(containsString("field1->>'name' ~ '"),
+              containsString("lower(field1->>'email') ~ lower('"),
+              containsString("ORDER BY lower(f_unaccent(field2->>'name'))")));
   }
 
 }
