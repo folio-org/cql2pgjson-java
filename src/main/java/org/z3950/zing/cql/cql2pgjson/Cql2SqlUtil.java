@@ -79,14 +79,14 @@ public final class Cql2SqlUtil {
    */
   @SuppressWarnings("squid:S3776")  // suppress "Cognitive Complexity of methods should not be too high"
   static String cql2regexp(String s) {
-    StringBuilder like = new StringBuilder();
+    StringBuilder regexp = new StringBuilder();
     /** true if the previous character is an escaping backslash */
     boolean backslash = false;
     for (char c : s.toCharArray()) {
       switch (c) {
       case '\\':
         if (backslash) {
-          like.append("\\\\");
+          regexp.append("\\\\");
           backslash = false;
         } else {
           backslash = true;
@@ -100,40 +100,40 @@ public final class Cql2SqlUtil {
       case '$':
         // Mask any character that is special in regexp. See list at
         // https://www.postgresql.org/docs/current/static/functions-matching.html#POSIX-SYNTAX-DETAILS
-        like.append('\\').append(c);
+        regexp.append('\\').append(c);
         backslash = false;
         break;
       case '?':
         if (backslash) {
-          like.append("\\?");
+          regexp.append("\\?");
           backslash = false;
         } else {
-          like.append('.');
+          regexp.append('.');
         }
         break;
       case '*':
         if (backslash) {
-          like.append("\\*");
+          regexp.append("\\*");
           backslash = false;
         } else {
-          like.append(".*");
+          regexp.append(".*");
         }
         break;
       case '\'':   // a single quote '
         // postgres requires to double a ' inside a ' terminated string.
-        like.append("''");
+        regexp.append("''");
         backslash = false;
         break;
       case '^':    // start of string or end of string
         if (backslash) {
-          like.append("\\^");
+          regexp.append("\\^");
           backslash = false;
         } else {
-          like.append("(^|$)");
+          regexp.append("(^|$)");
         }
         break;
       default:
-        like.append(c);
+        regexp.append(c);
         backslash = false;
         break;
       }
@@ -141,9 +141,9 @@ public final class Cql2SqlUtil {
 
     if (backslash) {
       // a single backslash at the end is an error but we handle it gracefully matching one.
-      like.append("\\\\");
+      regexp.append("\\\\");
     }
 
-    return like.toString();
+    return regexp.toString();
   }
 }
