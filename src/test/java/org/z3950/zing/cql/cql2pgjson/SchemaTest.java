@@ -74,4 +74,16 @@ public class SchemaTest {
           + "(parent.shirt.color, parent.pants.color, parent.shoes.color, child.pet.color)");
     }
   }
+
+  @Test(expected = SchemaException.class)
+  public void objectWithoutType() throws SchemaException, IOException {
+    new Schema("{ \"title\": \"T\", \"type\": \"object\", \"properties\": { "
+        + "\"foo\": { \"type\": \"array\", \"items\" : {} } } }");
+  }
+
+  @Test(expected = SchemaException.class)
+  public void arrayWithoutContent() throws SchemaException, IOException {
+    new Schema("{ \"title\": \"T\", \"type\": \"object\", \"properties\": { "
+        + "\"foo\": { \"type\": \"array\" } }");
+  }
 }
