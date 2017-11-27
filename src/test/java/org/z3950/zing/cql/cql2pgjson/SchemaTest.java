@@ -1,42 +1,56 @@
 package org.z3950.zing.cql.cql2pgjson;
 
+import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import junitparams.JUnitParamsRunner;
+import junitparams.Parameters;
+
+@RunWith(JUnitParamsRunner.class)
 public class SchemaTest {
 
   @Test
-  public void validFieldLookupsTest() throws QueryValidationException, IOException, SchemaException {
-    Schema s = new Schema( Util.getResource("userdata.json") );
-    assertEquals(s.mapFieldNameAgainstSchema("city"),          "address.city");
-    assertEquals(s.mapFieldNameAgainstSchema("address.city"),  "address.city");
-    assertEquals(s.mapFieldNameAgainstSchema("zip"),           "address.zip");
-    assertEquals(s.mapFieldNameAgainstSchema("address.zip"),   "address.zip");
-    assertEquals(s.mapFieldNameAgainstSchema("name"),          "name");
+  @Parameters({
+    "city,         address.city",
+    "address.city, address.city",
+    "zip,          address.zip",
+    "address.zip,  address.zip",
+    "name,         name",
+  })
+  public void validFieldLookupsTest(String field, String fullField) throws Exception {
+    Schema s = new Schema(Util.getResource("userdata.json"));
+    assertThat(s.mapFieldNameAgainstSchema(field).getPath(), is(fullField));
   }
 
   /* Both `type` and `properties` are structural keywords, but can still be used for attributes. */
   @Test
-  public void noReservedWordsTest() throws QueryValidationException, IOException, SchemaException {
-    Schema s = new Schema( Util.getResource("complex.json") );
-    assertEquals(s.mapFieldNameAgainstSchema("type"),          "child.pet.type");
-    assertEquals(s.mapFieldNameAgainstSchema("pet.type"),      "child.pet.type");
-    assertEquals(s.mapFieldNameAgainstSchema("child.pet.type"),"child.pet.type");
-    assertEquals(s.mapFieldNameAgainstSchema("properties"),    "parent.properties");
-    assertEquals(s.mapFieldNameAgainstSchema("favoriteColor"), "child.favoriteColor");
+  @Parameters({
+    "type,           child.pet.type",
+    "pet.type,       child.pet.type",
+    "child.pet.type, child.pet.type",
+    "properties,     parent.properties",
+    "favoriteColor,  child.favoriteColor",
+  })
+  public void noReservedWordsTest(String field, String fullField) throws Exception {
+    Schema s = new Schema(Util.getResource("complex.json"));
+    assertThat(s.mapFieldNameAgainstSchema(field).getPath(), is(fullField));
   }
 
   @Test
-  public void validFieldsWithTypeSpeficiedTest() throws QueryValidationException, IOException, SchemaException {
-    Schema s = new Schema( Util.getResource("userdata.json") );
-    assertEquals(s.mapFieldNameAndTypeAgainstSchema("city","string"),        "address.city");
-    assertEquals(s.mapFieldNameAndTypeAgainstSchema("address.city","string"),"address.city");
-    assertEquals(s.mapFieldNameAndTypeAgainstSchema("name","string"),        "name");
-    s = new Schema( Util.getResource("complex.json") ); // other size attributes are integers
-    assertEquals(s.mapFieldNameAndTypeAgainstSchema("size","string"),        "parent.shirt.size");
+  @Parameters({
+    "userdata.json, city,         address.city",
+    "userdata.json, address.city, address.city",
+    "userdata.json, name,         name",
+    "complex.json,  size,         parent.shirt.size",  // other size attributes are integers
+  })
+  public void validFieldsWithTypeSpeficiedTest(String schema, String field, String fullField) throws Exception {
+    Schema s = new Schema(Util.getResource(schema));
+    assertThat(s.mapFieldNameAndTypeAgainstSchema(field, "string").getPath(), is(fullField));
   }
 
   @Test(expected=QueryValidationException.class)

@@ -18,7 +18,6 @@ import java.util.Locale;
 import java.util.Map;
 
 import org.junit.AfterClass;
-import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -353,7 +352,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     select(testcase);
   }
 
-  @Ignore("Fails with embedded postgres. Local issue?")
+  @Ignore("Needs locale/collation. Currently is C.")
   @Test
   @Parameters({
     "address.city= /respectAccents SØvang # Lea Long",
@@ -426,11 +425,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "example   sortBy name                         # Jo Jane; Ka Keller; Lea Long",
     "example   sortBy name/sort.ascending          # Jo Jane; Ka Keller; Lea Long",
     "example   sortBy name/sort.descending         # Lea Long; Ka Keller; Jo Jane",
-    "example   sortBy notExistingIndex address.zip # Ka Keller; Jo Jane; Lea Long",
+    "example   sortBy address.zip                  # Ka Keller; Jo Jane; Lea Long",
     "name==*a* sortBy name                         # Jo Jane; Ka Keller; Lea Long",
     "name==*a* sortBy name/sort.ascending          # Jo Jane; Ka Keller; Lea Long",
     "name==*a* sortBy name/sort.descending         # Lea Long; Ka Keller; Jo Jane",
-    "name==*a* sortBy notExistingIndex address.zip # Ka Keller; Jo Jane; Lea Long",
+    "name==*a* sortBy address.zip                  # Ka Keller; Jo Jane; Lea Long",
   })
   public void sort(String testcase) {
     select(testcase);
@@ -438,7 +437,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "cql.allRecords=1 sortBy address.zip  # a; b; c; d; e; f; g; h",
+    "cql.allRecords=1 sortBy address.zip name  # a; b; c; d; e; f; g; h",
   })
   public void sortNumber(String testcase) {
     select("special.sql", testcase);
@@ -458,12 +457,25 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "address.zip>=17                # g; h",
     "address.zip>=18                # h",
     "address.zip>=19                #",
-    "address.zip<>5                 # a; b; c; d; f; g; h",
+    "address.zip<>4                 # a; b; c; g; h",
+    "address.zip<>4.0               # a; b; c; g; h",
+    "address.zip<>4e0               # a; b; c; g; h",
     "address.zip=1                  # a",  // must not match 17, 18
     "address.zip==1                 # a",
   })
   public void compareNumber(String testcase) {
     select("special.sql", testcase);
+  }
+
+  @Test
+  @Parameters({
+    "address.zip<>4                 # a; b; c; g; h",
+    "address.zip<>4.0               # a; b; c; g; h",
+    "address.zip<>4e0               # a; b; c; g; h",
+  })
+  public void compareNumberNoSchema(String testcase) throws CQL2PgJSONException {
+    CQL2PgJSON aCql2PgJson = new CQL2PgJSON("users.user_data");  // without schema
+    select(aCql2PgJson, "special.sql", testcase);
   }
 
   @Test(expected = CQLFeatureUnsupportedException.class)
@@ -484,6 +496,16 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   })
   public void compareString(String testcase) {
     select(testcase);
+  }
+
+  @Test
+  @Parameters({
+    "name<>4              # Jo Jane; Ka Keller; Lea Long",
+    "name=4               #",
+  })
+  public void compareStringNoSchema(String testcase) throws FieldException {
+    CQL2PgJSON aCql2PgJson = new CQL2PgJSON("users.user_data");  // without schema
+    select(aCql2PgJson, "jo-ka-lea.sql", testcase);
   }
 
   @Test
@@ -615,5 +637,12 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON(
         "users.user_data", Util.getResource("userdata.json"), Arrays.asList("name"));
     cql2pgJsonException(aCql2pgJson, "foobar=x", QueryValidationException.class);
+  }
+
+  @Test
+  public void sortIndexNotInSchema() throws IOException, CQL2PgJSONException {
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON(
+        "users.user_data", Util.getResource("userdata.json"), Arrays.asList("name"));
+    cql2pgJsonException(aCql2pgJson, "name<>x sortBy notExistingIndex", QueryValidationException.class);
   }
 }

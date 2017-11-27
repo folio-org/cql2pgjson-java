@@ -11,19 +11,58 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 
+/**
+ * Resolves index names against a JSON schema. Can return the fully qualified index
+ * and the cqlRelation for it.
+ */
 public class Schema {
 
   /* Private use variables and object structures*/
   private final Map<String,JsonPath> byNodeName = new HashMap<>();
-  private final static String itemsUsage =
+  private static final String ITEMS_USAGE_MESSAGE =
       "`items` is a reserved field name, whose value should be a Json object containing `type` field.";
 
-  private class JsonPath {
+  /**
+   * Container for path and RAML type of a field.
+   */
+  public static class Field {
+    private final String path;
+    private final String type;
+
+    Field(String path, String type) {
+      this.path = path;
+      if (type == null) {
+        this.type = "";
+      } else {
+        this.type = type;
+      }
+    }
+
+    /**
+     * The full path of this field.
+     * @return full path
+     */
+    String getPath() {
+      return path;
+    }
+
+    /**
+     * RAML type like integer, number, string, boolean, datetime, ...
+     * "" for unknown.
+     * @return the RAML type.
+     */
+    String getType() {
+      return type;
+    }
+  }
+
+  private static class JsonPath {
     String path = null;
     String type = null;
     String items = null;
   }
-  private class MultipleJsonPath extends JsonPath {
+
+  private static class MultipleJsonPath extends JsonPath {
     List<JsonPath> paths = new ArrayList<>();
   }
   /* End of private use variables and object structures*/
@@ -50,22 +89,19 @@ public class Schema {
   }
 
   /**
-   * Confirm that a particular field is valid and unambiguous for a given schema. The return
-   * value with be the fully-specified version of the (possibly abbreviated) field name. For example,
-   * looking up 'zip' may return 'address.zip'.
-   * @param index
-   * @return fully-specified version of field value.
-   * @throws QueryValidationException
+   * Confirm that a particular field is valid and unambiguous for a given schema. Returns a Field
+   * with type and the fully-specified version of the (possibly abbreviated) field name. For example,
+   * looking up 'zip' may return 'address.zip' as path.
+   * @param index  field name, may be abbreviated
+   * @return type and path of the field.
+   * @throws QueryValidationException on ambiguous index
    */
-  public String mapFieldNameAgainstSchema(String index) throws QueryValidationException {
-    if (! byNodeName.containsKey(index))
-      throw new QueryValidationException( "Field name '"+index+"' not present in index." );
-    JsonPath path = byNodeName.get(index);
+  public Field mapFieldNameAgainstSchema(String index) throws QueryValidationException {
+    JsonPath path = getPath(index);
     if (path instanceof MultipleJsonPath) {
-      throw new QueryAmbiguousException( "Field name '"+index+"' was ambiguous in index. ("+
-          ((MultipleJsonPath) path).paths.stream().map(p->p.path).collect(Collectors.joining(", "))+")");
+      throw queryAmbiguousException(index, null, ((MultipleJsonPath) path).paths);
     }
-    return path.path;
+    return new Field(path.path, path.type);
   }
 
   /**
@@ -77,29 +113,71 @@ public class Schema {
    * @param index
    * @param type
    * @return fully-specified version of field value.
-   * @throws QueryValidationException
+   * @throws QueryValidationException  if index and type is not found or ambiguous
    */
-  public String mapFieldNameAndTypeAgainstSchema(String index, String type) throws QueryValidationException {
-    if (! byNodeName.containsKey(index))
-      throw new QueryValidationException( "Field name '"+index+"' not present in index." );
-    JsonPath path = byNodeName.get(index);
+  public Field mapFieldNameAndTypeAgainstSchema(String index, String type) throws QueryValidationException {
+    JsonPath path = getPath(index);
     if (path instanceof MultipleJsonPath) {
       List<JsonPath> matchingPaths = new ArrayList<>();
-      for (JsonPath p : ((MultipleJsonPath)path).paths)
-        if (type.equals(p.type) || type.equals(p.items))
+      for (JsonPath p : ((MultipleJsonPath)path).paths) {
+        if (type.equals(p.type) || type.equals(p.items)) {
           matchingPaths.add(p);
-      if (matchingPaths.size() == 0)
-        throw new QueryValidationException( "Field name '"+index+"' with type '"+type+"' not present in index." );
-      else if (matchingPaths.size() == 1)
-        return matchingPaths.get(0).path;
-      throw new QueryAmbiguousException( "Field name '"+index+"' with type '"+type+"' was ambiguous in index. ("+
-          matchingPaths.stream().map(p->p.path).collect(Collectors.joining(", "))+")");
+        }
+      }
+      if (matchingPaths.isEmpty()) {
+        throw queryValidationException(index, type);
+      }
+      if (matchingPaths.size() > 1) {
+        throw queryAmbiguousException(index, type, matchingPaths);
+      }
+      path = matchingPaths.get(0);
     }
-    if (type.equals(path.type) || type.equals(path.items))
-        return path.path;
-    throw new QueryValidationException( "Field name '"+index+"' with type '"+type+"' not present in index." );
+    if (! type.equals(path.type) && ! type.equals(path.items)) {
+      throw queryValidationException(index, type);
+    }
+    return new Field(path.path, path.type);
   }
 
+  /**
+   * Get JsonPath for index.
+   * @param index the index to search for
+   * @return the path
+   * @throws QueryValidationException  if index is not present.
+   */
+  private JsonPath getPath(String index) throws QueryValidationException {
+    if (! byNodeName.containsKey(index)) {
+      throw queryValidationException(index, null);
+    }
+    return byNodeName.get(index);
+  }
+
+  /**
+   * Create a QueryAmbiguousException with message naming index, type and paths.
+   * @param index  index
+   * @param type  type (may be null)
+   * @param paths  the paths that match index and type
+   * @return the exception
+   */
+  private QueryAmbiguousException queryAmbiguousException(String index, String type, List<JsonPath> paths) {
+    return new QueryAmbiguousException(
+        "Field name '" + index
+        + (type == null ? "" : "' with type '" + type)
+        + "' was ambiguous in index. ("
+        + paths.stream().map(p->p.path).collect(Collectors.joining(", ")) + ")");
+  }
+
+  /**
+   * Create a QueryValidationExceptionn for index and type that are not found.
+   * @param index  index
+   * @param type  type (may be null)
+   * @return the exception
+   */
+  private QueryValidationException queryValidationException(String index, String type) {
+    return new QueryValidationException(
+        "Field name '" + index
+        + (type == null ? "" : "' with type '" + type)
+        + "' is not present in index.");
+  }
 
   /* Private methods involved with Schema validation */
   private void iteratePropertiesArray(JsonParser jp, List<String> breadcrumbs) throws IOException, SchemaException {
@@ -145,7 +223,7 @@ public class Schema {
       return;
     if (type.equals("array") && items == null)
         throw new SchemaException("Array type nodes require an items object to identify the object type in the array."
-            +itemsUsage);
+            +ITEMS_USAGE_MESSAGE);
     breadcrumbs.add(fieldName);
     JsonPath path = new JsonPath();
     path.path = String.join(".", breadcrumbs);
@@ -178,7 +256,7 @@ public class Schema {
     JsonToken jt = jp.nextToken();
     String type = null;
     if (!jt.equals(JsonToken.START_OBJECT))
-      throw new SchemaException(itemsUsage);
+      throw new SchemaException(ITEMS_USAGE_MESSAGE);
     while ( ! jp.isClosed() && ! jt.equals(JsonToken.END_OBJECT)) {
       jt = jp.nextToken();
       if (jt.equals(JsonToken.FIELD_NAME)) {
@@ -191,7 +269,7 @@ public class Schema {
       }
     }
     if (type == null)
-      throw new SchemaException(itemsUsage);
+      throw new SchemaException(ITEMS_USAGE_MESSAGE);
     return type;
   }
 
