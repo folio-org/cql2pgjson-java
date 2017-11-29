@@ -71,6 +71,8 @@ public class CQL2PgJSON {
   private class IndexTextAndJsonValues {
     String indexText;
     String indexJson;
+    /** the RAML type like integer, number, string, boolean, datetime, ... "" for unknown. */
+    String type = "";
   }
 
   private class CqlModifiers {
@@ -415,23 +417,34 @@ public class CQL2PgJSON {
         desc = " DESC";
       }  // ASC not needed, it's Postgres' default
 
-      String index = modifierSet.getBase();
+      IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
       if (this.jsonField != null) {
-        index = index2sqlText(this.jsonField, index);
+        if (schema != null) {
+          Schema.Field field = schema.mapFieldNameAgainstSchema(modifierSet.getBase());
+          vals.type = field.getType();
+          vals.indexJson = index2sqlJson(jsonField, field.getPath());
+          vals.indexText = index2sqlText(jsonField, field.getPath());
+        }
       } else {
         // multifield
-        IndexTextAndJsonValues vals = multiFieldProcessing( index );
-        index = vals.indexText;
+        vals = multiFieldProcessing(modifierSet.getBase());
       }
-      // TODO: if (not string type) index=vals.indexJson; order.append(index + desc);
-      // else
+
+      switch (vals.type) {
+      case "number":
+      case "integer":
+        order.append(vals.indexJson).append(desc);
+        continue;
+      default:
+        break;
+      }
 
       // We assume that a CREATE INDEX for this has been installed.
-      String useCreatedIndex = wrapInLowerUnaccent(index);
+      String useCreatedIndex = wrapInLowerUnaccent(vals.indexText);
       order.append(useCreatedIndex + desc);
 
       // finalIndex is a tie without lower and/or f_unaccent
-      String finalIndex = wrapInLowerUnaccent(index, modifiers);
+      String finalIndex = wrapInLowerUnaccent(vals.indexText, modifiers);
       if (! finalIndex.equals(useCreatedIndex)) {
         order.append(", " + finalIndex + desc);
       }
@@ -657,13 +670,15 @@ public class CQL2PgJSON {
     } else {
       String finalIndex = index;
       if (schema != null) {
-        finalIndex = schema.mapFieldNameAgainstSchema(index);
+        Schema.Field field = schema.mapFieldNameAgainstSchema(index);
+        finalIndex = field.getPath();
+        vals.type = field.getType();
       }
       vals.indexJson = index2sqlJson(this.jsonField, finalIndex);
       vals.indexText = index2sqlText(this.jsonField, finalIndex);
     }
 
-    if (numberMatch != null) {
+    if (vals.type.equals("") && numberMatch != null) {
       // numberMatch: Both sides of the comparison operator are JSONB expressions.
 
       // When comparing two JSONBs a JSONB containing any string is bigger than
@@ -671,8 +686,8 @@ public class CQL2PgJSON {
       // Therefore we need to check the jsonb_typeof, which is supported by a
       // ((jsonb->'amount')) index.
 
-      /* (   ( jsonb_typeof(jsonb->'amount')= 'numeric' AND jsonb->'amount' <  '100'  )
-       *  OR ( jsonb_typeof(jsonb->'amount')<>'numeric' AND jsonb->'amount' < '"100"' )
+      /* (   ( jsonb_typeof(jsonb->'amount')= 'number' AND jsonb->'amount' <  '100'  )
+       *  OR ( jsonb_typeof(jsonb->'amount')<>'number' AND jsonb->'amount' < '"100"' )
        * )
        */
       StringBuilder s = new StringBuilder();
@@ -688,6 +703,11 @@ public class CQL2PgJSON {
       }
       append(s, "))");
       return s.toString();
+    }
+
+    if (numberMatch != null &&
+        ("integer".equals(vals.type) || "number".equals(vals.type))) {
+        return vals.indexJson + numberMatch.replace("\"", "");
     }
 
     String [] matches = match(vals.indexText, node);
@@ -707,7 +727,9 @@ public class CQL2PgJSON {
       if (index.startsWith(f+'.')) {
         String indexTermWithinField;
         if (schemas.containsKey(f)) {
-          indexTermWithinField = schemas.get(f).mapFieldNameAgainstSchema( index.substring(f.length()+1) );
+          Schema.Field field = schemas.get(f).mapFieldNameAgainstSchema( index.substring(f.length()+1) );
+          indexTermWithinField = field.getPath();
+          vals.type = field.getType();
         } else {
           indexTermWithinField = index.substring(f.length()+1);
         }
@@ -720,8 +742,10 @@ public class CQL2PgJSON {
     // if no json field name prefix is found, the default field name gets applied.
     String defaultJsonField = this.jsonFields.get(0);
     String finalIndex = index;
-    if (this.schemas.containsKey(defaultJsonField)) {
-      finalIndex = this.schemas.get(defaultJsonField).mapFieldNameAgainstSchema(index);
+    if (schemas.containsKey(defaultJsonField)) {
+      Schema.Field field = schemas.get(defaultJsonField).mapFieldNameAgainstSchema(index);
+      finalIndex = field.getPath();
+      vals.type = field.getType();
     }
     vals.indexJson = index2sqlJson(defaultJsonField, finalIndex);
     vals.indexText = index2sqlText(defaultJsonField, finalIndex);
