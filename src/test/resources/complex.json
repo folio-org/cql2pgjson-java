@@ -10,6 +10,7 @@
         "properties" : { "type" : "integer" },
         "address" : {
           "type"       : "object",
+          "someOtherField" : "foo Bar",
           "properties" : {
             "streetNumber" : { "type" : "string" },
             "street"       : { "type" : "string" },
