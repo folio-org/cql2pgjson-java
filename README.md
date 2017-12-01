@@ -48,13 +48,19 @@ field name:
     where = cql2pgJson.cql2pgJson( "users.uncontrolled_data.name=Zanzibar" );
     where = cql2pgJson.cql2pgJson( "name=Miller" ); // implies users.user_data
 
+## Relations
+
 Only these relations have been implemented yet:
 
-* `=` (substring match)
-* `==` (exact match)
+* `=` (substring match, for example `title = Potter`)
+* `==` (exact match, for example `barcode == 883746123`)
 * `>` `>=` `<` `<=` `<>` (comparison for both strings and numbers)
 
 Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
+
+Use quotes if the search string contains a space, for example `title = "Harry Potter"`.
+
+## Modifiers
 
 Functional modifiers: `ignoreCase`, `respectCase` and `ignoreAccents`, `respectAccents`
 are implemented for all characters (ASCII and Unicode). Default is `ignoreCase` and `ignoreAccents`.
@@ -67,6 +73,8 @@ Matching modifiers: Only `masked` is implemented, not `unmasked`, `regexp`,
 Word begin and word end in JSON is only detected at whitespace and punctuation characters
 from the ASCII charset, not from other Unicode charsets.
 
+## Matching all records
+
 A search matching all records in the target index can be executed with a
 `cql.allRecords=1` query. `cql.allRecords=1` can be used alone or as part of
 a more complex query, for example
@@ -76,6 +84,8 @@ a more complex query, for example
    as a word or where name is not defined.
 * `name="" NOT name=Smith` matches all records where name is defined but does not contain
    Smith as a word.
+
+## Matching array elements
 
 For matching the elements of an array use these queries (assuming that lang is either an array or not defined, and assuming
 an array element value does not contain double quotes):
@@ -88,6 +98,8 @@ an array element value does not contain double quotes):
   and does not contain the value en
 * `lang = ""` for matching records where lang is defined
 * `cql.allRecords=1 NOT lang = ""` for matching records where lang is not defined
+
+## Exceptions
 
 All locally produced Exceptions are derived from a single parent so they can be caught collectively
 or individually. Methods that load a JSON data object model pass in the identity of the model as a
