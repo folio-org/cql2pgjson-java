@@ -1,3 +1,7 @@
+## 1.3.1 2017-12-01
+ * UICHKOUT-39: Unit test for number in string field
+ * CQLPG-4: Correctly handle numbers in number and string fields.
+
 ## 1.3.0 2017-11-28
  * CQLPG-6: Replace regexp by LIKE for <> and == for performance
  * CQLPG-9: Use trigram matching (pg_trgm)
