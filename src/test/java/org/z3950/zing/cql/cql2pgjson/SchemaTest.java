@@ -15,6 +15,11 @@ import junitparams.Parameters;
 public class SchemaTest {
 
   @Test
+  public void emptySchema() throws Exception {
+    new Schema("{}");
+  }
+
+  @Test
   @Parameters({
     "city,         address.city",
     "address.city, address.city",
@@ -51,6 +56,12 @@ public class SchemaTest {
   public void validFieldsWithTypeSpeficiedTest(String schema, String field, String fullField) throws Exception {
     Schema s = new Schema(Util.getResource(schema));
     assertThat(s.mapFieldNameAndTypeAgainstSchema(field, "string").getPath(), is(fullField));
+  }
+
+  @Test(expected = QueryValidationException.class)
+  public void fieldsWithTypeNotFound() throws Exception {
+    Schema s = new Schema(Util.getResource("complex.json"));
+    s.mapFieldNameAndTypeAgainstSchema("size", "date");
   }
 
   @Test(expected=QueryValidationException.class)
@@ -99,5 +110,10 @@ public class SchemaTest {
   public void arrayWithoutContent() throws SchemaException, IOException {
     new Schema("{ \"title\": \"T\", \"type\": \"object\", \"properties\": { "
         + "\"foo\": { \"type\": \"array\" } }");
+  }
+
+  @Test
+  public void fieldWithNullType() {
+    assertThat(new Schema.Field("path", null).getType(), is(""));
   }
 }

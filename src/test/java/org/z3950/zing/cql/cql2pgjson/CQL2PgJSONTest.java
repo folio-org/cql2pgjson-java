@@ -254,6 +254,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   })
   public void special(String testcase) {
     select("special.sql", testcase);
+    select("special.sql", testcase.replace("==", "==/respectCase/respectAccents "));
   }
 
   @Test
