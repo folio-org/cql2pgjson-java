@@ -478,6 +478,17 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     select(aCql2PgJson, "special.sql", testcase);
   }
 
+  @Test
+  @Parameters({
+    "city =   1234                  # f",
+    "city ==  1234                  # f",
+    "city =  01234                  # h",
+    "city == 01234                  # h",
+  })
+  public void numberInStringField(String testcase) throws CQL2PgJSONException {
+    select("special.sql", testcase);
+  }
+
   @Test(expected = CQLFeatureUnsupportedException.class)
   public void compareNumberNotImplemented() throws Exception {
     // We test unreachable code because CQL2PgJSON.match(CQLTermNode) throws an exception
