@@ -2,8 +2,7 @@ package org.z3950.zing.cql.cql2pgjson;
 
 import static org.junit.Assert.fail;
 
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.io.IOException;
 
 import org.junit.AfterClass;
 import org.junit.Assume;
@@ -38,54 +37,18 @@ public class IndexPerformanceTest extends DatabaseTestBase {
     closeDatabase();
   }
 
-  static class AnalyseResult {
-    /** analyse message from Postgres */
-    String msg;
-    /** execution time in ms */
-    float executionTime;
-    /**
-     * Set msg and executionTime
-     * @param msg  analyse message from Postgres
-     * @param executionTime  execution time in ms
-     */
-    public AnalyseResult(String msg, float executionTime) {
-      this.msg = msg;
-      this.executionTime = executionTime;
-    }
-  }
-
-  /**
-   * Run sql with "EXPLAIN ANALYSE " prepended.
-   * @param sql  SQL command to run and analyse
-   * @return analyse result of the sql query
-   */
-  private AnalyseResult analyse(String sql) {
-    try (Statement statement = conn.createStatement()) {
-      statement.execute(sql);
-    } catch (SQLException e) {
-      throw new SQLRuntimeException(sql, e);
-    }
-    return new AnalyseResult("", 0);
-  }
-
-  private void in100ms(String where) {
-    long t1 = System.currentTimeMillis();
-    String analyse = explainAnalyseSql("SELECT * FROM config_data " + where);
-    long t2 = System.currentTimeMillis();
-    long ms = t2 - t1;
-    System.out.println(String.format("%6d ms %s\n%s", ms, where, analyse));
-    final long MAX = 100;
+  private void in50ms(String where) {
+    AnalyseResult analyseResult = analyse("SELECT * FROM config_data " + where);
+    float ms = analyseResult.getExecutionTimeInMs();
+    System.out.println(where);
+    System.out.println(analyseResult.getMessage());
+    final float MAX = 50;
     if (ms > MAX) {
       fail("Expected at most " + MAX + " ms, but it runs " + ms + " ms: " + where);
     }
-    if (! analyse.contains(" idx_value ")) {
+    if (! analyseResult.getMessage().contains(" idx_value ")) {
       fail("Query plan does not use idx_value: " + where);
     }
-  }
-
-  private void in100msAfterDry(String where) {
-    runSqlStatement("SELECT * FROM config_data " + where);  // dry run
-    in100ms(where);  // actual run
   }
 
   @Test
@@ -99,13 +62,13 @@ public class IndexPerformanceTest extends DatabaseTestBase {
   public void trueOrderByUsesIndex(String index) {
     runSqlStatement("DROP INDEX IF EXISTS idx_value;");
     runSqlStatement("CREATE INDEX idx_value ON config_data ((" + index + "))");
-    in100ms("WHERE TRUE ORDER BY " + index + " ASC  LIMIT 30;");
-    in100ms("WHERE TRUE ORDER BY " + index + " DESC LIMIT 30;");
+    in50ms("WHERE TRUE ORDER BY " + index + " ASC  LIMIT 30;");
+    in50ms("WHERE TRUE ORDER BY " + index + " DESC LIMIT 30;");
     String match = valueStringToFind;
     if (index.contains("->'")) {
       match = valueJsonbToFind;
     }
-    in100ms("WHERE " + index + " = " + match);
+    in50ms("WHERE " + index + " = " + match);
   }
 
   private void likeUsesIndex(String index, String sort) {
@@ -113,8 +76,8 @@ public class IndexPerformanceTest extends DatabaseTestBase {
     if (index.contains("->>")) {
       match = match.replace("\"", "");
     }
-    in100msAfterDry("WHERE lower(f_unaccent(" + index + ")) LIKE " + match
-        +       " ORDER BY lower(f_unaccent(" + index + ")) " + sort + ", " + index + sort + "LIMIT 30;");
+    in50ms("WHERE lower(f_unaccent(" + index + ")) LIKE " + match
+        + " ORDER BY lower(f_unaccent(" + index + ")) " + sort + ", " + index + sort + "LIMIT 30;");
   }
 
   @Test
@@ -133,12 +96,14 @@ public class IndexPerformanceTest extends DatabaseTestBase {
   }
 
   @Test
-  public void cqlSortBy() throws CQL2PgJSONException {
+  public void cql() throws CQL2PgJSONException, IOException {
     runSqlStatement("DROP INDEX IF EXISTS idx_value;");
     runSqlStatement("CREATE INDEX idx_value ON config_data "
         + "((lower(f_unaccent(jsonb->>'value'))) text_pattern_ops);");
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb");
-    String where = "WHERE " + cql2pgJson.cql2pgJson("value == a1* sortBy value");
-    in100msAfterDry(where);
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb", Util.getResource("indexPerformanceTest.json"));
+    in50ms("WHERE " + cql2pgJson.cql2pgJson("value == a1* sortBy value"));
+    // https://issues.folio.org/browse/UICHKOUT-39 "Checkout is broken"
+    in50ms("WHERE " + cql2pgJson.cql2pgJson("value == 036000291452 sortBy value"));
+    in50ms("WHERE " + cql2pgJson.cql2pgJson("value ==  36000291452 sortBy value"));
   }
 }
