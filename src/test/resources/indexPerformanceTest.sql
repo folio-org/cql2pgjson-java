@@ -15,9 +15,11 @@ INSERT INTO config_data
     'code',id2, 'description',description, 'value',value, 'default',true,
     'enabled',true)
   FROM (  select gen_random_uuid() AS id,
-          generate_series(1, 1000004) AS id2,
+          generate_series(1, 200004) AS id2,
           (md5(random()::text) || ' 123445 4ewfsdfqw' || now()) AS description,
           (md5(random()::text) || now()) AS value
        ) AS alias;
-UPDATE config_data SET jsonb=jsonb_set(jsonb, '{value}', '"a1b2c3d4e5f6 xxxx"')
-                   WHERE jsonb->'code'='500000';
+UPDATE config_data SET jsonb=jsonb_set(jsonb, '{value}', '"a1b2c3d4e5f6 xxxx"') WHERE jsonb->'code'='100000';
+UPDATE config_data SET jsonb=jsonb_set(jsonb, '{value}', '"036000291452"')      WHERE jsonb->'code'='100001';
+UPDATE config_data SET jsonb=jsonb_set(jsonb, '{value}', '"36000291452"')       WHERE jsonb->'code'='100002';
+ANALYSE config_data;

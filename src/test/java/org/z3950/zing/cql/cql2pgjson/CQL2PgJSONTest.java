@@ -481,13 +481,17 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "city =   1234                  # f",
-    "city ==  1234                  # f",
-    "city =  01234                  # h",
-    "city == 01234                  # h",
+    "address.city =   1234                  # f",
+    "address.city ==  1234                  # f",
+    "address.city =  01234                  # h",
+    "address.city == 01234                  # h",
   })
   public void numberInStringField(String testcase) throws CQL2PgJSONException {
+    // with schema
     select("special.sql", testcase);
+    // without schema
+    CQL2PgJSON aCql2PgJson = new CQL2PgJSON("users.user_data");
+    select(aCql2PgJson, "special.sql", testcase);
   }
 
   @Test(expected = CQLFeatureUnsupportedException.class)

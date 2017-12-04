@@ -440,14 +440,7 @@ public class CQL2PgJSON {
       }
 
       // We assume that a CREATE INDEX for this has been installed.
-      String useCreatedIndex = wrapInLowerUnaccent(vals.indexText);
-      order.append(useCreatedIndex + desc);
-
-      // finalIndex is a tie without lower and/or f_unaccent
-      String finalIndex = wrapInLowerUnaccent(vals.indexText, modifiers);
-      if (! finalIndex.equals(useCreatedIndex)) {
-        order.append(", " + finalIndex + desc);
-      }
+      order.append(wrapInLowerUnaccent(vals.indexText)).append(desc);
     }
     return order.toString();
   }
@@ -657,12 +650,13 @@ public class CQL2PgJSON {
    * Create an SQL expression where index is applied to all matches.
    * @param index  index to use
    * @param matches  list of match expressions
-   * @param numberMatch  match expression for numeric comparison (null for no numeric comparison)
+   * @param jsonNumberMatch  match expression for numeric comparison (null for no numeric comparison),
+   *                        with single quotes (Postgres) and double quotes (JSON), for example >='"34"'
    * @return SQL expression
    * @throws QueryValidationException
    */
   @SuppressWarnings("squid:S1192")  // suppress "String literals should not be duplicated"
-  private String index2sql(String index, CQLTermNode node, String numberMatch) throws QueryValidationException {
+  private String index2sql(String index, CQLTermNode node, String jsonNumberMatch) throws QueryValidationException {
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
     if (jsonField == null) {
       // multiField processing
@@ -678,7 +672,7 @@ public class CQL2PgJSON {
       vals.indexText = index2sqlText(this.jsonField, finalIndex);
     }
 
-    if (vals.type.equals("") && numberMatch != null) {
+    if (vals.type.equals("") && jsonNumberMatch != null) {
       // numberMatch: Both sides of the comparison operator are JSONB expressions.
 
       // When comparing two JSONBs a JSONB containing any string is bigger than
@@ -690,24 +684,25 @@ public class CQL2PgJSON {
        *  OR ( jsonb_typeof(jsonb->'amount')<>'number' AND jsonb->'amount' < '"100"' )
        * )
        */
+      String numberMatch = jsonNumberMatch.replace("\"",  "");
       StringBuilder s = new StringBuilder();
       append(s,
           "((",
           "jsonb_typeof(", vals.indexJson, ")='number'",
-          " AND ", vals.indexJson, numberMatch.replace("\"", ""),
+          " AND ", vals.indexJson, numberMatch,
           ") OR (",
           "jsonb_typeof(", vals.indexJson, ")<>'number'",
-          " AND ", vals.indexJson, numberMatch);
-      if (numberMatch.startsWith("=")) {
+          " AND ", vals.indexJson, jsonNumberMatch);
+      if (jsonNumberMatch.startsWith("=")) {
         append(s, " AND lower(f_unaccent(", vals.indexText, "))", numberMatch);
       }
       append(s, "))");
       return s.toString();
     }
 
-    if (numberMatch != null &&
+    if (jsonNumberMatch != null &&
         ("integer".equals(vals.type) || "number".equals(vals.type))) {
-        return vals.indexJson + numberMatch.replace("\"", "");
+        return vals.indexJson + jsonNumberMatch.replace("\"", "");
     }
 
     String [] matches = match(vals.indexText, node);
