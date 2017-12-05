@@ -1,3 +1,7 @@
+## 1.3.2 2017-12-05
+ * MODINVSTOR-38: Fix matching a number in a string field, performance tests
+ * CQLPG-21: Implement CQL's adj keyword for phrase matching 
+
 ## 1.3.1 2017-12-01
  * UICHKOUT-39: Unit test for number in string field
  * CQLPG-4: Correctly handle numbers in number and string fields.
