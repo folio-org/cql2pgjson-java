@@ -10,6 +10,8 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -30,6 +32,10 @@ public class DatabaseTestBase {
   private static PostgresProcess postgresProcess;
   /** java.sql.Connection to be used for the tests */
   static Connection conn;
+
+  /** pattern of the EXPAIN ANALYSE reply containing the execution time in ms as group 1 */
+  private static final Pattern executionTimePattern =
+      Pattern.compile("^Execution time: ([0-9.]+) ms", Pattern.MULTILINE);
 
   /**
    * Default constructor
@@ -167,7 +173,7 @@ public class DatabaseTestBase {
 
   /**
    * Close conn and stop embedded progress if needed.
-   * @throws SQLException on database error
+   * @throws SQLRuntimeException on database error
    */
   public static void closeDatabase() {
     if (conn != null) {
@@ -204,19 +210,66 @@ public class DatabaseTestBase {
    * @throws RuntimeException on SQLException
    */
   static String explainAnalyseSql(String sqlStatement) {
-    try (Statement statement = conn.createStatement()) {
-      ResultSet resultSet = statement.executeQuery("EXPLAIN ANALYSE " + sqlStatement);
+    String explainAnalyseSqlStatement = "EXPLAIN ANALYSE " + sqlStatement;
+    try (Statement statement = conn.createStatement();
+         ResultSet resultSet = statement.executeQuery(explainAnalyseSqlStatement);
+        ) {
       StringBuilder result = new StringBuilder();
       while (resultSet.next()) {
         result.append(resultSet.getString(1)).append('\n');
       }
       return result.toString();
     } catch (SQLException e) {
-      throw new SQLRuntimeException(sqlStatement, e);
+      throw new SQLRuntimeException(explainAnalyseSqlStatement, e);
+    }
+  }
+
+  static class AnalyseResult {
+    /** The analyse message from Postgres */
+    private final String message;
+    /** The execution time in ms */
+    private final float executionTimeInMs;
+    /**
+     * Set message and execution time.
+     * @param message  analyse message from Postgres
+     * @param executionTimeMs  execution time in ms as reported by Postgres.
+     */
+    public AnalyseResult(String message, float executionTimeMs) {
+      this.message = message;
+      this.executionTimeInMs = executionTimeMs;
+    }
+
+    /**
+     * @return the analyse message from Postgres.
+     */
+    public String getMessage() {
+      return message;
+    }
+
+    /**
+     * @return the execution time in ms as reported by Postgres.
+     */
+    public float getExecutionTimeInMs() {
+      return executionTimeInMs;
     }
   }
 
   /**
+   * Run sql with "EXPLAIN ANALYSE " prepended.
+   * @param sql  SQL command to run and analyse
+   * @return analyse result of the sql query
+   */
+  static AnalyseResult analyse(String sql) {
+    String msg = explainAnalyseSql(sql);
+    Matcher matcher = executionTimePattern.matcher(msg);
+    if (! matcher.find()) {
+      throw new IllegalStateException("Execution time not found:\n" + msg);
+    }
+    String ms = matcher.group(1);
+    return new AnalyseResult(msg, Float.parseFloat(ms));
+  }
+
+/**
    * Run SQL commands on conn. Each command can be split over several lines.
    * <p>
    * Example usage:
