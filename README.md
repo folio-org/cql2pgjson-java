@@ -52,8 +52,12 @@ field name:
 
 Only these relations have been implemented yet:
 
-* `=` (substring match, for example `title = Potter`)
-* `==` (exact match, for example `barcode == 883746123`)
+* `=` (this is `==` for a number and `all` for a string.
+       Examples 1: `height = 3.4` Example 2: `title = Potter`)
+* `==` (exact match, for example `barcode == 883746123`;
+        numeric fields match any form: 3.4 = 3.400 = 0.34e1)
+* `all` (each word of the query string exists somewhere)
+* `adj` (substring phrase match: all words of the query string exists consecutively in that order)
 * `>` `>=` `<` `<=` `<>` (comparison for both strings and numbers)
 
 Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
