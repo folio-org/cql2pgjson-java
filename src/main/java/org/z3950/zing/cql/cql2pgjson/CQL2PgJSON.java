@@ -46,6 +46,13 @@ public class CQL2PgJSON {
   /** JSON number, see spec at http://json.org/ */
   private static final Pattern jsonNumber = Pattern.compile("-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?");
 
+  /** Postgres regexp that matches at any punctuation and space character
+   * and at the beginning of the string */
+  private static final String REGEXP_WORD_BEGIN = "(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))";
+  /** Postgres regexp that matches at any punctuation and space character
+   * and at the end of the string */
+  private static final String REGEXP_WORD_END = "($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))";
+
   /**
    * Default index names to be used for cql.serverChoice.
    * May be empty, but not null. Must not contain null, names must not contain double quote or single quote.
@@ -398,7 +405,6 @@ public class CQL2PgJSON {
     return result;
   }
 
-  @SuppressWarnings("squid:S1192")  // suppress "String literals should not be duplicated"
   private String pg(CQLSortNode node) throws QueryValidationException {
     StringBuilder order = new StringBuilder();
     order.append(pg(node.getSubtree()))
@@ -500,8 +506,8 @@ public class CQL2PgJSON {
   private static String [] fullMatch(String textIndex, CqlModifiers modifiers, String s, boolean trueOnMatch) {
     String likeOperator = trueOnMatch ? " LIKE " : " NOT LIKE ";
     String like = "'" + Cql2SqlUtil.cql2like(s) + "'";
-    String indexMatch = "lower(f_unaccent(" + textIndex + "))"
-        + likeOperator + "lower(f_unaccent(" + like + "))";
+    String indexMatch = wrapInLowerUnaccent(textIndex)
+        + likeOperator + wrapInLowerUnaccent(like);
     if (modifiers.cqlAccents == CqlAccents.IGNORE_ACCENTS &&
         modifiers.cqlCase    == CqlCase.IGNORE_CASE         ) {
       return new String [] { indexMatch };
@@ -511,14 +517,19 @@ public class CQL2PgJSON {
   }
 
   /**
-   * Return a POSIX regexp expression for each word in cql. Words are delimited by whitespace.
+   * Return SQL regexp expressions for do an "all" CQL match of the cql string.
+   * "all" means that all words match, in any position.
+   * <p>
+   * It matches if all returned expressions are true, the caller needs to "AND" them.
+   * Words are delimited by whitespace, punctuation, or start or end of field.
+   *
    * @param textIndex  JSONB field to match against
    * @param modifiers  CqlModifiers to use
    * @param cql   words to convert
    * @return resulting regexps
    */
   @SuppressWarnings("squid:S1192")  // suppress "String literals should not be duplicated"
-  private static String [] wordRegexp(String textIndex, CqlModifiers modifiers, String cql) {
+  private static String [] allRegexp(String textIndex, CqlModifiers modifiers, String cql) {
     String [] split = cql.trim().split("\\s+");  // split at whitespace
     if (split.length == 1 && "".equals(split[0])) {
       // The variable cql contains whitespace only. honorWhitespace is not implemented yet.
@@ -529,17 +540,61 @@ public class CQL2PgJSON {
     for (int i=0; i<split.length; i++) {
       // A word is delimited by any of: the beginning ^ or the end $ of the field or
       // by punctuation or by whitespace.
-      String regexp = "'(^|[[:punct:]]|[[:space:]])"
-          + Cql2SqlUtil.cql2regexp(split[i])
-          + "($|[[:punct:]]|[[:space:]])'";
+      String regexp = "'" + REGEXP_WORD_BEGIN
+          + Cql2SqlUtil.cql2regexp(split[i]) + REGEXP_WORD_END + "'";
       split[i] = wrapInLowerUnaccent(textIndex) + " ~ " + wrapInLowerUnaccent(regexp);
       if (modifiers.cqlAccents == CqlAccents.RESPECT_ACCENTS ||
           modifiers.cqlCase == CqlCase.RESPECT_CASE) {
-        split[i] += " AND " + wrapInLowerUnaccent(textIndex, modifiers)
-                    + " ~ " + wrapInLowerUnaccent(regexp,    modifiers);
+        split[i] = "(" + split[i] + " AND " +
+            wrapInLowerUnaccent(textIndex, modifiers) + " ~ " +
+            wrapInLowerUnaccent(regexp,    modifiers) + ")";
       }
     }
     return split;
+  }
+
+  /**
+   * Return SQL regexp expressions for do an "adj" CQL match (phrase match) of the cql string.
+   * "adj" means that all words match, and must be adjacent to each other
+   * in the order they are in the cql string. Other word may be before or after
+   * the phrase.
+   * <p>
+   * It matches if all returned expressions are true, the caller needs to "AND" them.
+   * Words are delimited by whitespace, punctuation, or start or end of field.
+   *
+   * @param textIndex  JSONB field to match against
+   * @param modifiers  CqlModifiers to use
+   * @param cql   words to convert
+   * @return resulting regexps
+   */
+  private static String [] adjRegexp(String textIndex, CqlModifiers modifiers, String cql) {
+    String [] split = cql.trim().split("\\s+");  // split at whitespace
+    if (split.length == 1 && "".equals(split[0])) {
+      // The variable cql contains whitespace only. honorWhitespace is not implemented yet.
+      // So there is no word at all. Therefore no restrictions for matching - anything matches.
+      return new String [] { textIndex + " ~ ''" };  // matches any (existing non-null) value
+      // don't use "TRUE" because that also matches when the field is not defined or is null
+    }
+    StringBuilder regexp = new StringBuilder();
+    regexp.append("'").append(REGEXP_WORD_BEGIN);
+    for (int i=0; i<split.length; i++) {
+      if (i > 0) {
+        regexp.append("([[:punct:]]|[[:space:]])+");
+      }
+      regexp.append(Cql2SqlUtil.cql2regexp(split[i]));
+    }
+    regexp.append(REGEXP_WORD_END).append("'");
+
+    String regexpString = regexp.toString();
+
+    String result = wrapInLowerUnaccent(textIndex) + " ~ " + wrapInLowerUnaccent(regexpString);
+    if (modifiers.cqlAccents == CqlAccents.RESPECT_ACCENTS ||
+        modifiers.cqlCase == CqlCase.RESPECT_CASE) {
+      result = "(" + result + " AND " +
+          wrapInLowerUnaccent(textIndex,    modifiers) + " ~ " +
+          wrapInLowerUnaccent(regexpString, modifiers) + ")";
+    }
+    return new String [] { result };
   }
 
   private String [] match(String textIndex, CQLTermNode node) throws CQLFeatureUnsupportedException {
@@ -553,8 +608,11 @@ public class CQL2PgJSON {
       return fullMatch(textIndex, modifiers, node.getTerm(), true);
     case "<>":
       return fullMatch(textIndex, modifiers, node.getTerm(), false);
-    case "=":
-      return wordRegexp(textIndex, modifiers, node.getTerm());
+    case "=":   // use "all"
+    case "all":
+      return allRegexp(textIndex, modifiers, node.getTerm());
+    case "adj":
+      return adjRegexp(textIndex, modifiers, node.getTerm());
     case "<":
     case "<=":
     case ">":
@@ -694,7 +752,7 @@ public class CQL2PgJSON {
           "jsonb_typeof(", vals.indexJson, ")<>'number'",
           " AND ", vals.indexJson, jsonNumberMatch);
       if (jsonNumberMatch.startsWith("=")) {
-        append(s, " AND lower(f_unaccent(", vals.indexText, "))", numberMatch);
+        append(s, " AND ", wrapInLowerUnaccent(vals.indexText), numberMatch);
       }
       append(s, "))");
       return s.toString();
