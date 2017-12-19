@@ -484,7 +484,24 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "cql.allRecords=1 sortBy address.zip name  # a; b; c; d; e; f; g; h",
+    "email=example   sortBy name                   # Jo Jane; Ka Keller; Lea Long",
+    "email=example   sortBy name/sort.ascending    # Jo Jane; Ka Keller; Lea Long",
+    "email=example   sortBy name/sort.descending   # Lea Long; Ka Keller; Jo Jane",
+    "email=example   sortBy address.zip            # Ka Keller; Jo Jane; Lea Long",
+    "name==*a* sortBy name                         # Jo Jane; Ka Keller; Lea Long",
+    "name==*a* sortBy name/sort.ascending          # Jo Jane; Ka Keller; Lea Long",
+    "name==*a* sortBy name/sort.descending         # Lea Long; Ka Keller; Jo Jane",
+    "name==*a* sortBy address.zip                  # Ka Keller; Jo Jane; Lea Long",
+  })
+  public void sortNoSchema(String testcase) throws FieldException {
+    CQL2PgJSON aCql2PgJson = new CQL2PgJSON("users.user_data");  // without schema
+    select(aCql2PgJson, testcase);
+  }
+
+  @Test
+  @Parameters({
+    "cql.allRecords=1 sortBy address.zip/sort.ascending  name  # a; b; c; d; e; f; g; h",
+    "cql.allRecords=1 sortBy address.zip/sort.descending name  # h; g; d; e; f; c; b; a",
   })
   public void sortNumber(String testcase) {
     select("special.sql", testcase);
