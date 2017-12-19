@@ -1,3 +1,7 @@
+## 1.3.3 2017-12-19
+ * CQLPG-29: "sortBy field" sorts by null
+ * CQLPG-21, CQLPG-23: Documentation of new relations: all adj
+
 ## 1.3.2 2017-12-05
  * MODINVSTOR-38: Fix matching a number in a string field, performance tests
  * CQLPG-21: Implement CQL's adj keyword for phrase matching 

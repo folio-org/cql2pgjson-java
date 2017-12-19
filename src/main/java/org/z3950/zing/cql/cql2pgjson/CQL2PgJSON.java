@@ -423,18 +423,7 @@ public class CQL2PgJSON {
         desc = " DESC";
       }  // ASC not needed, it's Postgres' default
 
-      IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-      if (this.jsonField != null) {
-        if (schema != null) {
-          Schema.Field field = schema.mapFieldNameAgainstSchema(modifierSet.getBase());
-          vals.type = field.getType();
-          vals.indexJson = index2sqlJson(jsonField, field.getPath());
-          vals.indexText = index2sqlText(jsonField, field.getPath());
-        }
-      } else {
-        // multifield
-        vals = multiFieldProcessing(modifierSet.getBase());
-      }
+      IndexTextAndJsonValues vals = getIndexTextAndJsonValues(modifierSet.getBase());
 
       switch (vals.type) {
       case "number":
@@ -704,6 +693,23 @@ public class CQL2PgJSON {
     }
   }
 
+  private IndexTextAndJsonValues getIndexTextAndJsonValues(String index)
+      throws QueryValidationException {
+    if (jsonField == null) {
+      return multiFieldProcessing(index);
+    }
+    IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
+    String finalIndex = index;
+    if (schema != null) {
+      Schema.Field field = schema.mapFieldNameAgainstSchema(index);
+      finalIndex = field.getPath();
+      vals.type = field.getType();
+    }
+    vals.indexJson = index2sqlJson(this.jsonField, finalIndex);
+    vals.indexText = index2sqlText(this.jsonField, finalIndex);
+    return vals;
+  }
+
   /**
    * Create an SQL expression where index is applied to all matches.
    * @param index  index to use
@@ -715,20 +721,7 @@ public class CQL2PgJSON {
    */
   @SuppressWarnings("squid:S1192")  // suppress "String literals should not be duplicated"
   private String index2sql(String index, CQLTermNode node, String jsonNumberMatch) throws QueryValidationException {
-    IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-    if (jsonField == null) {
-      // multiField processing
-      vals = multiFieldProcessing( index );
-    } else {
-      String finalIndex = index;
-      if (schema != null) {
-        Schema.Field field = schema.mapFieldNameAgainstSchema(index);
-        finalIndex = field.getPath();
-        vals.type = field.getType();
-      }
-      vals.indexJson = index2sqlJson(this.jsonField, finalIndex);
-      vals.indexText = index2sqlText(this.jsonField, finalIndex);
-    }
+    IndexTextAndJsonValues vals = getIndexTextAndJsonValues(index);
 
     if (vals.type.equals("") && jsonNumberMatch != null) {
       // numberMatch: Both sides of the comparison operator are JSONB expressions.
