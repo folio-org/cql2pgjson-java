@@ -122,6 +122,12 @@ an array element value does not contain double quotes):
         "value": "6316800312", "identifierTypeId": "8261054f-be78-422d-bd51-4ed9f33c3422"
       } ]
 
+## Matching and comparing numbers
+
+If the search term is a JSON number then a numeric match (like 3.4 = 3.400 = 0.34e1) and a numeric comparison (10 > 2) is used.
+
+It is not used when the schema specifies a field type and the field type is neither integer nor numeric.
+
 ## Exceptions
 
 All locally produced Exceptions are derived from a single parent so they can be caught collectively
