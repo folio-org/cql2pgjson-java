@@ -36,7 +36,7 @@ Searching across multiple JSONB fields works like this. The _first_ json field s
 in the constructor will be applied to any query arguments that aren't prefixed with the appropriate
 field name: 
 
-	   // Instantiation without schemas
+    // Instantiation without schemas
     CQL2PgJSON cql2pgJson = new CQL2PgJSON(Arrays.asList("users.user_data","users.group_data"));
     
     // Instantiation with schemas
