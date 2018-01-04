@@ -14,16 +14,20 @@ Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 Invoke like this:
 
     // users.user_data is a JSONB field in the users table.
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data");
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data", userSchemaJson);
     String cql = "name=Miller";
     String where = cql2pgJson.cql2pgJson(cql);
     String sql = "select * from users where " + where;
     // select * from users
     // where CAST(users.user_data->'name' AS text)
     //       ~ '(^|[[:punct:]]|[[:space:]])Miller($|[[:punct:]]|[[:space:]])'
-Setting server choice indexes is possible:
 
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email"));
+`userSchemaJson` is the schema definition like [userdata.json](src/test/resources/userdata.json),
+learn more from [raml-module-builder's documenation](https://github.com/folio-org/raml-module-builder#step-1-describe-the-apis-to-be-exposed-by-the-new-module).
+
+Setting server choice indexes is possible, the next example searches `name=Miller or email=Miller`:
+
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data", userSchemaJson, Arrays.asList("name", "email"));
     String cql = "Miller";
     String where = cql2pgJson.cql2pgJson(cql);
     String sql = "select * from users where " + where;
@@ -32,7 +36,7 @@ Searching across multiple JSONB fields works like this. The _first_ json field s
 in the constructor will be applied to any query arguments that aren't prefixed with the appropriate
 field name: 
 
-	 // Instantiation without schemas
+	   // Instantiation without schemas
     CQL2PgJSON cql2pgJson = new CQL2PgJSON(Arrays.asList("users.user_data","users.group_data"));
     
     // Instantiation with schemas
@@ -48,6 +52,12 @@ field name:
     where = cql2pgJson.cql2pgJson( "users.uncontrolled_data.name=Zanzibar" );
     where = cql2pgJson.cql2pgJson( "name=Miller" ); // implies users.user_data
 
+## Schema
+
+If invoked without schema specification like `userSchemaJson` then the produced SQL code
+does not contain optimizations to use database indexes and may run with bad performance on
+large datasets.
+
 ## Relations
 
 Only these relations have been implemented yet:
@@ -56,7 +66,7 @@ Only these relations have been implemented yet:
        Examples 1: `height = 3.4` Example 2: `title = Potter`)
 * `==` (exact match, for example `barcode == 883746123`;
         numeric fields match any form: 3.4 = 3.400 = 0.34e1)
-* `all` (each word of the query string exists somewhere)
+* `all` (each word of the query string exists somewhere, `title all "Potter Harry"` matches Harry X. Potter)
 * `adj` (substring phrase match: all words of the query string exists consecutively in that order)
 * `>` `>=` `<` `<=` `<>` (comparison for both strings and numbers)
 
@@ -102,6 +112,15 @@ an array element value does not contain double quotes):
   and does not contain the value en
 * `lang = ""` for matching records where lang is defined
 * `cql.allRecords=1 NOT lang = ""` for matching records where lang is not defined
+* `identifiers == "*\"value\": \"6316800312\", \"identifierTypeId\": \"8261054f-be78-422d-bd51-4ed9f33c3422\"*"`
+  (note to use `==` and not `=`) for matching the ISBN 6316800312 using ISBN's identifierTypeId where each element of
+  the identifiers array is a JSON object with the two keys value and identifiertTypeId, for example
+
+      "identifiers": [ {
+        "value": "(OCoLC)968777846", "identifierTypeId": "7e591197-f335-4afb-bc6d-a6d76ca3bace"
+      }, {
+        "value": "6316800312", "identifierTypeId": "8261054f-be78-422d-bd51-4ed9f33c3422"
+      } ]
 
 ## Exceptions
 
