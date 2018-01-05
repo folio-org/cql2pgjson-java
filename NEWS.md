@@ -1,3 +1,7 @@
+## 1.3.4 2018-01-05
+ * CQLPG-31: CQL number match when invoked without schema
+ * CQLPG-30: Trigger on postgres numbers, not only on json numbers
+
 ## 1.3.3 2017-12-19
  * CQLPG-29: "sortBy field" sorts by null
  * CQLPG-21, CQLPG-23: Documentation of new relations: all adj
