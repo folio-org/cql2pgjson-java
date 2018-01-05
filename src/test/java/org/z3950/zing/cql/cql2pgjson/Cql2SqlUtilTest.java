@@ -110,4 +110,47 @@ public class Cql2SqlUtilTest {
   public void cql2regexp(String cql, String sql) {
     assertThat(Cql2SqlUtil.cql2regexp(cql), is(sql));
   }
+
+  @Test
+  @Parameters({
+    // 6 examples from
+    // https://www.postgresql.org/docs/current/static/sql-syntax-lexical.html#SQL-SYNTAX-CONSTANTS-NUMERIC
+    "42",
+    "3.5",
+    "4.",
+    ".001",
+    "5e2",
+    "1.925e-3",
+
+    "0",
+    "00",
+    "1",
+    "9",
+    "10",
+    "+1",
+    "+0",
+    "-1",
+    "-0",
+    "01",
+    "001",
+    "0099",
+    "123.456e789",
+    "-123.456e-789",
+    "+123.456e+789",
+  })
+  public void isPostgresNumber(String term) {
+    assertThat(Cql2SqlUtil.isPostgresNumber(term), is(true));
+  }
+
+  @Test
+  @Parameters({
+    "e",
+    ".",
+    ".e2",
+    "1e2e",
+    "1e",    // this one is against the SQL spec but Postgres can parse it (assumes 1e0 resulting in 1)
+  })
+  public void isNotPostgresNumber(String term) {
+    assertThat(Cql2SqlUtil.isPostgresNumber(term), is(false));
+  }
 }
