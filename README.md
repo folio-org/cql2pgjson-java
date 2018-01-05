@@ -124,9 +124,17 @@ an array element value does not contain double quotes):
 
 ## Matching and comparing numbers
 
-If the search term is a JSON number then a numeric match (like 3.4 = 3.400 = 0.34e1) and a numeric comparison (10 > 2) is used.
+Correct number matching must result in 3.4 = 3.400 = 0.34e1 and correct number comparison must result in 10 > 2
+(in contrast to string comparison where "10" > "2").
 
-It is not used when the schema specifies a field type and the field type is neither integer nor numeric.
+If the search term is a number then a numeric mode is used for "==", "<>", "<", "<=", ">", ">=", and "=".
+
+If the schema (see section [](#schema) above) specifies a JSON field type
+then numeric mode is only used when that type is either `integer` or `number`.
+
+If the comparator is "=" and the JSON field type is not specified in the schema
+then numeric mode is only used if the actual JSONB type of the stored value is `number`
+(JSONB has no `integer` type).
 
 ## Exceptions
 

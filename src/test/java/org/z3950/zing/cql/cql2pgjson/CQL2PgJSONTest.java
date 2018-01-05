@@ -521,6 +521,12 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "address.zip>=17                # g; h",
     "address.zip>=18                # h",
     "address.zip>=19                #",
+    "address.zip= 4                 # d; e; f",
+    "address.zip==4                 # d; e; f",
+    "address.zip= 4.0               # d; e; f",
+    "address.zip==4.0               # d; e; f",
+    "address.zip= 4e0               # d; e; f",
+    "address.zip==4e0               # d; e; f",
     "address.zip<>4                 # a; b; c; g; h",
     "address.zip<>4.0               # a; b; c; g; h",
     "address.zip<>4e0               # a; b; c; g; h",
@@ -533,6 +539,12 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
+    "address.zip= 4                 # d; e; f",   // because 4 is a word in "4.0" and "4e0"
+    "address.zip==4                 # d; e; f",
+    "address.zip= 4.0               # e",
+    "address.zip==4.0               # d; e; f",
+    "address.zip= 4e0               #",           // 4e0 is stored as 4, so it cannot match
+    "address.zip==4e0               # d; e; f",
     "address.zip<>4                 # a; b; c; g; h",
     "address.zip<>4.0               # a; b; c; g; h",
     "address.zip<>4e0               # a; b; c; g; h",
@@ -544,25 +556,20 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "address.city =   1234                  # f",
-    "address.city ==  1234                  # f",
-    "address.city =  01234                  # h",
-    "address.city == 01234                  # h",
+    "address.city =    1234                 # e; f",
+    "address.city all  1234                 # e; f",
+    "address.city ==   1234                 # e",
+    "address.city =   01234                 # g; h",
+    "address.city all 01234                 # g; h",
+    "address.city ==  01234                 # g",
   })
   public void numberInStringField(String testcase) throws CQL2PgJSONException {
     // with schema
     select("special.sql", testcase);
+
     // without schema
     CQL2PgJSON aCql2PgJson = new CQL2PgJSON("users.user_data");
     select(aCql2PgJson, "special.sql", testcase);
-  }
-
-  @Test(expected = CQLFeatureUnsupportedException.class)
-  public void compareNumberNotImplemented() throws Exception {
-    // We test unreachable code because CQL2PgJSON.match(CQLTermNode) throws an exception
-    // before. We test it anyway.
-    CQLTermNode node = new CQLTermNode("zip", new CQLRelation("adj"), "12");
-    CQL2PgJSON.getNumberMatch(node);
   }
 
   @Test

@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.regex.Pattern;
 
 import org.z3950.zing.cql.CQLAndNode;
 import org.z3950.zing.cql.CQLBooleanNode;
@@ -42,9 +41,6 @@ public class CQL2PgJSON {
   /** Local data model of JSON schema */
   private Schema schema;
   private Map<String,Schema> schemas;
-
-  /** JSON number, see spec at http://json.org/ */
-  private static final Pattern jsonNumber = Pattern.compile("-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?");
 
   /** Postgres regexp that matches at any punctuation and space character
    * and at the beginning of the string */
@@ -614,22 +610,13 @@ public class CQL2PgJSON {
   }
 
   /**
-   * Test if s is a JSON number.
-   * @param s  String to test
-   * @return true if s is a JSON number, false otherwise
-   */
-  private static boolean isJsonNumber(String s) {
-    return jsonNumber.matcher(s).matches();
-  }
-
-  /**
    * Returns a numeric match like >='"17"' if the node term is a JSON number, null otherwise.
    * @param node  the node to get the comparator operator and the term from
    * @return  the comparison or null
    * @throws CQLFeatureUnsupportedException if cql query attempts to use unsupported operators.
    */
-  static String getNumberMatch(CQLTermNode node) throws CQLFeatureUnsupportedException {
-    if (! isJsonNumber(node.getTerm())) {
+  static String getNumberMatch(CQLTermNode node) {
+    if (! Cql2SqlUtil.isPostgresNumber(node.getTerm())) {
       return null;
     }
     String comparator = node.getRelation().getBase();
@@ -645,8 +632,7 @@ public class CQL2PgJSON {
     case ">=":
       break;
     default:
-      throw new CQLFeatureUnsupportedException("Relation " + node.getRelation().getBase()
-          + " not implemented yet: " + node.toString());
+      return null;
     }
     return comparator + "'\"" +  node.getTerm() + "\"'";
   }
@@ -711,19 +697,55 @@ public class CQL2PgJSON {
   }
 
   /**
+   * Replace '" by to_jsonb(
+   * and '" by )
+   * <p>
+   * numberMatch("'\"100\"'") = "to_jsonb(100)"
+   * <p>
+   * to_jsonb(01) is valid Postgres syntax and results in valid JSON '"1"'.
+   * '"01"' fails because 01 is an invalid JSON number.
+   * @param match  where to search
+   * @return the replaced string
+   */
+  private String numberMatch(String jsonMatch) {
+    return jsonMatch.replace("'\"", "to_jsonb(").replace("\"'", ")");
+  }
+
+  /**
+   * True if node's relation is a numeric comparison. "=" isn't because
+   * it may be a string comparison.
+   * @param node
+   * @return true iff numeric comparison
+   */
+  private boolean isNumberComparator(CQLTermNode node) {
+    switch (node.getRelation().getBase()) {
+    case "<>":
+    case "<":
+    case "<=":
+    case ">":
+    case ">=":
+    case "==":
+      return true;
+    default:
+      // this includes "=" which may be a string match
+      return false;
+    }
+  }
+
+  /**
    * Create an SQL expression where index is applied to all matches.
    * @param index  index to use
    * @param matches  list of match expressions
-   * @param jsonNumberMatch  match expression for numeric comparison (null for no numeric comparison),
-   *                        with single quotes (Postgres) and double quotes (JSON), for example >='"34"'
+   * @param jsonMatch  match expression for numeric comparison (null for no numeric comparison),
+   *                   with single quotes (Postgres) and double quotes (JSON), for example >='"34"'
    * @return SQL expression
    * @throws QueryValidationException
    */
   @SuppressWarnings("squid:S1192")  // suppress "String literals should not be duplicated"
-  private String index2sql(String index, CQLTermNode node, String jsonNumberMatch) throws QueryValidationException {
+  private String index2sql(String index, CQLTermNode node, String jsonMatch) throws QueryValidationException {
     IndexTextAndJsonValues vals = getIndexTextAndJsonValues(index);
 
-    if (vals.type.equals("") && jsonNumberMatch != null) {
+    if (vals.type.equals("") && jsonMatch != null && isNumberComparator(node)) {
       // numberMatch: Both sides of the comparison operator are JSONB expressions.
 
       // When comparing two JSONBs a JSONB containing any string is bigger than
@@ -731,29 +753,28 @@ public class CQL2PgJSON {
       // Therefore we need to check the jsonb_typeof, which is supported by a
       // ((jsonb->'amount')) index.
 
-      /* (   ( jsonb_typeof(jsonb->'amount')= 'number' AND jsonb->'amount' <  '100'  )
-       *  OR ( jsonb_typeof(jsonb->'amount')<>'number' AND jsonb->'amount' < '"100"' )
+      /* (   ( jsonb_typeof(jsonb->'amount')= 'number' AND jsonb->'amount' < to_jsonb(100)  )
+       *  OR ( jsonb_typeof(jsonb->'amount')<>'number' AND jsonb->'amount' <        '"100"' )
        * )
        */
-      String numberMatch = jsonNumberMatch.replace("\"",  "");
       StringBuilder s = new StringBuilder();
       append(s,
           "((",
           "jsonb_typeof(", vals.indexJson, ")='number'",
-          " AND ", vals.indexJson, numberMatch,
+          " AND ", vals.indexJson, numberMatch(jsonMatch),
           ") OR (",
           "jsonb_typeof(", vals.indexJson, ")<>'number'",
-          " AND ", vals.indexJson, jsonNumberMatch);
-      if (jsonNumberMatch.startsWith("=")) {
-        append(s, " AND ", wrapInLowerUnaccent(vals.indexText), numberMatch);
+          " AND ", vals.indexJson, jsonMatch);
+      if (jsonMatch.startsWith("=")) {
+        append(s, " AND ", wrapInLowerUnaccent(vals.indexText), jsonMatch.replace("\"", ""));
       }
       append(s, "))");
       return s.toString();
     }
 
-    if (jsonNumberMatch != null &&
+    if (jsonMatch != null &&
         ("integer".equals(vals.type) || "number".equals(vals.type))) {
-        return vals.indexJson + jsonNumberMatch.replace("\"", "");
+        return vals.indexJson + numberMatch(jsonMatch);
     }
 
     String [] matches = match(vals.indexText, node);
