@@ -5,6 +5,9 @@
     "value": {
       "type": "string",
       "required": true
+    },
+    "num": {
+      "type": "number"
     }
   }
 }

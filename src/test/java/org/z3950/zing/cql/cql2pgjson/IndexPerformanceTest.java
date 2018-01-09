@@ -46,8 +46,9 @@ public class IndexPerformanceTest extends DatabaseTestBase {
     if (ms > MAX) {
       fail("Expected at most " + MAX + " ms, but it runs " + ms + " ms: " + where);
     }
-    if (! analyseResult.getMessage().contains(" idx_value ")) {
-      fail("Query plan does not use idx_value: " + where);
+    if (! analyseResult.getMessage().contains(" idx_value ") &&
+        ! analyseResult.getMessage().contains(" idx_num ")     ) {
+      fail("Query plan neither uses idx_value nor idx_num: " + where + "\n" + analyseResult.getMessage());
     }
   }
 
@@ -96,14 +97,29 @@ public class IndexPerformanceTest extends DatabaseTestBase {
   }
 
   @Test
-  public void cql() throws CQL2PgJSONException, IOException {
+  public void cqlValue() throws CQL2PgJSONException, IOException {
     runSqlStatement("DROP INDEX IF EXISTS idx_value;");
     runSqlStatement("CREATE INDEX idx_value ON config_data "
         + "((lower(f_unaccent(jsonb->>'value'))) text_pattern_ops);");
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb", Util.getResource("indexPerformanceTest.json"));
-    in50ms("WHERE " + cql2pgJson.cql2pgJson("value == a1* sortBy value"));
+    CQL2PgJSON cql2pgJsonSchema = new CQL2PgJSON("jsonb", Util.getResource("indexPerformanceTest.json"));
+    CQL2PgJSON cql2pgJson       = new CQL2PgJSON("jsonb");
+    in50ms("WHERE " + cql2pgJsonSchema.cql2pgJson("value == a1* sortBy value"));
+    in50ms("WHERE " + cql2pgJson      .cql2pgJson("value == b2* sortBy value"));
     // https://issues.folio.org/browse/UICHKOUT-39 "Checkout is broken"
-    in50ms("WHERE " + cql2pgJson.cql2pgJson("value == 036000291452 sortBy value"));
-    in50ms("WHERE " + cql2pgJson.cql2pgJson("value ==  36000291452 sortBy value"));
+    in50ms("WHERE " + cql2pgJsonSchema.cql2pgJson("value == 036000291452 sortBy value"));
+    in50ms("WHERE " + cql2pgJsonSchema.cql2pgJson("value ==  36000291452 sortBy value"));
+  }
+
+  @Test
+  public void cqlNum() throws CQL2PgJSONException, IOException {
+    runSqlStatement("DROP INDEX IF EXISTS idx_num;");
+    runSqlStatement("CREATE INDEX idx_num ON config_data ((jsonb->'num'));");
+    CQL2PgJSON cql2pgJsonSchema = new CQL2PgJSON("jsonb", Util.getResource("indexPerformanceTest.json"));
+    CQL2PgJSON cql2pgJson       = new CQL2PgJSON("jsonb");
+    in50ms("WHERE " + cql2pgJsonSchema.cql2pgJson("num == 0.003  sortBy num"));
+    in50ms("WHERE " + cql2pgJsonSchema.cql2pgJson("num == 0.0040 sortBy num"));
+    in50ms("WHERE " + cql2pgJson      .cql2pgJson("num == 0.005  sortBy num"));
+    in50ms("WHERE " + cql2pgJson      .cql2pgJson("num == 0.0060 sortBy num"));
   }
 }
+
