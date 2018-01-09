@@ -541,7 +541,7 @@ public class CQL2PgJSON {
   /**
    * Return SQL regexp expressions for do an "adj" CQL match (phrase match) of the cql string.
    * "adj" means that all words match, and must be adjacent to each other
-   * in the order they are in the cql string. Other word may be before or after
+   * in the order they are in the cql string. Other words may be before or after
    * the phrase.
    * <p>
    * It matches if all returned expressions are true, the caller needs to "AND" them.
@@ -598,6 +598,12 @@ public class CQL2PgJSON {
       return allRegexp(textIndex, modifiers, node.getTerm());
     case "adj":
       return adjRegexp(textIndex, modifiers, node.getTerm());
+    case "any":
+      String [] matches = allRegexp(textIndex, modifiers, node.getTerm());
+      if (matches.length == 1) {
+        return matches;
+      }
+      return new String [] { "(" + String.join(") OR (", matches) + ")" };
     case "<":
     case "<=":
     case ">":
