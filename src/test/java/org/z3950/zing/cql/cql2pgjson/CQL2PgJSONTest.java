@@ -157,6 +157,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "name all Long                         # Lea Long",
     "name all \"Lea Long\"                 # Lea Long",
     "name all \"Long Lea\"                 # Lea Long",
+    "name all \"FooBar\"                   #",
     "email all \"com example ka\"          # Ka Keller",
     "email all \"com example\"             # Jo Jane; Ka Keller; Lea Long",
     "email all \"ka@example.\"             # Ka Keller",
@@ -168,6 +169,28 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "email all/respectAccents Exämple.com  #",
   })
   public void all(String testcase) {
+    select(testcase);
+  }
+
+  @Test
+  @Parameters({
+    "name any \"\"                         # Jo Jane; Ka Keller; Lea Long",
+    "name any Lea                          # Lea Long",
+    "name any Long                         # Lea Long",
+    "name any \"Lea Long\"                 # Lea Long",
+    "name any \"Long Lea\"                 # Lea Long",
+    "name any \"Lea FooBar\"               # Lea Long",
+    "name any \"FooBar Long\"              # Lea Long",
+    "email any \"com example ka\"          # Jo Jane; Ka Keller; Lea Long",
+    "email any \"com example\"             # Jo Jane; Ka Keller; Lea Long",
+    "email any \"ka@example.\"             # Ka Keller",
+    "email any \"@example.com\"            # Jo Jane; Ka Keller; Lea Long",
+    "email any/respectCase example.com     # Jo Jane; Ka Keller; Lea Long",
+    "email any/respectCase Example.com     #",
+    "email any/respectAccents Example.com  # Jo Jane; Ka Keller; Lea Long",
+    "email any/respectAccents Exämple.com  #",
+  })
+  public void any(String testcase) {
     select(testcase);
   }
 

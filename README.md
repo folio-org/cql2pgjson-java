@@ -48,8 +48,8 @@ field name:
     
     // Query processing
     where = cql2pgJson.cql2pgJson( "users.user_data.name=Miller" );
-    where = cql2pgJson.cql2pgJson( "users.group_data.name=Students" );
-    where = cql2pgJson.cql2pgJson( "users.uncontrolled_data.name=Zanzibar" );
+    where = cql2pgJson.cql2pgJson( "users.group_data.name==Students" );
+    where = cql2pgJson.cql2pgJson( "users.uncontrolled_data.name==*Zanzibar*" );
     where = cql2pgJson.cql2pgJson( "name=Miller" ); // implies users.user_data
 
 ## Schema
@@ -64,10 +64,12 @@ Only these relations have been implemented yet:
 
 * `=` (this is `==` for a number and `all` for a string.
        Examples 1: `height = 3.4` Example 2: `title = Potter`)
-* `==` (exact match, for example `barcode == 883746123`;
+* `==` (exact match, for example `barcode == 883746123` or exact substring match `title == "*Harry Potter*"`;
         numeric fields match any form: 3.4 = 3.400 = 0.34e1)
-* `all` (each word of the query string exists somewhere, `title all "Potter Harry"` matches Harry X. Potter)
-* `adj` (substring phrase match: all words of the query string exists consecutively in that order)
+* `all` (each word of the query string exists somewhere, `title all "Potter Harry"` matches "Harry X. Potter")
+* `any` (any word of the query string exists somewhere, `title any "Potter Foo"` matches "Harry Potter")
+* `adj` (substring phrase match: all words of the query string exists consecutively in that order, there may be any
+          whitespace and punctuation in between, `title adj "Harry Potter"` matches "Harry - . - Potter")
 * `>` `>=` `<` `<=` `<>` (comparison for both strings and numbers)
 
 Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
