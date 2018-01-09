@@ -62,7 +62,7 @@ large datasets.
 
 Only these relations have been implemented yet:
 
-* `=` (this is `==` for a number and `all` for a string.
+* `=` (this is `==` for a number and `adj` for a string.
        Examples 1: `height = 3.4` Example 2: `title = Potter`)
 * `==` (exact match, for example `barcode == 883746123` or exact substring match `title == "*Harry Potter*"`;
         numeric fields match any form: 3.4 = 3.400 = 0.34e1)

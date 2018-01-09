@@ -131,8 +131,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "name=Long                      # Lea Long",
     "address.zip=2791               # Lea Long",
     "\"Lea Long\"                   # Lea Long",
-    "\"Long Lea\"                   # Lea Long",
-    "\"Long Lea Long\"              # Lea Long",
+    "\"Long Lea\"                   #",
     "Long                           # Lea Long",
     "Lon                            #",
     "ong                            #",
@@ -140,9 +139,10 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "example                        # Jo Jane; Ka Keller; Lea Long",
     "email=example.com              # Jo Jane; Ka Keller; Lea Long",
     "email=\"example com\"          # Jo Jane; Ka Keller; Lea Long",
-    "email=\"com example\"          # Jo Jane; Ka Keller; Lea Long",
+    "email=\"com example\"          #",
     "email==example.com             #",
     "email<>example.com             # Jo Jane; Ka Keller; Lea Long",
+    "email==ka@example.com          # Ka Keller",
     "name == \"Lea Long\"           # Lea Long",
     "name <> \"Lea Long\"           # Jo Jane; Ka Keller",
   })
@@ -365,10 +365,13 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Test
   @Parameters({
     "^Jo                            # Jo Jane",
-    "^Jane                          #",
     "Jo^                            #",
+    "Jo^ Jane                       #",
+    "^Jane                          #",
+    "Jo ^Jane                       #",
     "Jane^                          # Jo Jane",
-    "Jane^ ^Jo                      # Jo Jane",
+    "^Jo Jane^                      # Jo Jane",
+    "name any \"Jane^ ^Jo\"         # Jo Jane",
   })
   public void caret(String testcase) {
     select(testcase);
@@ -728,6 +731,12 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Test(expected = FieldException.class)
   public void schemaListWithSpaceFieldname() throws Exception {
     schemaList(" ");
+  }
+
+  @Test
+  public void singleField() throws CQL2PgJSONException {
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON(Arrays.asList("users.user_data"), Arrays.asList("name"));
+    select(aCql2pgJson, "Long   # Lea Long");
   }
 
   @Parameters({
