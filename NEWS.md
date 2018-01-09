@@ -1,3 +1,8 @@
+## 2.0.0 2018-01-09
+ * CQLPG-32: The default relation = now uses "adj" relation for strings (was "all").
+ * CQLPG-23: Support "any" relation.
+ * CQLPG-33: Performance test for number match.
+
 ## 1.3.4 2018-01-05
  * CQLPG-31: CQL number match when invoked without schema
  * CQLPG-30: Trigger on postgres numbers, not only on json numbers
