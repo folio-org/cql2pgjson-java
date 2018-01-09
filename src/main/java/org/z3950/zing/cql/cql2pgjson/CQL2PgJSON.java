@@ -593,9 +593,9 @@ public class CQL2PgJSON {
       return fullMatch(textIndex, modifiers, node.getTerm(), true);
     case "<>":
       return fullMatch(textIndex, modifiers, node.getTerm(), false);
-    case "=":   // use "all"
     case "all":
       return allRegexp(textIndex, modifiers, node.getTerm());
+    case "=":   // use "adj"
     case "adj":
       return adjRegexp(textIndex, modifiers, node.getTerm());
     case "any":
