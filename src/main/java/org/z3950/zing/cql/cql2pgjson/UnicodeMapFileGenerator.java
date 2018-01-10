@@ -44,7 +44,7 @@ public final class UnicodeMapFileGenerator {
     }
   }
 
-  private static Iterable<Character> nonSurrogates = NonSurrogates::new;
+  static Iterable<Character> nonSurrogates = NonSurrogates::new;
   private static Pattern accents = Pattern.compile("[\\p{InCombiningDiacriticalMarks}\uFE20\uFE21]+");
 
   private UnicodeMapFileGenerator() {
@@ -67,11 +67,7 @@ public final class UnicodeMapFileGenerator {
    * @return true iff the set does not contain the value before
    */
   private static boolean add(Map<Character,Set<String>> map, Character c, String value) {
-    Set<String> set = map.get(c);
-    if (set == null) {
-      set = new HashSet<>();
-      map.put(c,  set);
-    }
+    Set<String> set = map.computeIfAbsent(c, key -> new HashSet<String>());
     return set.add(value);
   }
 
