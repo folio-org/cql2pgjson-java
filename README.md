@@ -23,7 +23,7 @@ Invoke like this:
     //       ~ '(^|[[:punct:]]|[[:space:]])Miller($|[[:punct:]]|[[:space:]])'
 
 `userSchemaJson` is the schema definition like [userdata.json](src/test/resources/userdata.json),
-learn more from [raml-module-builder's documenation](https://github.com/folio-org/raml-module-builder#step-1-describe-the-apis-to-be-exposed-by-the-new-module).
+learn more from [raml-module-builder's documentation](https://github.com/folio-org/raml-module-builder#step-1-describe-the-apis-to-be-exposed-by-the-new-module).
 
 Setting server choice indexes is possible, the next example searches `name=Miller or email=Miller`:
 
@@ -34,18 +34,18 @@ Setting server choice indexes is possible, the next example searches `name=Mille
 
 Searching across multiple JSONB fields works like this. The _first_ json field specified
 in the constructor will be applied to any query arguments that aren't prefixed with the appropriate
-field name: 
+field name:
 
     // Instantiation without schemas
     CQL2PgJSON cql2pgJson = new CQL2PgJSON(Arrays.asList("users.user_data","users.group_data"));
-    
+
     // Instantiation with schemas
     LinkedHashMap<String,String> fieldsAndSchemas = new LinkedHashMap<>();
     fieldsAndSchemas.put("users.user_data",         userSchemaJson);
     fieldsAndSchemas.put("users.group_data",        groupSchemaJson);
     fieldsAndSchemas.put("users.uncontrolled_data", null);
     cql2pgJson = new CQL2PgJSON( fieldsAndSchemas );
-    
+
     // Query processing
     where = cql2pgJson.cql2pgJson( "users.user_data.name=Miller" );
     where = cql2pgJson.cql2pgJson( "users.group_data.name==Students" );
@@ -68,7 +68,7 @@ Only these relations have been implemented yet:
         numeric fields match any form: 3.4 = 3.400 = 0.34e1)
 * `all` (each word of the query string exists somewhere, `title all "Potter Harry"` matches "Harry X. Potter")
 * `any` (any word of the query string exists somewhere, `title any "Potter Foo"` matches "Harry Potter")
-* `adj` (substring phrase match: all words of the query string exists consecutively in that order, there may be any
+* `adj` (substring phrase match: all words of the query string exist consecutively in that order, there may be any
           whitespace and punctuation in between, `title adj "Harry Potter"` matches "Harry - . - Potter")
 * `>` `>=` `<` `<=` `<>` (comparison for both strings and numbers)
 
@@ -116,7 +116,7 @@ an array element value does not contain double quotes):
 * `cql.allRecords=1 NOT lang = ""` for matching records where lang is not defined
 * `identifiers == "*\"value\": \"6316800312\", \"identifierTypeId\": \"8261054f-be78-422d-bd51-4ed9f33c3422\"*"`
   (note to use `==` and not `=`) for matching the ISBN 6316800312 using ISBN's identifierTypeId where each element of
-  the identifiers array is a JSON object with the two keys value and identifiertTypeId, for example
+  the identifiers array is a JSON object with the two keys value and identifierTypeId, for example
 
       "identifiers": [ {
         "value": "(OCoLC)968777846", "identifierTypeId": "7e591197-f335-4afb-bc6d-a6d76ca3bace"
@@ -131,7 +131,7 @@ Correct number matching must result in 3.4 = 3.400 = 0.34e1 and correct number c
 
 If the search term is a number then a numeric mode is used for "==", "<>", "<", "<=", ">", ">=", and "=".
 
-If the schema (see section [](#schema) above) specifies a JSON field type
+If the schema (see section [Schema](#schema) above) specifies a JSON field type
 then numeric mode is only used when that type is either `integer` or `number`.
 
 If the comparator is "=" and the JSON field type is not specified in the schema

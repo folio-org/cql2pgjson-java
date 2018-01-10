@@ -13,7 +13,7 @@
 
 ## 1.3.2 2017-12-05
  * MODINVSTOR-38: Fix matching a number in a string field, performance tests
- * CQLPG-21: Implement CQL's adj keyword for phrase matching 
+ * CQLPG-21: Implement CQL's adj keyword for phrase matching
 
 ## 1.3.1 2017-12-01
  * UICHKOUT-39: Unit test for number in string field
@@ -34,5 +34,5 @@
 ## 1.2.0 2017-07-20
  * Implement multi-field queries (FOLIO-727)
 ## 1.1.0 2017-05-10
- * First code release  
+ * First code release
  * Update cql-java dependency to v1.13 (FOLIO-596)
