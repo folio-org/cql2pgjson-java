@@ -34,18 +34,18 @@ Setting server choice indexes is possible, the next example searches `name=Mille
 
 Searching across multiple JSONB fields works like this. The _first_ json field specified
 in the constructor will be applied to any query arguments that aren't prefixed with the appropriate
-field name: 
+field name:
 
     // Instantiation without schemas
     CQL2PgJSON cql2pgJson = new CQL2PgJSON(Arrays.asList("users.user_data","users.group_data"));
-    
+
     // Instantiation with schemas
     LinkedHashMap<String,String> fieldsAndSchemas = new LinkedHashMap<>();
     fieldsAndSchemas.put("users.user_data",         userSchemaJson);
     fieldsAndSchemas.put("users.group_data",        groupSchemaJson);
     fieldsAndSchemas.put("users.uncontrolled_data", null);
     cql2pgJson = new CQL2PgJSON( fieldsAndSchemas );
-    
+
     // Query processing
     where = cql2pgJson.cql2pgJson( "users.user_data.name=Miller" );
     where = cql2pgJson.cql2pgJson( "users.group_data.name==Students" );
