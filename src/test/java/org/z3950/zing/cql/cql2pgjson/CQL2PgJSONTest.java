@@ -563,6 +563,18 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
+    "address.zip<1                  #",
+    "address.zip<2                  # a",
+    "address.zip<3                  # a; b",
+    "address.zip<=0                 #",
+    "address.zip<=1                 # a",
+    "address.zip<=2                 # a; b",
+    "address.zip>16                 # g; h",
+    "address.zip>17                 # h",
+    "address.zip>18                 #",
+    "address.zip>=17                # g; h",
+    "address.zip>=18                # h",
+    "address.zip>=19                #",
     "address.zip= 4                 # d; e; f",   // because 4 is a word in "4.0" and "4e0"
     "address.zip==4                 # d; e; f",
     "address.zip= 4.0               # e",
