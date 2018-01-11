@@ -72,14 +72,14 @@ public class CQL2PgJSON {
     MASKED, UNMASKED, SUBSTRING, REGEXP;
   }
 
-  private class IndexTextAndJsonValues {
+  private static class IndexTextAndJsonValues {
     String indexText;
     String indexJson;
     /** the RAML type like integer, number, string, boolean, datetime, ... "" for unknown. */
     String type = "";
   }
 
-  private class CqlModifiers {
+  private static class CqlModifiers {
     CqlSort    cqlSort    = CqlSort   .ASCENDING;
     CqlCase    cqlCase    = CqlCase   .IGNORE_CASE;
     CqlAccents cqlAccents = CqlAccents.IGNORE_ACCENTS;
@@ -594,7 +594,7 @@ public class CQL2PgJSON {
     return new String [] { result };
   }
 
-  private String [] match(String textIndex, CQLTermNode node) throws CQLFeatureUnsupportedException {
+  private static String [] match(String textIndex, CQLTermNode node) throws CQLFeatureUnsupportedException {
     CqlModifiers modifiers = new CqlModifiers(node);
     if (modifiers.cqlMasking != CqlMasking.MASKED) {
       throw new CQLFeatureUnsupportedException("This masking is not implemented yet: " + modifiers.cqlMasking);
@@ -691,7 +691,7 @@ public class CQL2PgJSON {
    * @param stringBuilder where to append
    * @param strings what to append
    */
-  private void append(StringBuilder stringBuilder, String ... strings) {
+  private static void append(StringBuilder stringBuilder, String ... strings) {
     for (String string : strings) {
       stringBuilder.append(string);
     }
@@ -725,7 +725,7 @@ public class CQL2PgJSON {
    * @param match  where to search
    * @return the replaced string
    */
-  private String numberMatch(String jsonMatch) {
+  private static String numberMatch(String jsonMatch) {
     return jsonMatch.replace("'\"", "to_jsonb(").replace("\"'", ")");
   }
 
@@ -735,7 +735,7 @@ public class CQL2PgJSON {
    * @param node
    * @return true iff numeric comparison
    */
-  private boolean isNumberComparator(CQLTermNode node) {
+  private static boolean isNumberComparator(CQLTermNode node) {
     switch (node.getRelation().getBase()) {
     case "<>":
     case "<":
