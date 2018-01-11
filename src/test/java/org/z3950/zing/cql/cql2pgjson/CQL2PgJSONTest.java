@@ -3,8 +3,6 @@ package org.z3950.zing.cql.cql2pgjson;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.*;
 import org.junit.runner.RunWith;
-import org.z3950.zing.cql.CQLRelation;
-import org.z3950.zing.cql.CQLTermNode;
 
 import java.io.IOException;
 import java.sql.ResultSet;
