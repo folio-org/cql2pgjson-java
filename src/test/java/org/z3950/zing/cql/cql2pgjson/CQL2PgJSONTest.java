@@ -744,6 +744,30 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   }
 
   @Test
+  public void schemaListWithEmptySchema() throws Exception {
+    Map<String,String> map = new HashMap<>();
+    map.put("fieldname", "");
+    new CQL2PgJSON(map);
+  }
+
+  @Test
+  public void schemaListOneField() throws Exception {
+    Map<String,String> map = new HashMap<>();
+    map.put("users.user_data", Util.getResource("userdata.json"));
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON(map, Arrays.asList("name"));
+    select(aCql2pgJson, "Long   # Lea Long");
+  }
+
+  @Test
+  public void schemaListTwoFields() throws Exception {
+    Map<String,String> map = new HashMap<>();
+    map.put("users.user_data", Util.getResource("userdata.json"));
+    map.put("users.user_data2", Util.getResource("userdata.json"));
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON(map, Arrays.asList("name"));
+    select(aCql2pgJson, "Long   # Lea Long");
+  }
+
+  @Test
   public void singleField() throws CQL2PgJSONException {
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON(Arrays.asList("users.user_data"), Arrays.asList("name"));
     select(aCql2pgJson, "Long   # Lea Long");
