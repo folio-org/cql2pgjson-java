@@ -19,6 +19,9 @@ public class Schema {
 
   /* Private use variables and object structures*/
   private final Map<String,JsonPath> byNodeName = new HashMap<>();
+  private static final String PROPERTIES = "properties";
+  private static final String TYPE = "type";
+  private static final String ITEMS = "items";
   private static final String ITEMS_USAGE_MESSAGE =
       "`items` is a reserved field name, whose value should be a Json object containing `type` field.";
 
@@ -71,19 +74,22 @@ public class Schema {
    * Run a schema validation on the specified JSON file, producing errors if the file
    * is either invalid JSON, or merely incorrectly structured for the purpose of defining
    * the JSON data storage structure.
-   * @param schemaJson
-   * @throws IOException
-   * @throws SchemaException
+   * @param schemaJson  JSON schema to parse
+   * @throws IOException  on parse failure
+   * @throws SchemaException  if the schema in not well formed
    */
   public Schema (String schemaJson) throws IOException, SchemaException {
     JsonFactory jsonFactory = new JsonFactory();
     try ( JsonParser jp = jsonFactory.createParser(schemaJson) ) {
       while (!jp.isClosed()) {
         JsonToken jt = jp.nextToken();
-        if (jt == null) break;
-        if (jt.equals(JsonToken.FIELD_NAME))
-          if (jp.getCurrentName().equals("properties"))
-            iteratePropertiesArray(jp,new ArrayList<>());
+        if (jt == null) {
+          break;
+        }
+        if (jt.equals(JsonToken.FIELD_NAME) &&
+            jp.getCurrentName().equals(PROPERTIES)) {
+          iteratePropertiesArray(jp,new ArrayList<>());
+        }
       }
     }
   }
@@ -110,8 +116,8 @@ public class Schema {
    * looking up 'zip' may return 'address.zip'. Any fields in the index that don't match the specified
    * type will not be considered to be matches. Currently, a type argument of 'string' will match an
    * index field of type 'string' or an array of type 'string'.
-   * @param index
-   * @param type
+   * @param index  field name, may be abbreviated
+   * @param type  type of index
    * @return fully-specified version of field value.
    * @throws QueryValidationException  if index and type is not found or ambiguous
    */
@@ -197,33 +203,42 @@ public class Schema {
     String items = null;
     while (!jp.isClosed()) {
       jt = jp.nextToken();
-      if (jt.equals(JsonToken.FIELD_NAME)) {
-        String subFieldName = jp.getCurrentName();
-        if (subFieldName.equals("properties")) {
-          breadcrumbs.add(fieldName);
-          iteratePropertiesArray(jp,breadcrumbs);
-          breadcrumbs.remove(breadcrumbs.size()-1);
-        } else if (subFieldName.equals("type")) {
-          jp.nextToken();
-          type = jp.getValueAsString();
-        } else if (subFieldName.equals("items")) {
-          breadcrumbs.add(fieldName);
-          items = getItems( jp, breadcrumbs );
-          breadcrumbs.remove(breadcrumbs.size()-1);
-        }
-      } else if (jt.equals(JsonToken.END_OBJECT)) {
+      if (jt.equals(JsonToken.END_OBJECT)) {
         recordFoundNode(type,items,fieldName,breadcrumbs);
         return;
+      }
+      if (! jt.equals(JsonToken.FIELD_NAME)) {
+        continue;
+      }
+      switch (jp.getCurrentName()) {
+      case PROPERTIES:
+        breadcrumbs.add(fieldName);
+        iteratePropertiesArray(jp,breadcrumbs);
+        breadcrumbs.remove(breadcrumbs.size()-1);
+        break;
+      case TYPE:
+        jp.nextToken();
+        type = jp.getValueAsString();
+        break;
+      case ITEMS:
+        breadcrumbs.add(fieldName);
+        items = getItems( jp, breadcrumbs );
+        breadcrumbs.remove(breadcrumbs.size()-1);
+        break;
+      default:
+        // ignore
       }
     }
   }
 
-  private void recordFoundNode(String type, String items, String fieldName, List<String> breadcrumbs) throws SchemaException {
-    if (type == null)
+  void recordFoundNode(String type, String items, String fieldName, List<String> breadcrumbs) throws SchemaException {
+    if (type == null) {
       return;
-    if (type.equals("array") && items == null)
-        throw new SchemaException("Array type nodes require an items object to identify the object type in the array."
-            +ITEMS_USAGE_MESSAGE);
+    }
+    if (type.equals("array") && items == null) {
+      throw new SchemaException("Array type nodes require an items object to identify the object type in the array. "
+          + ITEMS_USAGE_MESSAGE);
+    }
     breadcrumbs.add(fieldName);
     JsonPath path = new JsonPath();
     path.path = String.join(".", breadcrumbs);
@@ -252,20 +267,26 @@ public class Schema {
     }
   }
 
-  private String getItems(JsonParser jp, List<String> breadcrumbs) throws IOException, SchemaException {
+  String getItems(JsonParser jp, List<String> breadcrumbs) throws IOException, SchemaException {
     JsonToken jt = jp.nextToken();
     String type = null;
     if (!jt.equals(JsonToken.START_OBJECT))
       throw new SchemaException(ITEMS_USAGE_MESSAGE);
     while ( ! jp.isClosed() && ! jt.equals(JsonToken.END_OBJECT)) {
       jt = jp.nextToken();
-      if (jt.equals(JsonToken.FIELD_NAME)) {
-        if (jp.getCurrentName().equals("type")) {
-          jp.nextValue();
-          type = jp.getValueAsString();
-        } else if (jp.getCurrentName().equals("properties")) {
-          iteratePropertiesArray(jp,breadcrumbs);
-        }
+      if (! jt.equals(JsonToken.FIELD_NAME)) {
+        continue;
+      }
+      switch (jp.getCurrentName()) {
+      case TYPE:
+        jp.nextValue();
+        type = jp.getValueAsString();
+        break;
+      case PROPERTIES:
+        iteratePropertiesArray(jp,breadcrumbs);
+        break;
+      default:
+        // ignore
       }
     }
     if (type == null)
