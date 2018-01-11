@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.apache.commons.lang3.StringUtils;
 import org.z3950.zing.cql.CQLAndNode;
 import org.z3950.zing.cql.CQLBooleanNode;
 import org.z3950.zing.cql.CQLNode;
@@ -138,10 +139,7 @@ public class CQL2PgJSON {
    * @throws FieldException provided field is not valid
    */
   public CQL2PgJSON(String field) throws FieldException {
-    if (field == null || field.trim().isEmpty()) {
-      throw new FieldException("field (containing tableName) must not be empty");
-    }
-    this.jsonField = field;
+    this.jsonField = trimNotEmpty(field);
   }
 
   /**
@@ -211,9 +209,7 @@ public class CQL2PgJSON {
       throw new FieldException( "fields list must not be empty" );
     this.jsonFields = new ArrayList<>();
     for (String field : fields) {
-      if (field == null || field.trim().isEmpty())
-        throw new FieldException( "field names must not be empty" );
-      this.jsonFields.add(field.trim());
+      this.jsonFields.add(trimNotEmpty(field));
     }
     if (this.jsonFields.size() == 1)
       this.jsonField = this.jsonFields.get(0);
@@ -261,16 +257,13 @@ public class CQL2PgJSON {
     this.jsonFields = new ArrayList<>();
     this.schemas = new HashMap<>();
     for (Entry<String,String> e : fieldsAndSchemaJsons.entrySet()) {
-      String field = e.getKey();
-      if (field == null || field.trim().isEmpty()) {
-        throw new FieldException( "field names must not be empty" );
-      }
+      String field = trimNotEmpty(e.getKey());
       this.jsonFields.add(field);
-      String schemaJson = e.getValue();
-      if (schemaJson == null || schemaJson.trim().isEmpty()) {
+      String schemaJson = StringUtils.defaultString(e.getValue());
+      if (schemaJson.isEmpty()) {
         continue;
       }
-      this.schemas.put(field, new Schema(e.getValue()));
+      this.schemas.put(field, new Schema(schemaJson));
     }
     if (this.jsonFields.size() == 1) {
       this.jsonField = this.jsonFields.get(0);
@@ -342,6 +335,25 @@ public class CQL2PgJSON {
       }
     }
     this.serverChoiceIndexes = serverChoiceIndexes;
+  }
+
+  /**
+   * Return field.trim(). Throw FieldException if field is null or
+   * field.trim() is empty.
+   *
+   * @param field  the field name to trim
+   * @return trimmed field
+   * @throws FieldException  if field is null or the trimmed field name is empty
+   */
+  private String trimNotEmpty(String field) throws FieldException {
+    if (field == null) {
+      throw new FieldException("a field name must not be null");
+    }
+    String fieldTrimmed = field.trim();
+    if (fieldTrimmed.isEmpty()) {
+      throw new FieldException("a field name must not be empty");
+    }
+    return fieldTrimmed;
   }
 
   /**
