@@ -563,6 +563,18 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
+    "address.zip<1                  #",
+    "address.zip<2                  # a",
+    "address.zip<3                  # a; b",
+    "address.zip<=0                 #",
+    "address.zip<=1                 # a",
+    "address.zip<=2                 # a; b",
+    "address.zip>16                 # g; h",
+    "address.zip>17                 # h",
+    "address.zip>18                 #",
+    "address.zip>=17                # g; h",
+    "address.zip>=18                # h",
+    "address.zip>=19                #",
     "address.zip= 4                 # d; e; f",   // because 4 is a word in "4.0" and "4e0"
     "address.zip==4                 # d; e; f",
     "address.zip= 4.0               # e",
@@ -594,6 +606,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     // without schema
     CQL2PgJSON aCql2PgJson = new CQL2PgJSON("users.user_data");
     select(aCql2PgJson, "special.sql", testcase);
+  }
+
+  @Test
+  public void numberInSchema() throws CQL2PgJSONException {
+    select("number=4.0  # Jo Jane");
   }
 
   @Test
@@ -729,6 +746,30 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Test(expected = FieldException.class)
   public void schemaListWithSpaceFieldname() throws Exception {
     schemaList(" ");
+  }
+
+  @Test
+  public void schemaListWithEmptySchema() throws Exception {
+    Map<String,String> map = new HashMap<>();
+    map.put("fieldname", "");
+    new CQL2PgJSON(map);
+  }
+
+  @Test
+  public void schemaListOneField() throws Exception {
+    Map<String,String> map = new HashMap<>();
+    map.put("users.user_data", Util.getResource("userdata.json"));
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON(map, Arrays.asList("name"));
+    select(aCql2pgJson, "Long   # Lea Long");
+  }
+
+  @Test
+  public void schemaListTwoFields() throws Exception {
+    Map<String,String> map = new HashMap<>();
+    map.put("users.user_data", Util.getResource("userdata.json"));
+    map.put("users.user_data2", Util.getResource("userdata.json"));
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON(map, Arrays.asList("name"));
+    select(aCql2pgJson, "Long   # Lea Long");
   }
 
   @Test
