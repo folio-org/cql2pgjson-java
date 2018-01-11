@@ -609,6 +609,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   }
 
   @Test
+  public void numberInSchema() throws CQL2PgJSONException {
+    select("number=4.0  # Jo Jane");
+  }
+
+  @Test
   @Parameters({
     "name< \"Ka Keller\"  # Jo Jane",
     "name<=\"Ka Keller\"  # Jo Jane; Ka Keller",

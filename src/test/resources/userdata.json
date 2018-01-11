@@ -26,6 +26,9 @@
       "items": {
         "type": "string"
       }
+    },
+    "number": {
+      "type": "number"
     }
   }
 }
