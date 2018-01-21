@@ -1,5 +1,9 @@
 package org.z3950.zing.cql.cql2pgjson;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.StringReader;
+
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -33,5 +37,13 @@ public class UnicodeTest {
   public void fileNotFound() {
     expectIllegalStateException("not found");
     Unicode.readMappingFile("mapping-not-exists");
+  }
+
+  @Test
+  public void ioException() throws IOException {
+    BufferedReader in = new BufferedReader(new StringReader(""));
+    in.close();
+    expectIllegalStateException("IOException: Stream closed");
+    Unicode.readMappingFile(in);
   }
 }

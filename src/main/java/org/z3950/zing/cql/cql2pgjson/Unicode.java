@@ -107,8 +107,19 @@ public enum Unicode {
    * @throws IllegalStateException on error
    */
   public static Map<Character,String> readMappingFile(String filename) {
-    Map<Character,String> map = new HashMap<>();
-    try (BufferedReader in = resource(filename)) {
+    return readMappingFile(resource(filename));
+  }
+
+  /**
+   * Reads the resource filename where each line contains a character, a tabulator
+   * and a String (minimum length 1).
+   * @param in  source to read the file from
+   * @return unmodifiable map that maps each character to the String of that line.
+   * @throws IllegalStateException on error
+   */
+  public static Map<Character,String> readMappingFile(BufferedReader in) {
+    try {
+      Map<Character,String> map = new HashMap<>();
       String line;
       while ((line = in.readLine()) != null) {
         if (line.length() == 0) {
@@ -124,10 +135,9 @@ public enum Unicode {
         String s = line.substring(2).intern();
         map.put(c,  s);
       }
+      return Collections.unmodifiableMap(map);
     } catch (IOException e) {
       throw new IllegalStateException(e);
     }
-    return Collections.unmodifiableMap(map);
   }
 }
-
