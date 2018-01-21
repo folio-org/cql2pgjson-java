@@ -127,7 +127,7 @@ an array element value does not contain double quotes):
 ## Matching and comparing numbers
 
 Correct number matching must result in 3.4 = 3.400 = 0.34e1 and correct number comparison must result in 10 > 2
-(in contrast to string comparison where "10" > "2").
+(in contrast to string comparison where "10" < "2").
 
 If the search term is a number then a numeric mode is used for "==", "<>", "<", "<=", ">", ">=", and "=".
 
