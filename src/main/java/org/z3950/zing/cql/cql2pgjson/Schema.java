@@ -189,10 +189,11 @@ public class Schema {
   private void iteratePropertiesArray(JsonParser jp, List<String> breadcrumbs) throws IOException, SchemaException {
     while (!jp.isClosed()) {
       JsonToken jt = jp.nextToken();
-      if (jt.equals(JsonToken.FIELD_NAME))
+      if (jt.equals(JsonToken.FIELD_NAME)) {
         processNode(jp,breadcrumbs);
-      else if (jt.equals(JsonToken.END_OBJECT))
-        return;
+      } else if (jt.equals(JsonToken.END_OBJECT)) {
+        break;
+      }
     }
   }
 
@@ -205,7 +206,7 @@ public class Schema {
       jt = jp.nextToken();
       if (jt.equals(JsonToken.END_OBJECT)) {
         recordFoundNode(type,items,fieldName,breadcrumbs);
-        return;
+        break;
       }
       if (! jt.equals(JsonToken.FIELD_NAME)) {
         continue;
