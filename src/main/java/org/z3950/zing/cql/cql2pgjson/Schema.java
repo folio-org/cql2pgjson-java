@@ -197,6 +197,7 @@ public class Schema {
     }
   }
 
+  @SuppressWarnings("squid:S135")  // suppress "At most one break and continue statements"
   private void processNode(JsonParser jp, List<String> breadcrumbs) throws IOException, SchemaException {
     String fieldName = jp.getCurrentName();
     JsonToken jt = null;
