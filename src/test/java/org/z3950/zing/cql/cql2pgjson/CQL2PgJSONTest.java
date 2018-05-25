@@ -338,6 +338,9 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "email=e                            # e4",
     "cql.allRecords=1 NOT email=e       # c0; c1; c2; c3; c4; e1; e2; e3; n",
     "email=\"\"       NOT email=e       # e2; e3",
+    "cql.allRecords=1 NOT email=\"\"    # c0; c1; c2; c3; c4; e1; n",
+    "cql.allRecords=1 NOT email==\"\"   # c0; c1; c2; c3; c4; e1; e3; e4; n",
+    "email=\"\"       NOT email==\"\"   # e3; e4",
   })
   public void fieldExistsOrEmpty(String testcase) {
     select("existsEmpty.sql", testcase);
