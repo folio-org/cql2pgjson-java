@@ -485,7 +485,7 @@ public class CQL2PgJSON {
    * Example 1: IGNORE_ACCENTS, IGNORE_CASE, trueOnMatch=true, s="Sövan*"<br>
    * { "lower(f_unaccent(textIndex)) LIKE lower(f_unaccent('Sövan%'))" }
    * <p>
-   * Example 2: IGNORE_ACCENTS, IGNORE_CASE, trueOnMatch=true, s="Sövan*"<br>
+   * Example 2: IGNORE_ACCENTS, IGNORE_CASE, trueOnMatch=false, s="Sövan*"<br>
    * { "lower(f_unaccent(textIndex)) NOT LIKE lower(f_unaccent('Sövan%'))" }
    * <p>
    * Example 3: RESPECT_ACCENTS, RESPECT_CASE, trueOnMatch=true, s="Sövan*"<br>
