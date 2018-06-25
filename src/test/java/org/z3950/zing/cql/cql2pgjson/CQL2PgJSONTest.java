@@ -364,6 +364,14 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   }
 
   @Test
+  public void matchAnyFromLongList() {
+    // Should not produce a StackOverflowError:
+    // https://issues.folio.org/browse/CIRC-119 "Requests API GET /requests does not scale"
+    select("name==(a or b or c or d or e or f or g or h or j or k or l or m or n or o or p or q or s or t or u or v "
+           +      "or w or x or y or z or 0 or 1 or 2 or 3 or 4 or 5 or 6 or 7 or 8 or 9 or \"Jo Jane\")  # Jo Jane");
+  }
+
+  @Test
   @Parameters({
     "^Jo                            # Jo Jane",
     "Jo^                            #",
