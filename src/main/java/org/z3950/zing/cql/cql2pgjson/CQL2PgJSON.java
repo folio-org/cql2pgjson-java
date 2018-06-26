@@ -357,9 +357,9 @@ public class CQL2PgJSON {
   }
 
   /**
-   * Return a SQL WHERE clause for the CQL expression.
+   * Return an SQL WHERE clause for the CQL expression.
    * @param cql  CQL expression to convert
-   * @return SQL WHERE clause
+   * @return SQL WHERE clause, without leading "WHERE ", may contain "ORDER BY" clause
    * @throws QueryValidationException  when parsing or validating cql fails
    */
   public String cql2pgJson(String cql) throws QueryValidationException {
@@ -372,6 +372,29 @@ public class CQL2PgJSON {
     }
   }
 
+  /**
+   * Convert the CQL query into a SQL query and return the WHERE and the ORDER BY clause.
+   * @param cql  the query to convert
+   * @return SQL query
+   * @throws QueryValidationException
+   */
+  public SqlSelect toSql(String cql) throws QueryValidationException {
+    try {
+      CQLParser parser = new CQLParser();
+      CQLNode node = parser.parse(cql);
+      return toSql(node);
+    } catch (IOException|CQLParseException e) {
+      throw new QueryValidationException(e);
+    }
+  }
+
+  private SqlSelect toSql(CQLNode node) throws QueryValidationException {
+    if (node instanceof CQLSortNode) {
+      return toSql((CQLSortNode) node);
+    }
+    return new SqlSelect(pg(node), null);
+  }
+
   private String pg(CQLNode node) throws QueryValidationException {
     if (node instanceof CQLTermNode) {
       return pg((CQLTermNode) node);
@@ -380,9 +403,14 @@ public class CQL2PgJSON {
       return pg((CQLBooleanNode) node);
     }
     if (node instanceof CQLSortNode) {
-      return pg((CQLSortNode) node);
+      SqlSelect sqlSelect = toSql((CQLSortNode) node);
+      return sqlSelect.getWhere() + " ORDER BY " + sqlSelect.getOrderBy();
     }
-    throw new CQLFeatureUnsupportedException("Not implemented yet: " + node.getClass().getName());
+    throw createUnsupportedException(node);
+  }
+
+  private static CQLFeatureUnsupportedException createUnsupportedException(CQLNode node) {
+    return new CQLFeatureUnsupportedException("Not implemented yet: " + node.getClass().getName());
   }
 
   /**
@@ -413,10 +441,10 @@ public class CQL2PgJSON {
     return result;
   }
 
-  private String pg(CQLSortNode node) throws QueryValidationException {
+  private SqlSelect toSql(CQLSortNode node) throws QueryValidationException {
     StringBuilder order = new StringBuilder();
-    order.append(pg(node.getSubtree()))
-    .append(" ORDER BY ");
+    String where = pg(node.getSubtree());
+
     boolean firstIndex = true;
     for (ModifierSet modifierSet : node.getSortIndexes()) {
       if (firstIndex) {
@@ -445,7 +473,7 @@ public class CQL2PgJSON {
       // We assume that a CREATE INDEX for this has been installed.
       order.append(wrapInLowerUnaccent(vals.indexText)).append(desc);
     }
-    return order.toString();
+    return new SqlSelect(where, order.toString());
   }
 
   private static String sqlOperator(CQLBooleanNode node) throws CQLFeatureUnsupportedException {
@@ -460,7 +488,7 @@ public class CQL2PgJSON {
       // https://www.loc.gov/standards/sru/cql/spec.html
       return "AND NOT";
     }
-    throw new CQLFeatureUnsupportedException("Not implemented yet: " + node.getClass().getName());
+    throw createUnsupportedException(node);
   }
 
   private String pg(CQLBooleanNode node) throws QueryValidationException {

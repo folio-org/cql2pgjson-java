@@ -813,4 +813,29 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
         "users.user_data", Util.getResource("userdata.json"), Arrays.asList("name"));
     cql2pgJsonException(aCql2pgJson, "name<>x sortBy notExistingIndex", QueryValidationException.class);
   }
+
+  @Test
+  public void toSqlSimple() throws QueryValidationException {
+    SqlSelect s = cql2pgJson.toSql("cql.allRecords=1");
+    assertEquals("true", s.getWhere());
+    assertEquals("", s.getOrderBy());
+    assertEquals("WHERE true", s.toString());
+  }
+
+  @Test
+  public void toSql() throws QueryValidationException {
+    SqlSelect s = cql2pgJson.toSql("name=Long sortBy name/sort.descending");
+    assertEquals("lower(f_unaccent(users.user_data->>'name')) ~",    s.getWhere().substring(0, 45));
+    assertEquals("lower(f_unaccent(users.user_data->>'name')) DESC", s.getOrderBy());
+    String sql = s.toString();
+    assertTrue(sql.startsWith("WHERE " +
+                 "lower(f_unaccent(users.user_data->>'name')) ~"));
+    assertTrue(sql.endsWith(" ORDER BY " +
+                 "lower(f_unaccent(users.user_data->>'name')) DESC"));
+  }
+
+  @Test(expected = QueryValidationException.class)
+  public void toSqlException() throws QueryValidationException {
+    cql2pgJson.toSql("");
+  }
 }
