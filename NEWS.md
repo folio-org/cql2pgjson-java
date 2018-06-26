@@ -1,3 +1,7 @@
+## 2.1.0 2018-06-26
+ * CQLPG-34: Query builder - return where and orderBy clause separately.
+ * CIRC-119: Add unit test for long list producing deeply nested SQL query.
+
 ## 2.0.0 2018-01-09
  * CQLPG-32: The default relation = now uses "adj" relation for strings (was "all").
  * CQLPG-23: Support "any" relation.
