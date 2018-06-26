@@ -28,7 +28,7 @@ Or use `toSql(String cql)` to get the `ORDER BY` clause separately:
     String cql = "name=Miller";
     SqlSelect sqlSelect = cql2pgJson.toSql(cql);
     String sql = "select * from users where " + sqlSelect.getWhere()
-                                + "order by " + sqlSelect.getOrderBy();
+                               + " order by " + sqlSelect.getOrderBy();
 
 `userSchemaJson` is the schema definition like [userdata.json](src/test/resources/userdata.json),
 learn more from [raml-module-builder's documentation](https://github.com/folio-org/raml-module-builder#step-1-describe-the-apis-to-be-exposed-by-the-new-module).
