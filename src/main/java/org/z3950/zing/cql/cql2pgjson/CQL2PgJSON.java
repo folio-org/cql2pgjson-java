@@ -492,19 +492,21 @@ public class CQL2PgJSON {
   }
 
   private String pg(CQLBooleanNode node) throws QueryValidationException {
+    String left  = pg(node.getLeftOperand());
+    String right = pg(node.getRightOperand());
     String operator = sqlOperator(node);
-    String isNotTrue = "";
 
-    if ("AND NOT".equals(operator)) {
-      operator = "AND (";
-      isNotTrue = ") IS NOT TRUE";
-      // NOT TRUE is (FALSE or NULL) to catch the NULL case when the field does not exist.
-      // This completely inverts the right operand.
+    if (! "AND NOT".equals(operator)) {
+      return "(" + left + ") " + operator + " (" + right + ")";
     }
 
-    return "(" + pg(node.getLeftOperand()) + ") "
-        + operator
-        + " (" + pg(node.getRightOperand()) + isNotTrue + ")";
+    // jsqpparser does not support standard sql syntax "IS NOT TRUE":
+    // https://issues.folio.org/browse/RMB-179
+    // https://issues.folio.org/browse/RMB-180
+    // Therefore we must do it this way:
+
+    return "(" + left + ") AND "
+      + "((" + right + ") IS NULL OR ((" + right + ") IS NOT NULL AND NOT (" + right + ")))";
   }
 
   /**
