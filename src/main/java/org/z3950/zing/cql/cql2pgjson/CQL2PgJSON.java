@@ -49,14 +49,14 @@ public class CQL2PgJSON {
    * Must conform to SQL identifier requirements (characters, not a keyword), or properly
    * quoted using double quotes.
    */
+  private static Logger logger = Logger.getLogger(CQL2PgJSON.class.getName());
   private String jsonField = null;
   private List<String> jsonFields = null;
   /** Local data model of JSON schema */
   private Schema schema;
   private Map<String, Schema> schemas;
-  private static JSONObject dbSchema; // The whole schema.json, with all tables etc
+  private static JSONObject dbSchema = loadDbSchema(); // The whole schema.json, with all tables etc
   private JSONObject dbTable; // Our primary table inside the dbSchema
-  private static Logger logger = Logger.getLogger(CQL2PgJSON.class.getName());
 
   /** Postgres regexp that matches at any punctuation and space character
    * and at the beginning of the string */
@@ -145,25 +145,25 @@ public class CQL2PgJSON {
     }
   }
 
-  private void loadDbSchema() {
-    dbTable = null;
+  private static JSONObject loadDbSchema() {
     try {
-      if (dbSchema == null) {
-        ClassLoader classLoader = getClass().getClassLoader();
-        InputStream resourceAsStream = classLoader.getResourceAsStream("templates/db_scripts/schema.json");
-        if (resourceAsStream == null) {
-          logger.log(Level.SEVERE, "loadDbSchema failed to load resource 'templates/db_scripts/schema.json'");
-          return;
-        }
-        String dbJson;
-        dbJson = IOUtils.toString(resourceAsStream, "UTF-8");
-        dbSchema = new JSONObject(dbJson);
-        logger.log(Level.INFO, "loadDbSchema: Loaded 'templates/db_scripts/schema.json' OK");
+      ClassLoader classLoader = CQL2PgJSON.class.getClassLoader();
+      InputStream resourceAsStream = classLoader.getResourceAsStream("templates/db_scripts/schema.json");
+      if (resourceAsStream == null) {
+        logger.log(Level.SEVERE, "loadDbSchema failed to load resource 'templates/db_scripts/schema.json'");
+        return null;
       }
+      String dbJson;
+      dbJson = IOUtils.toString(resourceAsStream, "UTF-8");
+      logger.log(Level.INFO, "loadDbSchema: Loaded 'templates/db_scripts/schema.json' OK");
+      return new JSONObject(dbJson);
     } catch (IOException ex) {
       logger.log(Level.SEVERE, "No schema.json found", ex);
-      return;
     }
+    return null;
+  }
+
+  private void getDbTable() throws JSONException {
     if (dbSchema.has("tables")) {
       if (jsonField == null) {
         logger.log(Level.SEVERE, "loadDbSchema(): No primary table name, can not load");
@@ -191,7 +191,7 @@ public class CQL2PgJSON {
    */
   public CQL2PgJSON(String field) throws FieldException {
     this.jsonField = trimNotEmpty(field);
-    loadDbSchema();
+    getDbTable();
   }
 
   /**
@@ -266,7 +266,7 @@ public class CQL2PgJSON {
     if (this.jsonFields.size() == 1)
       this.jsonField = this.jsonFields.get(0);
     this.schemas = new HashMap<>();
-    loadDbSchema();
+    getDbTable();
   }
 
   /**
@@ -979,6 +979,8 @@ public class CQL2PgJSON {
    * @param term
    * @return
    */
+  @SuppressWarnings("squid:ForLoopCounterChangedChec")
+  // Yes, we skip the occasional character in the loop by incrementing i
   private String FTTerm(String term) throws QueryValidationException {
     StringBuilder res = new StringBuilder();
     for (int i = 0; i < term.length(); i++) {
@@ -1062,6 +1064,8 @@ public class CQL2PgJSON {
         case "<>":
           tsTerm = "!(" + String.join("<->", words) + ")";
           break;
+        default:
+          throw new QueryValidationException("CQL: Unknown comparator '" + comparator + "'");
       }
       logger.log(Level.FINE, "pgFT(): term={0} ts={1}",
         new Object[]{node.getTerm(), tsTerm});
