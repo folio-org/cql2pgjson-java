@@ -155,7 +155,7 @@ public class CQL2PgJSON {
         String dbJson;
         dbJson = IOUtils.toString(resourceAsStream, "UTF-8");
         dbSchema = new JSONObject(dbJson);
-        System.out.println("CQL2PgJSON loadDbSchema: Loaded 'templates/db_scripts/schema.json' OK");
+        logger.log(Level.INFO, "loadDbSchema: Loaded 'templates/db_scripts/schema.json' OK");
       }
     } catch (IOException ex) {
       logger.log(Level.SEVERE, "No schema.json found" + ex.toString());
