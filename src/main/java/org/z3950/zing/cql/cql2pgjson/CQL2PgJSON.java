@@ -159,7 +159,7 @@ public class CQL2PgJSON {
         logger.log(Level.INFO, "loadDbSchema: Loaded 'templates/db_scripts/schema.json' OK");
       }
     } catch (IOException ex) {
-      logger.log(Level.SEVERE, "No schema.json found" + ex.toString());
+      logger.log(Level.SEVERE, "No schema.json found", ex);
     }
     if (dbSchema.has("tables")) {
       if (jsonField == null) {
@@ -171,12 +171,10 @@ public class CQL2PgJSON {
       String tname = this.jsonField.replaceAll("\\.[^.]+$", "");
       this.dbTable = findItem(dbSchema.getJSONArray("tables"), "tableName", tname);
       if (this.dbTable == null) {
-        logger.log(Level.SEVERE, "loadDbSchema loadDbSchema(): Table " + tname + " NOT FOUND");
-        return;
+        logger.log(Level.SEVERE, "loadDbSchema loadDbSchema(): Table {0} NOT FOUND", tname);
       }
     } else {
       logger.log(Level.SEVERE, "loadDbSchema loadDbSchema(): No 'tables' section found");
-      return;
     }
   }
 
@@ -1071,7 +1069,7 @@ public class CQL2PgJSON {
     }
   }
 
-  private String pgFtNonTs(String index, CQLTermNode node, String comparator, final String fld) throws JSONException, QueryValidationException {
+  private String pgFtNonTs(String index, CQLTermNode node, String comparator, final String fld) throws QueryValidationException {
     // not fulltext, regular search
     boolean found = false;
     for (String idxType : Arrays.asList("index", "uniqueIndex", "fullTextIndex")) {
@@ -1126,28 +1124,36 @@ public class CQL2PgJSON {
     return sql;
   }
 
-  // Handle a subquery. For example when searching an item, by a material type
-  // name.
-  //  cql: materialtype.name = "book";
-  //  sql: materialtypeid in (select id from materialtype where name = "book");
-
+  /**
+   * Handle a subquery. For example when searching an item, by a material type
+   * name.
+   *
+   * cql: materialtype.name = "book"
+   *
+   * sql: materialtypeid in (select id from materialtype where name = "book")
+   *
+   * @param node
+   * @param index
+   * @return
+   * @throws QueryValidationException
+   */
   private String subQuery1FT(CQLTermNode node, String index) throws QueryValidationException {
-    //System.out.println("CQL2PgJSON.subQuery1FT() starting: " + node.toCQL());
+    //System.out.println("CQL2PgJSON.subQuery1FT() starting: " + node.toCQL())
     String[] idxParts = index.split("\\.");
     if (idxParts.length != 2) {
-      logger.log(Level.SEVERE, "subQuery1FT(): needs two-part index name, not '{0}'", index);
+      logger.log(Level.SEVERE, "subQuery1FT(): needs two-part index name, not ''{0}''", index);
       return null;
     }
     if (!dbTable.has("foreignKeys")) {
-      logger.log(Level.SEVERE, "subQuery1FT(): No foreign keys defined for '{0}'", dbTable.getString("tableName"));
+      logger.log(Level.SEVERE, "subQuery1FT(): No foreign keys defined for ''{0}''", dbTable.getString("tableName"));
       return null;
     }
     JSONObject fkey = findItem(dbTable.getJSONArray("foreignKeys"),
       "targetTable", idxParts[0]);
-    //System.out.println("CQL2PgJSON.subQuery1FT(): Found foreignKey '" + fkey);
+    //System.out.println("CQL2PgJSON.subQuery1FT(): Found foreignKey '" + fkey)
 
     if (fkey == null) {
-      logger.log(Level.SEVERE, "subQuery1FT(): No foreignKey '{0}' found", idxParts[0]);
+      logger.log(Level.SEVERE, "subQuery1FT(): No foreignKey ''{0}'' found", idxParts[0]);
       return null;
     }
     if (!fkey.has("fieldName") || !fkey.has("targetTable")) {
@@ -1165,13 +1171,13 @@ public class CQL2PgJSON {
         term = "\"\"";
       }
       String subCql = idxParts[1] + " " + node.getRelation() + " " + term;
-      //System.out.println("CQL2PgJSON.subQuery1FT() sub cql: " + subCql);
+      //System.out.println("CQL2PgJSON.subQuery1FT() sub cql: " + subCql)
       String subSql = c.cql2pgJson(subCql);
-      //System.out.println("CQL2PgJSON.subQuery1FT() sub sql: " + subSql);
+      //System.out.println("CQL2PgJSON.subQuery1FT() sub sql: " + subSql)
       String fld = index2sqlText(this.jsonField, fkField);
       String sql = fld + " in ( SELECT jsonb->>'id' from " + fkTable
         + " WHERE " + subSql + " )";
-      //System.out.println("CQL2PgJSON.subQuery1FT() sql: " + sql);
+      //System.out.println("CQL2PgJSON.subQuery1FT() sql: " + sql)
       return sql;
     } catch (IOException | FieldException | QueryValidationException | SchemaException e) {
       // We should not get these exceptions, as we construct a valid query above,
@@ -1186,10 +1192,10 @@ public class CQL2PgJSON {
   // cql: item.author = foo
   // sql: id in ( select item.materialtypeId from item where author = foo )
   private String subQuery2FT(CQLTermNode node, String index) throws QueryValidationException {
-    //System.out.println("CQL2PgJSON.subQuery2FT() starting: " + node.toCQL());
+    //System.out.println("CQL2PgJSON.subQuery2FT() starting: " + node.toCQL())
     String[] idxParts = index.split("\\.", 2);
     if (idxParts.length != 2) {
-      logger.log(Level.SEVERE, "subQuery2FT(): needs two-part index name, not '{0}'", index);
+      logger.log(Level.SEVERE, "subQuery2FT(): needs two-part index name, not {0}", index);
       return null;
     }
     // find foreign keys in the other table that refer to the current table, and
@@ -1199,7 +1205,7 @@ public class CQL2PgJSON {
       logger.log(Level.SEVERE, "subQueryFT(): Table {0} not found", idxParts[0]);
       return null;
     }
-    //System.out.println("CQL2PgJSON.subQueryFT(): Found table " + table);
+    //System.out.println("CQL2PgJSON.subQueryFT(): Found table " + table)
 
     if (!table.has("foreignKeys")) {
       logger.log(Level.SEVERE, "subQueryFT(): No foreign keys defined for {0}", idxParts[0]);
@@ -1209,10 +1215,10 @@ public class CQL2PgJSON {
     String mainTable = this.dbTable.getString("tableName");
     JSONObject fkey = findItem(table.getJSONArray("foreignKeys"),
       "targetTable", mainTable);
-    //System.out.println("CQL2PgJSON.subQueryFT(): Found foreignKey '" + fkey);
+    //System.out.println("CQL2PgJSON.subQueryFT(): Found foreignKey '" + fkey)
 
     if (fkey == null) {
-      logger.log(Level.SEVERE, "subQueryFT(): No foreignKey '{0}' found", idxParts[0]);
+      logger.log(Level.SEVERE, "subQueryFT(): No foreignKey ''{0}'' found", idxParts[0]);
       return null;
     }
 
@@ -1231,13 +1237,13 @@ public class CQL2PgJSON {
         term = "\"\"";
       }
       String subCql = idxParts[1] + " " + node.getRelation() + " " + term;
-      //System.out.println("CQL2PgJSON.subQueryFT() sub cql: " + subCql);
+      //System.out.println("CQL2PgJSON.subQueryFT() sub cql: " + subCql)
       String subSql = c.cql2pgJson(subCql);
-      //System.out.println("CQL2PgJSON.subQueryFT() sub sql: " + subSql);
+      //System.out.println("CQL2PgJSON.subQueryFT() sub sql: " + subSql)
       String fld = index2sqlText(c.jsonField, fkField);
       String sql = " jsonb->>'id' in ( SELECT " + fld + " from " + idxParts[0]
         + " WHERE " + subSql + " )";
-      //System.out.println("CQL2PgJSON.subQueryFT() sql: " + sql);
+      //System.out.println("CQL2PgJSON.subQueryFT() sql: " + sql)
       return sql;
     } catch (IOException | FieldException | QueryValidationException | SchemaException e) {
       // We should not get these exceptions, as we construct a valid query above,
