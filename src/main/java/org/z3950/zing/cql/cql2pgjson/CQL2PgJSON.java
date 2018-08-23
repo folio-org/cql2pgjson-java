@@ -17,6 +17,7 @@ import org.apache.commons.io.IOUtils;
 
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.z3950.zing.cql.CQLAndNode;
 import org.z3950.zing.cql.CQLBooleanNode;
@@ -1037,12 +1038,9 @@ public class CQL2PgJSON {
       if (node.getTerm().isEmpty() && (comparator.equals("=") || comparator.equals("adj")
         || comparator.equals("any") || comparator.equals("all"))) {
         // field = "" means that the field is defined, for any value, even empty
-        // TODO - check if we have an index for the field, or a foreignKey
-        // Is this the right place to handle this?
         String sql = fld + " ~ ''";
-        logger.log(Level.FINE, "pgFT(): special case: empty term '=' " + sql);
+        logger.log(Level.FINE, "pgFT(): special case: empty term ''='' {0}", sql);
         return sql;
-
       }
       String[] words = node.getTerm().trim().split("\\s+");  // split at whitespace
       for (int i = 0; i < words.length; i++) {
@@ -1064,61 +1062,71 @@ public class CQL2PgJSON {
           tsTerm = "!(" + String.join("<->", words) + ")";
           break;
       }
-      logger.log(Level.FINE, "pgFT(): term=" + node.getTerm() + " ts=" + tsTerm);
+      logger.log(Level.FINE, "pgFT(): term={0} ts={1}",
+        new Object[]{node.getTerm(), tsTerm});
       return "to_tsvector('english', " + fld + ") "
         + "@@ to_tsquery('english','" + tsTerm + "')";
-    } else { // not fulltext, regular search
-      boolean found = false;
-      for (String idxType : Arrays.asList("index", "uniqueIndex", "fullTextIndex")) {
-        if (dbTable.has(idxType)) {
-          JSONArray indexArr = dbTable.getJSONArray(idxType);
-          if (findItem(indexArr, "fieldName", index) != null) {
-            found = true;
-            logger.log(Level.FINE, "pgFT(): Found " + idxType + " " + index);
-          }
-        }
-      }
-      if (!found) {
-        String sub = subQuery1FT(node, index);
-        if (sub != null) {
-          return sub;
-        }
-        sub = subQuery2FT(node, index);
-        if (sub != null) {
-          return sub;
-        }
-        throw new QueryValidationException("CQL: No index '" + index + "'");
-      }
-      if ((comparator.equals("=") && node.getTerm().isEmpty())) {
-        // field = "" means that the field is defined, for any value, even empty
-        // TODO - check if we have an index for the field, or a foreignKey
-        // Is this the right place to handle this?
-        String sql = fld + " ~ ''";
-        logger.log(Level.FINE, "pgFT(): special case: empty term '=' " + sql);
-        return sql;
-      }
-      switch (comparator) {
-        case "==":
-          comparator = "=";
-          break;
-        case "=": // exact match
-        case "<>":
-        case "<":
-        case "<=":
-        case ">":
-        case ">=":
-          break;
-        default:
-          throw new QueryValidationException("CQL: Unknown comparator '" + comparator + "'");
-      }
-      String sql = fld + " " + comparator + " '" + FTTerm(node.getTerm()) + "'";
-      // Quote escaping? Truncation? Special characters?
-      // Should not use full FTTerm, it does truncation etc in a funny way
-      logger.log(Level.FINE, "pgFT():  sql= " + sql + " in=" + fld + " js=" + this.jsonField);
-      return sql;
+    } else {
+      return pgFtNonTs(index, node, comparator, fld);
     }
   }
-// Handle a subquery. For example when searching an item, by a material type
+
+  private String pgFtNonTs(String index, CQLTermNode node, String comparator, final String fld) throws JSONException, QueryValidationException {
+    // not fulltext, regular search
+    boolean found = false;
+    for (String idxType : Arrays.asList("index", "uniqueIndex", "fullTextIndex")) {
+      if (dbTable.has(idxType)) {
+        JSONArray indexArr = dbTable.getJSONArray(idxType);
+        if (findItem(indexArr, "fieldName", index) != null) {
+          found = true;
+          logger.log(Level.FINE, "pgFT(): Found {0} {1}",
+            new Object[]{idxType, index});
+        }
+      }
+    }
+    if (!found) {
+      String sub = subQuery1FT(node, index);
+      if (sub != null) {
+        return sub;
+      }
+      sub = subQuery2FT(node, index);
+      if (sub != null) {
+        return sub;
+      }
+      throw new QueryValidationException("CQL: No index '" + index + "'");
+    }
+    if ((comparator.equals("=") && node.getTerm().isEmpty())) {
+      // field = "" means that the field is defined, for any value, even empty
+      // We should check if we have an index for the field, or a foreignKey
+      // Is this the right place to handle this? For now, we only get here with
+      // fulltext indexes, so this is ok.
+      String sql = fld + " ~ ''";
+      logger.log(Level.FINE, "pgFT(): special case: empty term ''='' {0}", sql);
+      return sql;
+    }
+    switch (comparator) {
+      case "==":
+        comparator = "=";
+        break;
+      case "=": // exact match
+      case "<>":
+      case "<":
+      case "<=":
+      case ">":
+      case ">=":
+        break;
+      default:
+        throw new QueryValidationException("CQL: Unknown comparator '" + comparator + "'");
+    }
+    String sql = fld + " " + comparator + " '" + FTTerm(node.getTerm()) + "'";
+    // Quote escaping? Truncation? Special characters?
+    // Should not use full FTTerm, it does truncation etc in a funny way
+    logger.log(Level.FINE, "pgFT():  sql={0} in={1} js={2}",
+      new Object[]{sql, fld, this.jsonField});
+    return sql;
+  }
+
+  // Handle a subquery. For example when searching an item, by a material type
   // name.
   //  cql: materialtype.name = "book";
   //  sql: materialtypeid in (select id from materialtype where name = "book");
@@ -1127,13 +1135,11 @@ public class CQL2PgJSON {
     //System.out.println("CQL2PgJSON.subQuery1FT() starting: " + node.toCQL());
     String[] idxParts = index.split("\\.");
     if (idxParts.length != 2) {
-      logger.log(Level.SEVERE, "subQuery1FT(): needs two-part index name, not '"
-        + index + "'");
+      logger.log(Level.SEVERE, "subQuery1FT(): needs two-part index name, not '{0}'", index);
       return null;
     }
     if (!dbTable.has("foreignKeys")) {
-      logger.log(Level.SEVERE, "subQuery1FT(): No foreign keys defined for '"
-        + dbTable.getString("tableName") + "'");
+      logger.log(Level.SEVERE, "subQuery1FT(): No foreign keys defined for '{0}'", dbTable.getString("tableName"));
       return null;
     }
     JSONObject fkey = findItem(dbTable.getJSONArray("foreignKeys"),
@@ -1141,13 +1147,11 @@ public class CQL2PgJSON {
     //System.out.println("CQL2PgJSON.subQuery1FT(): Found foreignKey '" + fkey);
 
     if (fkey == null) {
-      logger.log(Level.SEVERE, "subQuery1FT(): No foreignKey '"
-        + idxParts[0] + "' found");
+      logger.log(Level.SEVERE, "subQuery1FT(): No foreignKey '{0}' found", idxParts[0]);
       return null;
     }
     if (!fkey.has("fieldName") || !fkey.has("targetTable")) {
-      logger.log(Level.SEVERE, "subQuery1FT(): Malformed foreignKey section "
-        + fkey);
+      logger.log(Level.SEVERE, "subQuery1FT(): Malformed foreignKey section {0}", fkey);
       return null;
     }
     String fkField = fkey.getString("fieldName"); // tagId
@@ -1185,21 +1189,20 @@ public class CQL2PgJSON {
     //System.out.println("CQL2PgJSON.subQuery2FT() starting: " + node.toCQL());
     String[] idxParts = index.split("\\.", 2);
     if (idxParts.length != 2) {
-      logger.log(Level.SEVERE, "subQuery2FT(): needs two-part index name, not '"
-        + index + "'");
+      logger.log(Level.SEVERE, "subQuery2FT(): needs two-part index name, not '{0}'", index);
       return null;
     }
     // find foreign keys in the other table that refer to the current table, and
     // have an index on the field name
     JSONObject table = findItem(dbSchema.getJSONArray("tables"), "tableName", idxParts[0]);
     if (table == null) {
-      logger.log(Level.SEVERE, "subQueryFT(): Table " + idxParts[0] + " not found");
+      logger.log(Level.SEVERE, "subQueryFT(): Table {0} not found", idxParts[0]);
       return null;
     }
     //System.out.println("CQL2PgJSON.subQueryFT(): Found table " + table);
 
     if (!table.has("foreignKeys")) {
-      logger.log(Level.SEVERE, "subQueryFT(): No foreign keys defined for " + idxParts[0]);
+      logger.log(Level.SEVERE, "subQueryFT(): No foreign keys defined for {0}", idxParts[0]);
       return null;
     }
 
@@ -1209,16 +1212,15 @@ public class CQL2PgJSON {
     //System.out.println("CQL2PgJSON.subQueryFT(): Found foreignKey '" + fkey);
 
     if (fkey == null) {
-      logger.log(Level.SEVERE, "subQueryFT(): No foreignKey '"
-        + idxParts[0] + "' found");
+      logger.log(Level.SEVERE, "subQueryFT(): No foreignKey '{0}' found", idxParts[0]);
       return null;
     }
 
     if (!fkey.has("fieldName") || !fkey.has("targetTable")) {
-      logger.log(Level.SEVERE, "subQueryFT(): Malformed foreignKey section " + fkey);
+      logger.log(Level.SEVERE, "subQueryFT(): Malformed foreignKey section {0}", fkey);
+      return null;
     }
     String fkField = fkey.getString("fieldName"); // tagId
-    String fkTable = fkey.getString("targetTable");  // tags
     try {
       // This is nasty. Make a new constructor that takes the dbSchema as a JsonObject,
       // so we don't need to convert back and forth! Also, get the .jsonb right!
@@ -1240,7 +1242,7 @@ public class CQL2PgJSON {
     } catch (IOException | FieldException | QueryValidationException | SchemaException e) {
       // We should not get these exceptions, as we construct a valid query above,
       // using a valid schema.
-      logger.log(Level.SEVERE, "subQueryFT() Caught an exception" + e);
+      logger.log(Level.SEVERE, "subQueryFT() Caught an exception{0}", e);
       return null;
     }
   }
