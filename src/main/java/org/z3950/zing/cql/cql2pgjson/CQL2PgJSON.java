@@ -40,6 +40,8 @@ import org.z3950.zing.cql.ModifierSet;
  * JSONB in PostgreSQL:
  * <a href="https://www.postgresql.org/docs/current/static/datatype-json.html">https://www.postgresql.org/docs/current/static/datatype-json.html</a>
  */
+@SuppressWarnings("squid:S1192")  // We have a few duplicated strings.
+// I refuse to harm readability by declaring symbolic names for them.
 public class CQL2PgJSON {
 
   /**
@@ -160,6 +162,7 @@ public class CQL2PgJSON {
       }
     } catch (IOException ex) {
       logger.log(Level.SEVERE, "No schema.json found", ex);
+      return;
     }
     if (dbSchema.has("tables")) {
       if (jsonField == null) {
@@ -1175,10 +1178,9 @@ public class CQL2PgJSON {
       String subSql = c.cql2pgJson(subCql);
       //System.out.println("CQL2PgJSON.subQuery1FT() sub sql: " + subSql)
       String fld = index2sqlText(this.jsonField, fkField);
-      String sql = fld + " in ( SELECT jsonb->>'id' from " + fkTable
+      return fld + " in ( SELECT jsonb->>'id' from " + fkTable
         + " WHERE " + subSql + " )";
       //System.out.println("CQL2PgJSON.subQuery1FT() sql: " + sql)
-      return sql;
     } catch (IOException | FieldException | QueryValidationException | SchemaException e) {
       // We should not get these exceptions, as we construct a valid query above,
       // using a valid schema.
@@ -1241,10 +1243,9 @@ public class CQL2PgJSON {
       String subSql = c.cql2pgJson(subCql);
       //System.out.println("CQL2PgJSON.subQueryFT() sub sql: " + subSql)
       String fld = index2sqlText(c.jsonField, fkField);
-      String sql = " jsonb->>'id' in ( SELECT " + fld + " from " + idxParts[0]
+      return " jsonb->>'id' in ( SELECT " + fld + " from " + idxParts[0]
         + " WHERE " + subSql + " )";
       //System.out.println("CQL2PgJSON.subQueryFT() sql: " + sql)
-      return sql;
     } catch (IOException | FieldException | QueryValidationException | SchemaException e) {
       // We should not get these exceptions, as we construct a valid query above,
       // using a valid schema.
