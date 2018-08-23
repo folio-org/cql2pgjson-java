@@ -980,7 +980,7 @@ public class CQL2PgJSON {
    * @return
    */
   @SuppressWarnings({
-    "squid:ForLoopCounterChangedChec",
+    "squid:ForLoopCounterChangedCheck",
     // Yes, we skip the occasional character in the loop by incrementing i
     "squid:S135"
   // Yes, we have a few continue statements. Unlike what SQ says,
@@ -1011,6 +1011,8 @@ public class CQL2PgJSON {
           break;
         case '^':
           throw new QueryValidationException("CQL: anchoring unsupported (^)");
+        default: // SQ shut up
+          ;
       }
       if (c == '\'') {
         if (res.length() > 0) {
