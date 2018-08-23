@@ -1011,6 +1011,7 @@ public class CQL2PgJSON {
           break;
         case '^':
           throw new QueryValidationException("CQL: anchoring unsupported (^)");
+        default:
       }
       if (c == '\'') {
         if (res.length() > 0) {
