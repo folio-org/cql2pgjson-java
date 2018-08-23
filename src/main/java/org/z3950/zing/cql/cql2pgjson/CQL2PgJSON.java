@@ -163,7 +163,7 @@ public class CQL2PgJSON {
     return null;
   }
 
-  private void getDbTable() throws JSONException {
+  private void getDbTable() {
     if (dbSchema.has("tables")) {
       if (jsonField == null) {
         logger.log(Level.SEVERE, "loadDbSchema(): No primary table name, can not load");
@@ -979,9 +979,15 @@ public class CQL2PgJSON {
    * @param term
    * @return
    */
-  @SuppressWarnings("squid:ForLoopCounterChangedChec")
-  // Yes, we skip the occasional character in the loop by incrementing i
-  private String FTTerm(String term) throws QueryValidationException {
+  @SuppressWarnings({
+    "squid:ForLoopCounterChangedChec",
+    // Yes, we skip the occasional character in the loop by incrementing i
+    "squid:S135"
+  // Yes, we have a few continue statements. Unlike what SQ says,
+  // refactoring the code to avoid that would make it much less
+  // readable.
+  })
+  private String fTTerm(String term) throws QueryValidationException {
     StringBuilder res = new StringBuilder();
     for (int i = 0; i < term.length(); i++) {
       // CQL specials
@@ -1047,7 +1053,7 @@ public class CQL2PgJSON {
       }
       String[] words = node.getTerm().trim().split("\\s+");  // split at whitespace
       for (int i = 0; i < words.length; i++) {
-        words[i] = FTTerm(words[i]);
+        words[i] = fTTerm(words[i]);
       }
       String tsTerm = "";
       switch (comparator) {
@@ -1123,7 +1129,7 @@ public class CQL2PgJSON {
       default:
         throw new QueryValidationException("CQL: Unknown comparator '" + comparator + "'");
     }
-    String sql = fld + " " + comparator + " '" + FTTerm(node.getTerm()) + "'";
+    String sql = fld + " " + comparator + " '" + fTTerm(node.getTerm()) + "'";
     // Quote escaping? Truncation? Special characters?
     // Should not use full FTTerm, it does truncation etc in a funny way
     logger.log(Level.FINE, "pgFT():  sql={0} in={1} js={2}",
