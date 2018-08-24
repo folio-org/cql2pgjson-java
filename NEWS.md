@@ -1,3 +1,8 @@
+## 2.2.0 2018-08-24
+ * CQLPG-37, CQLPG-46: Load the schema.json file and use that to detect if a
+   given field has a fulltext index, and if so, translate that part of the
+   query to use PGs tsvector stuff to use PGs fulltext indexing.
+
 ## 2.1.0 2018-06-26
  * CQLPG-34: Query builder - return where and orderBy clause separately.
  * CIRC-119: Add unit test for long list producing deeply nested SQL query.
