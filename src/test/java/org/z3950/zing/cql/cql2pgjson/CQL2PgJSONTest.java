@@ -400,6 +400,14 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     select("array.sql", testcase);
   }
 
+  @Test
+  // Should not produce a StackOverflowError:
+  // https://issues.folio.org/browse/CIRC-119 "Requests API GET /requests does not scale"
+  public void matchAnyFromLongList() {
+    select("name==(a or b or c or d or e or f or g or h or j or k or l or m or n or o or p or q or s or t or u or v "
+      + "or w or x or y or z or 0 or 1 or 2 or 3 or 4 or 5 or 6 or 7 or 8 or 9 or \"Jo Jane\")  # Jo Jane");
+  }
+
   //@Test
   // The fulltext does not support caret anchoring. We do not have enough
   // data in the email field to make a maeningful test. Anyway, the serverchoice
