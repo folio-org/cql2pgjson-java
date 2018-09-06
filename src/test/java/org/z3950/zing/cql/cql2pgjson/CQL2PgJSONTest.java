@@ -169,7 +169,12 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "email==ka@example.com          # Ka Keller",
     "name == \"Lea Long\"           # Lea Long",
     "name <> \"Lea Long\"           # Jo Jane; Ka Keller",
-  })
+    "name=\"\"                      # Jo Jane; Ka Keller; Lea Long",
+    "name=\"*\"                     # Jo Jane; Ka Keller; Lea Long",
+    "name=*                         # Jo Jane; Ka Keller; Lea Long",
+    "email=\"\"                     # Jo Jane; Ka Keller; Lea Long",
+    "email=\"*\"                    # Jo Jane; Ka Keller; Lea Long",
+    "email=*                        # Jo Jane; Ka Keller; Lea Long",})
   public void basic(String testcase) {
     select(testcase);
   }

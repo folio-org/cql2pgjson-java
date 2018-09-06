@@ -17,7 +17,6 @@ import org.apache.commons.io.IOUtils;
 
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.z3950.zing.cql.CQLAndNode;
 import org.z3950.zing.cql.CQLBooleanNode;
@@ -1046,9 +1045,10 @@ public class CQL2PgJSON {
     if ((comparator.equals("=") || comparator.equals("<>")
       || comparator.equals("adj") || comparator.equals("any") || comparator.equals("all"))
       && ftIndex != null) { // fulltext search
-      if (node.getTerm().isEmpty() && (comparator.equals("=") || comparator.equals("adj")
+      if ((node.getTerm().isEmpty() || "*".equals(node.getTerm()))
+        && (comparator.equals("=") || comparator.equals("adj")
         || comparator.equals("any") || comparator.equals("all"))) {
-        // field = "" means that the field is defined, for any value, even empty
+        // field = "" or field = "*" means that the field is defined, for any value, even empty
         String sql = fld + " ~ ''";
         logger.log(Level.FINE, "pgFT(): special case: empty term ''='' {0}", sql);
         return sql;
