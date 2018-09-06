@@ -573,6 +573,16 @@ public class CQL2PgJSON {
     String operator = sqlOperator(node);
     String isNotTrue = "";
 
+    // special case for the query the UI uses most often, before the user has
+    // typed in anything: title=* OR contributors*= OR identifier=*
+    if ("OR".equals(operator)
+      && node.getRightOperand().getClass() == CQLTermNode.class) {
+      CQLTermNode r = (CQLTermNode) (node.getRightOperand());
+      if ("*".equals(r.getTerm()) && "=".equals(r.getRelation().getBase())) {
+        return pg(node.getLeftOperand());
+      }
+    }
+
     if ("AND NOT".equals(operator)) {
       operator = "AND (";
       isNotTrue = ") IS NOT TRUE";
