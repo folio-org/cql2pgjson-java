@@ -169,7 +169,12 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "email==ka@example.com          # Ka Keller",
     "name == \"Lea Long\"           # Lea Long",
     "name <> \"Lea Long\"           # Jo Jane; Ka Keller",
-  })
+    "name=\"\"                      # Jo Jane; Ka Keller; Lea Long",
+    "name=\"*\"                     # Jo Jane; Ka Keller; Lea Long",
+    "name=*                         # Jo Jane; Ka Keller; Lea Long",
+    "email=\"\"                     # Jo Jane; Ka Keller; Lea Long",
+    "email=\"*\"                    # Jo Jane; Ka Keller; Lea Long",
+    "email=*                        # Jo Jane; Ka Keller; Lea Long",})
   public void basic(String testcase) {
     select(testcase);
   }
@@ -873,6 +878,13 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
       + "lower(f_unaccent(users.user_data->>'email')) ~"));
     assertTrue(sql.endsWith(" ORDER BY "
       + "lower(f_unaccent(users.user_data->>'name')) DESC"));
+  }
+  @Test
+  public void optimizedOR() throws QueryValidationException {
+    SqlSelect s = cql2pgJson.toSql("name=* OR email=*");
+    assertEquals("users.user_data->>'name' ~ ''", s.getWhere());
+    s = cql2pgJson.toSql("name=* OR email=* OR zip=*");
+    assertEquals("users.user_data->>'name' ~ ''", s.getWhere());
   }
 
   @Test(expected = QueryValidationException.class)

@@ -17,7 +17,6 @@ import org.apache.commons.io.IOUtils;
 
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.z3950.zing.cql.CQLAndNode;
 import org.z3950.zing.cql.CQLBooleanNode;
@@ -574,6 +573,16 @@ public class CQL2PgJSON {
     String operator = sqlOperator(node);
     String isNotTrue = "";
 
+    // special case for the query the UI uses most often, before the user has
+    // typed in anything: title=* OR contributors*= OR identifier=*
+    if ("OR".equals(operator)
+      && node.getRightOperand().getClass() == CQLTermNode.class) {
+      CQLTermNode r = (CQLTermNode) (node.getRightOperand());
+      if ("*".equals(r.getTerm()) && "=".equals(r.getRelation().getBase())) {
+        return pg(node.getLeftOperand());
+      }
+    }
+
     if ("AND NOT".equals(operator)) {
       operator = "AND (";
       isNotTrue = ") IS NOT TRUE";
@@ -1046,9 +1055,10 @@ public class CQL2PgJSON {
     if ((comparator.equals("=") || comparator.equals("<>")
       || comparator.equals("adj") || comparator.equals("any") || comparator.equals("all"))
       && ftIndex != null) { // fulltext search
-      if (node.getTerm().isEmpty() && (comparator.equals("=") || comparator.equals("adj")
+      if ((node.getTerm().isEmpty() || "*".equals(node.getTerm()))
+        && (comparator.equals("=") || comparator.equals("adj")
         || comparator.equals("any") || comparator.equals("all"))) {
-        // field = "" means that the field is defined, for any value, even empty
+        // field = "" or field = "*" means that the field is defined, for any value, even empty
         String sql = fld + " ~ ''";
         logger.log(Level.FINE, "pgFT(): special case: empty term ''='' {0}", sql);
         return sql;
