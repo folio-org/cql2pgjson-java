@@ -1,3 +1,7 @@
+## 2.2.2 2018-09-13
+ * CQLPG-54: Use the 'simple' dictionary for fulltext instead of 'english',
+   to get around stopwords.
+
 ## 2.2.1 2018-09-06
  * CQLPG-53: FIx the title='*' search in fulltext, now it finds all where
    title is defined.
@@ -5,7 +9,7 @@
    This is the most common query from the UI, issued every time before the
    user types anything in the search box. No need to do linear searches for
    that. Now CQL2PGJ ignores the right-hand side of an OR node if the left
-   operand has '=' as operator and '*' as the term. 
+   operand has '=' as operator and '*' as the term.
 
 ## 2.2.0 2018-08-24
  * CQLPG-37, CQLPG-46: Load the schema.json file and use that to detect if a
