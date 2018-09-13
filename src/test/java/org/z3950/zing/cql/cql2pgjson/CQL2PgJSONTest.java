@@ -357,8 +357,10 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "name=='   OR address.zip=1     # a",
     "name==\\  OR address.zip=1     # a",
     "h                              # h",
-    "a                              # ", // 'a' is a stop word, tokenized away
-    "\\a                            # ",
+    //"a                              # ", // 'a' is a stop word, tokenized away, when using 'english'
+    //"\\a                            # ",
+    "a                              # a", // but not when using 'simple'
+    "\\a                            # a",
     "\\h                            # h"
   })
   public void special(String testcase) {

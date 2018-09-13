@@ -1087,8 +1087,8 @@ public class CQL2PgJSON {
       }
       logger.log(Level.FINE, "pgFT(): term={0} ts={1}",
         new Object[]{node.getTerm(), tsTerm});
-      return "to_tsvector('english', " + fld + ") "
-        + "@@ to_tsquery('english','" + tsTerm + "')";
+      return "to_tsvector('simple', " + fld + ") "
+        + "@@ to_tsquery('simple','" + tsTerm + "')";
     } else {
       return pgFtNonTs(index, node, comparator, fld);
     }
