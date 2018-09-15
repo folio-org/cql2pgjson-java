@@ -998,6 +998,7 @@ public class CQL2PgJSON {
   })
   private String fTTerm(String term) throws QueryValidationException {
     StringBuilder res = new StringBuilder();
+    term = term.trim();
     for (int i = 0; i < term.length(); i++) {
       // CQL specials
       char c = term.charAt(i);
@@ -1055,7 +1056,9 @@ public class CQL2PgJSON {
     if ((comparator.equals("=") || comparator.equals("<>")
       || comparator.equals("adj") || comparator.equals("any") || comparator.equals("all"))
       && ftIndex != null) { // fulltext search
-      if ((node.getTerm().isEmpty() || "*".equals(node.getTerm()))
+      String term = node.getTerm().replaceAll(" +\\*","").trim(); // Remove stand-alone '*', not a valid word
+        // The UI happily appends '*' to anything, even a space. The user can also type in loose '*'s
+      if ((term.isEmpty() || "*".equals(term))
         && (comparator.equals("=") || comparator.equals("adj")
         || comparator.equals("any") || comparator.equals("all"))) {
         // field = "" or field = "*" means that the field is defined, for any value, even empty
@@ -1063,7 +1066,7 @@ public class CQL2PgJSON {
         logger.log(Level.FINE, "pgFT(): special case: empty term ''='' {0}", sql);
         return sql;
       }
-      String[] words = node.getTerm().trim().split("\\s+");  // split at whitespace
+      String[] words = term.trim().split("\\s+");  // split at whitespace
       for (int i = 0; i < words.length; i++) {
         words[i] = fTTerm(words[i]);
       }
