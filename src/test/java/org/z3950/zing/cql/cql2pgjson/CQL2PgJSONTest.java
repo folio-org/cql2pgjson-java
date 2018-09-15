@@ -38,12 +38,15 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public static void runOnceAfterClass() {
     closeDatabase();
   }
-
   public void select(CQL2PgJSON aCql2pgJson, String sqlFile, String testcase) {
     int hash = testcase.indexOf('#');
-    assertTrue("hash character in testcase", hash>=0);
-    String cql           = testcase.substring(0, hash).trim();
-    String expectedNames = testcase.substring(hash+1).trim();
+    assertTrue("hash character in testcase", hash >= 0);
+    String cql = testcase.substring(0, hash).trim();
+    String expectedNames = testcase.substring(hash + 1).trim();
+    select(aCql2pgJson, sqlFile, cql, expectedNames);
+  }
+
+  public void select(CQL2PgJSON aCql2pgJson, String sqlFile, String cql, String expectedNames) {
 
     if (! cql.contains(" sortBy ")) {
       cql += " sortBy name";
@@ -78,7 +81,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
         }
       }
       if (!expectedNames.equals(actualNames)) {
-        System.out.println("select: Test FAILURE on " + testcase);
+        System.out.println("select: Test FAILURE on " + cql + "#" + expectedNames);
       }
       System.out.println("select: Got names [" + actualNames + "], expected [" + expectedNames + "]");
       assertEquals("CQL: " + cql + ", SQL: " + where, expectedNames, actualNames);
@@ -935,7 +938,12 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "email<>example.com             # Jo Jane; Ka Keller; Lea Long",
     "email==ka@example.com          # Ka Keller",
     "name == \"Lea Long\"           # Lea Long",
-    "name <> \"Lea Long\"           # Jo Jane; Ka Keller",})
+    "name <> \"Lea Long\"           # Jo Jane; Ka Keller",
+    "name = \"Lea *\"               # Lea Long", // Loose '*' should be ignored
+    "name = \"*\"                   # Jo Jane; Ka Keller; Lea Long", // special case
+    "name = \"Le* Lo*\"             # Lea Long",
+    "name = \" * * \"               # Jo Jane; Ka Keller; Lea Long"
+})
   public void basicFT(String testcase)
     throws IOException, FieldException, SchemaException, ServerChoiceIndexesException {
     System.out.println("basicFT: " + testcase);
@@ -971,6 +979,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     select(aCql2pgJson, testcase);
     System.out.println("allFT: " + testcase + " OK ");
   }
+
 
   @Test
   @Parameters({
