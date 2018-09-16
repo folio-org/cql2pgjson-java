@@ -1,3 +1,6 @@
+## 2.2.3 2018-09-16
+ * CQLPG-55: Trim trailing space and loose * that breaks fulltext search.
+
 ## 2.2.2 2018-09-13
  * CQLPG-54: Use the 'simple' dictionary for fulltext instead of 'english',
    to get around stopwords.

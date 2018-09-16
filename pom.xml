@@ -5,7 +5,7 @@
   <groupId>org.z3950.zing</groupId>
   <artifactId>cql2pgjson</artifactId>
   <packaging>jar</packaging>
-  <version>2.2.3-SNAPSHOT</version>
+  <version>2.2.4-SNAPSHOT</version>
   <name>cql2pgjson</name>
 
   <prerequisites>
