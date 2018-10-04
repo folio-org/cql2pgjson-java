@@ -897,6 +897,44 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     cql2pgJson.toSql("");
   }
 
+  @Test
+  public void pKey() throws QueryValidationException {
+    SqlSelect s = cql2pgJson.toSql("id=*");
+    assertEquals("true", s.getWhere());
+    s = cql2pgJson.toSql("id=\"11111111-1111-1111-1111-111111111111\"");
+    assertEquals("_id='11111111-1111-1111-1111-111111111111'", s.getWhere());
+    s = cql2pgJson.toSql("id=\"2*\"");
+    assertEquals("(_id>='20000000-0000-0000-0000-000000000000' and "
+      + "_id<='2fffffff-ffff-ffff-ffff-ffffffffffff')", s.getWhere());
+    s = cql2pgJson.toSql("id=\"22222222*\"");
+    assertEquals("(_id>='22222222-0000-0000-0000-000000000000' and "
+      + "_id<='22222222-ffff-ffff-ffff-ffffffffffff')", s.getWhere());
+    s = cql2pgJson.toSql("id=\"22222222*\"");
+    assertEquals("(_id>='22222222-0000-0000-0000-000000000000' and "
+      + "_id<='22222222-ffff-ffff-ffff-ffffffffffff')", s.getWhere());
+  }
+
+  @Test
+  @Parameters({
+    "id=11111111-1111-1111-1111-111111111111   # Jo Jane",
+    "id=zz                                     # Invalid UUID",
+    "id=11111111111111111111111111111111       # Invalid UUID",
+    "id=11111111+1111-1111-1111-111111111111   # Invalid UUID",
+    "id=11111111-1111-1111-1111-11111111111    # Invalid UUID",
+    "id=11111111-1111-1111-1111-1111111111111  # Invalid UUID",
+    "id=11111111-1111-1111-1111-111111111111-1 # Invalid UUID",
+    "id=1*                                     # Jo Jane",
+    "id=1z*                                    # Invalid UUID",
+    "id=11111111-1111-1111-1111-111111111111*  # Jo Jane", // ok to trunc after full match, the UI does
+    "id=*                                      # Jo Jane; Ka Keller; Lea Long",
+    "id>11                                     # Unsupported operator",
+    "id=/ignoreCase 11                         # Unsupported modifier",  })
+  public void badId(String testcase)
+    throws IOException, FieldException, SchemaException, ServerChoiceIndexesException {
+    System.out.println("badId: " + testcase);
+    select(cql2pgJson, testcase);
+    System.out.println("badId: " + testcase + " OK ");
+  }
 
   //
   // Fulltext search tests
@@ -951,6 +989,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     select(aCql2pgJson, testcase);
     System.out.println("basicFT: " + testcase + " OK ");
   }
+
   @Test
   @Parameters({
     // email works different, no need to test here. See basicFT()
