@@ -1063,9 +1063,12 @@ public class CQL2PgJSON {
       throw new QueryValidationException("CQL: Unsupported modifier "
         + node.getRelation().getModifiers().get(0).getType());
     }
+    if ("==".equals(comparator)) {
+      comparator = "=";
+    }
     if (!"=".equals(comparator)) {
       throw new QueryValidationException("CQL: Unsupported operator '" + comparator + "' "
-        + "id only supports '=' (possibly with right truncation)");
+        + "id only supports '=' or '==' (possibly with right truncation)");
     } // maybe some day we could implement '<' and '>', but why bother
     String term = node.getTerm();
     if (term.equals("") || term.equals("*")) {
