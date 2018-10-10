@@ -62,13 +62,6 @@ public class Schema {
     }
   }
 
-  private static class JsonPath {
-
-    String path = null;
-    String type = null;
-    String items = null;
-  }
-
   private String schemaJsonString = null;
 
   /* End of private use variables and object structures*/
@@ -305,11 +298,9 @@ public class Schema {
       }
       return field;
     } catch (IOException ex) {
-      System.out.println("IOException ex=" + ex.getLocalizedMessage());
-      return null;
+      throw new QueryValidationException("IOException: " + ex.getLocalizedMessage());
     } catch (SchemaException ex) {
-      System.out.println("SchemaException ex=" + ex.getLocalizedMessage());
-      return null;
+      throw new QueryValidationException("SchemException: " + ex.getLocalizedMessage());
     }
   }
 
