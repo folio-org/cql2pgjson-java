@@ -1,8 +1,6 @@
 package org.z3950.zing.cql.cql2pgjson;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
@@ -19,7 +17,6 @@ import java.util.Deque;
 public class Schema {
 
   /* Private use variables and object structures*/
-  private final Map<String, JsonPath> byNodeName = new HashMap<>();
   private static final String PROPERTIES = "properties";
   private static final String TYPE = "type";
   private static final String ITEMS = "items";
@@ -84,12 +81,10 @@ public class Schema {
   public Schema(String schemaJson) throws IOException, SchemaException {
     schemaJsonString = schemaJson;
     JsonFactory jsonFactory = new JsonFactory();
-    try (JsonParser jp = jsonFactory.createParser(schemaJson)) {
-      jp.close();
-    }
+    jsonFactory.createParser(schemaJson);
   }
 
-  private Field matchLeaf(String index, String iType, Deque<String> path, String fieldName, String type) {
+  private Field matchLeaf(String index, String iType, Deque<String> path, String type) {
     String pathP = String.join(".", path);
     if (pathP.endsWith(index) && (iType == null || iType.endsWith(type))) {
       return new Field(pathP, type);
@@ -97,7 +92,7 @@ public class Schema {
     return null;
   }
 
-  private Field recurseItems(String index, String iType, Deque<String> path, JsonParser jp, String fieldName)
+  private Field recurseItems(String index, String iType, Deque<String> path, JsonParser jp)
     throws IOException, SchemaException, QueryValidationException {
     Field field = null;
     JsonToken jt = jp.nextToken();
@@ -133,7 +128,7 @@ public class Schema {
       }
     }
     if (!gotProperties) {
-      field = matchLeaf(index, iType, path, fieldName, type);
+      field = matchLeaf(index, iType, path, type);
     }
     return field;
   }
@@ -202,7 +197,7 @@ public class Schema {
             type = jp.getValueAsString();
             break;
           case ITEMS:
-            f = recurseItems(index, iType, path, jp, fieldName);
+            f = recurseItems(index, iType, path, jp);
             gotItems = true;
             break;
           case REF:
@@ -222,7 +217,7 @@ public class Schema {
       }
     }
     if (!gotItems && !gotProperties) {
-      field = matchLeaf(index, iType, path, fieldName, type);
+      field = matchLeaf(index, iType, path, type);
     }
     path.removeLast();
     return field;
@@ -233,7 +228,7 @@ public class Schema {
     Field field = null;
     while (!jp.isClosed()) {
       JsonToken jt = jp.nextToken();
-      if (jt == null) {
+      if (jt == null || jt.equals(JsonToken.END_OBJECT)) {
         break;
       }
       if (jt.equals(JsonToken.FIELD_NAME)) {
@@ -244,8 +239,6 @@ public class Schema {
           }
           field = f;
         }
-      } else if (jt.equals(JsonToken.END_OBJECT)) {
-        break;
       }
     }
     return field;
