@@ -1,34 +1,38 @@
 package org.z3950.zing.cql.cql2pgjson;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
+import java.io.File;
+import java.net.URL;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 /**
- * Resolves index names against a JSON schema. Can return the fully qualified index
- * and the cqlRelation for it.
+ * Resolves index names against a JSON schema. Can return the fully qualified
+ * index and the cqlRelation for it.
  */
 public class Schema {
 
   /* Private use variables and object structures*/
-  private final Map<String,JsonPath> byNodeName = new HashMap<>();
+  private final Map<String, JsonPath> byNodeName = new HashMap<>();
   private static final String PROPERTIES = "properties";
   private static final String TYPE = "type";
   private static final String ITEMS = "items";
-  private static final String ITEMS_USAGE_MESSAGE =
-      "`items` is a reserved field name, whose value should be a Json object containing `type` field.";
+  private static final String REF = "$ref";
+  private static final String ITEMS_USAGE_MESSAGE
+    = "`items` is a reserved field name, whose value should be a Json object containing `type` field.";
+  private static final int MIN_DEPTH = 4;
 
   /**
    * Container for path and RAML type of a field.
    */
   public static class Field {
+
     private final String path;
     private final String type;
 
@@ -43,6 +47,7 @@ public class Schema {
 
     /**
      * The full path of this field.
+     *
      * @return full path
      */
     String getPath() {
@@ -50,8 +55,9 @@ public class Schema {
     }
 
     /**
-     * RAML type like integer, number, string, boolean, datetime, ...
-     * "" for unknown.
+     * RAML type like integer, number, string, boolean, datetime, ... "" for
+     * unknown.
+     *
      * @return the RAML type.
      */
     String getType() {
@@ -60,240 +66,271 @@ public class Schema {
   }
 
   private static class JsonPath {
+
     String path = null;
     String type = null;
     String items = null;
   }
 
-  private static class MultipleJsonPath extends JsonPath {
-    List<JsonPath> paths = new ArrayList<>();
-  }
+  private String schemaJsonString = null;
+
   /* End of private use variables and object structures*/
-
   /**
-   * Run a schema validation on the specified JSON file, producing errors if the file
-   * is either invalid JSON, or merely incorrectly structured for the purpose of defining
-   * the JSON data storage structure.
-   * @param schemaJson  JSON schema to parse
-   * @throws IOException  on parse failure
-   * @throws SchemaException  if the schema in not well formed
+   * Load JSON schema
+   *
+   * @throws IOException on parse failure
+   * @throws SchemaException if the schema in not well formed
    */
-  public Schema (String schemaJson) throws IOException, SchemaException {
+  public Schema(String schemaJson) throws IOException, SchemaException {
+    schemaJsonString = schemaJson;
     JsonFactory jsonFactory = new JsonFactory();
-    try ( JsonParser jp = jsonFactory.createParser(schemaJson) ) {
-      while (!jp.isClosed()) {
-        JsonToken jt = jp.nextToken();
-        if (jt == null) {
-          break;
-        }
-        if (jt.equals(JsonToken.FIELD_NAME) &&
-            jp.getCurrentName().equals(PROPERTIES)) {
-          iteratePropertiesArray(jp,new ArrayList<>());
-        }
-      }
+    try (JsonParser jp = jsonFactory.createParser(schemaJson)) {
+      jp.close();
     }
   }
 
-  /**
-   * Confirm that a particular field is valid and unambiguous for a given schema. Returns a Field
-   * with type and the fully-specified version of the (possibly abbreviated) field name. For example,
-   * looking up 'zip' may return 'address.zip' as path.
-   * @param index  field name, may be abbreviated
-   * @return type and path of the field.
-   * @throws QueryValidationException on ambiguous index
-   */
-  public Field mapFieldNameAgainstSchema(String index) throws QueryValidationException {
-    JsonPath path = getPath(index);
-    if (path instanceof MultipleJsonPath) {
-      throw queryAmbiguousException(index, null, ((MultipleJsonPath) path).paths);
+  private Field matchLeaf(String index, String iType, Deque<String> path, String fieldName, String type) {
+    String pathP = String.join(".", path);
+    if (pathP.endsWith(index) && (iType == null || iType.endsWith(type))) {
+      return new Field(pathP, type);
     }
-    return new Field(path.path, path.type);
+    return null;
   }
 
-  /**
-   * Confirm that a particular field is valid and unambiguous for a given schema. The return
-   * value with be the fully-specified version of the (possibly abbreviated) field name. For example,
-   * looking up 'zip' may return 'address.zip'. Any fields in the index that don't match the specified
-   * type will not be considered to be matches. Currently, a type argument of 'string' will match an
-   * index field of type 'string' or an array of type 'string'.
-   * @param index  field name, may be abbreviated
-   * @param type  type of index
-   * @return fully-specified version of field value.
-   * @throws QueryValidationException  if index and type is not found or ambiguous
-   */
-  public Field mapFieldNameAndTypeAgainstSchema(String index, String type) throws QueryValidationException {
-    JsonPath path = getPath(index);
-    if (path instanceof MultipleJsonPath) {
-      List<JsonPath> matchingPaths = new ArrayList<>();
-      for (JsonPath p : ((MultipleJsonPath)path).paths) {
-        if (type.equals(p.type) || type.equals(p.items)) {
-          matchingPaths.add(p);
+  private Field recurseItems(String index, String iType, Deque<String> path, JsonParser jp, String fieldName)
+    throws IOException, SchemaException, QueryValidationException {
+    Field field = null;
+    JsonToken jt = jp.nextToken();
+    String type = null;
+    boolean gotProperties = false;
+    if (!jt.equals(JsonToken.START_OBJECT)) {
+      throw new SchemaException(ITEMS_USAGE_MESSAGE);
+    }
+    while (!jp.isClosed() && !jt.equals(JsonToken.END_OBJECT)) {
+      jt = jp.nextToken();
+      if (jt.equals(JsonToken.FIELD_NAME)) {
+        Field f = null;
+        switch (jp.getCurrentName()) {
+          case TYPE:
+            jp.nextValue();
+            type = jp.getValueAsString();
+            break;
+          case PROPERTIES:
+            f = recurseProperties(index, iType, path, jp);
+            gotProperties = true;
+            break;
+          case REF:
+            jp.nextToken();
+            f = recurseRef(index, iType, path, jp.getValueAsString());
+            gotProperties = true;
+            break;
+          default:
+          // ignore
+        }
+        if (f != null) {
+          field = f;
         }
       }
-      if (matchingPaths.isEmpty()) {
-        throw queryValidationException(index, type);
+    }
+    if (!gotProperties) {
+      field = matchLeaf(index, iType, path, fieldName, type);
+    }
+    return field;
+  }
+
+  private Field recurseRef(String index, String iType, Deque<String> path, String refVal)
+    throws IOException, SchemaException, QueryValidationException {
+
+    if (path.size() > MIN_DEPTH && String.join(".", path).length() > index.length()) {
+      return null;
+    }
+    if (!refVal.startsWith("file")) {
+      throw new IOException("$ref: Cannot resolve path " + refVal);
+    }
+    refVal = refVal.replace(File.separator, "/");
+    int idx = -1;
+    if (idx == -1) {
+      final String lead1 = "target/test-classes/";
+      idx = refVal.indexOf(lead1);
+      if (idx != -1) {
+        idx += lead1.length();
       }
-      if (matchingPaths.size() > 1) {
-        throw queryAmbiguousException(index, type, matchingPaths);
+    }
+    if (idx == -1) {
+      final String lead2 = "target/classes/";
+      idx = refVal.indexOf(lead2);
+      if (idx != -1) {
+        idx += lead2.length();
       }
-      path = matchingPaths.get(0);
     }
-    if (! type.equals(path.type) && ! type.equals(path.items)) {
-      throw queryValidationException(index, type);
+    if (idx == -1) {
+      throw new IOException("$ref: Cannot resolve path " + refVal);
     }
-    return new Field(path.path, path.type);
-  }
-
-  /**
-   * Get JsonPath for index.
-   * @param index the index to search for
-   * @return the path
-   * @throws QueryValidationException  if index is not present.
-   */
-  private JsonPath getPath(String index) throws QueryValidationException {
-    if (! byNodeName.containsKey(index)) {
-      throw queryValidationException(index, null);
+    final String resourceName = refVal.substring(idx);
+    URL url = Thread.currentThread().getContextClassLoader().getResource(resourceName);
+    if (url == null) {
+      throw new IOException("$ref: Cannot get resource for " + resourceName);
     }
-    return byNodeName.get(index);
+
+    JsonFactory jsonFactory = new JsonFactory();
+    JsonParser jp = jsonFactory.createParser(url);
+    return recurseTop(index, iType, path, jp);
   }
 
-  /**
-   * Create a QueryAmbiguousException with message naming index, type and paths.
-   * @param index  index
-   * @param type  type (may be null)
-   * @param paths  the paths that match index and type
-   * @return the exception
-   */
-  private QueryAmbiguousException queryAmbiguousException(String index, String type, List<JsonPath> paths) {
-    return new QueryAmbiguousException(
-        "Field name '" + index
-        + (type == null ? "" : "' with type '" + type)
-        + "' was ambiguous in index. ("
-        + paths.stream().map(p->p.path).collect(Collectors.joining(", ")) + ")");
-  }
-
-  /**
-   * Create a QueryValidationExceptionn for index and type that are not found.
-   * @param index  index
-   * @param type  type (may be null)
-   * @return the exception
-   */
-  private QueryValidationException queryValidationException(String index, String type) {
-    return new QueryValidationException(
-        "Field name '" + index
-        + (type == null ? "" : "' with type '" + type)
-        + "' is not present in index.");
-  }
-
-  /* Private methods involved with Schema validation */
-  private void iteratePropertiesArray(JsonParser jp, List<String> breadcrumbs) throws IOException, SchemaException {
+  private Field recurseProperty(String index, String iType,
+    Deque<String> path, JsonParser jp) throws IOException, SchemaException, QueryValidationException {
+    Field field = null;
+    String fieldName = jp.getCurrentName();
+    path.addLast(fieldName);
+    String type = null;
+    boolean gotProperties = false;
+    boolean gotItems = false;
     while (!jp.isClosed()) {
       JsonToken jt = jp.nextToken();
+      if (jt == null || jt.equals(JsonToken.END_OBJECT)) {
+        break;
+      }
       if (jt.equals(JsonToken.FIELD_NAME)) {
-        processNode(jp,breadcrumbs);
+        Field f = null;
+        switch (jp.getCurrentName()) {
+          case PROPERTIES:
+            f = recurseProperties(index, iType, path, jp);
+            gotProperties = true;
+            break;
+          case TYPE:
+            jp.nextToken();
+            type = jp.getValueAsString();
+            break;
+          case ITEMS:
+            f = recurseItems(index, iType, path, jp, fieldName);
+            gotItems = true;
+            break;
+          case REF:
+            jp.nextToken();
+            f = recurseRef(index, iType, path, jp.getValueAsString());
+            gotProperties = true;
+            break;
+          default:
+          // ignore
+        }
+        if (f != null) {
+          if (field != null) {
+            throw new QueryAmbiguousException("Field name \'" + index + "\' is ambiguous");
+          }
+          field = f;
+        }
+      }
+    }
+    if (!gotItems && !gotProperties) {
+      field = matchLeaf(index, iType, path, fieldName, type);
+    }
+    path.removeLast();
+    return field;
+  }
+
+  private Field recurseProperties(String index, String iType, Deque<String> path, JsonParser jp)
+    throws IOException, SchemaException, QueryValidationException {
+    Field field = null;
+    while (!jp.isClosed()) {
+      JsonToken jt = jp.nextToken();
+      if (jt == null) {
+        break;
+      }
+      if (jt.equals(JsonToken.FIELD_NAME)) {
+        Field f = recurseProperty(index, iType, path, jp);
+        if (f != null) {
+          if (field != null) {
+            throw new QueryAmbiguousException("Field name \'" + index + "\' is ambiguous");
+          }
+          field = f;
+        }
       } else if (jt.equals(JsonToken.END_OBJECT)) {
         break;
       }
     }
+    return field;
   }
 
-  @SuppressWarnings("squid:S135")  // suppress "At most one break and continue statements"
-  private void processNode(JsonParser jp, List<String> breadcrumbs) throws IOException, SchemaException {
-    String fieldName = jp.getCurrentName();
-    JsonToken jt = null;
-    String type = null;
-    String items = null;
+  private Field recurseTop(String index, String iType, Deque<String> path, JsonParser jp)
+    throws QueryValidationException, IOException, SchemaException {
     while (!jp.isClosed()) {
-      jt = jp.nextToken();
-      if (jt.equals(JsonToken.END_OBJECT)) {
-        recordFoundNode(type,items,fieldName,breadcrumbs);
+      JsonToken jt = jp.nextToken();
+      if (jt == null) {
         break;
       }
-      if (! jt.equals(JsonToken.FIELD_NAME)) {
-        continue;
+      if (jt.equals(JsonToken.FIELD_NAME)
+        && jp.getCurrentName().equals(PROPERTIES)) {
+        Field f = recurseProperties(index, iType, path, jp);
+        if (f != null) {
+          return f;
+        }
       }
-      switch (jp.getCurrentName()) {
-      case PROPERTIES:
-        breadcrumbs.add(fieldName);
-        iteratePropertiesArray(jp,breadcrumbs);
-        breadcrumbs.remove(breadcrumbs.size()-1);
-        break;
-      case TYPE:
-        jp.nextToken();
-        type = jp.getValueAsString();
-        break;
-      case ITEMS:
-        breadcrumbs.add(fieldName);
-        items = getItems( jp, breadcrumbs );
-        breadcrumbs.remove(breadcrumbs.size()-1);
-        break;
-      default:
-        // ignore
+    }
+    return null;
+  }
+
+  /**
+   * Confirm that a particular field is valid and unambiguous for a given
+   * schema. Returns a Field with type and the fully-specified version of the
+   * (possibly abbreviated) field name. For example, looking up 'zip' may return
+   * 'address.zip' as path.
+   *
+   * @param index field name, may be abbreviated
+   * @return type and path of the field.
+   * @throws QueryValidationException on ambiguous index
+   */
+  public Field mapFieldNameAgainstSchema(String index) throws QueryValidationException {
+    return mapFieldNameAndTypeAgainstSchema(index, null);
+  }
+
+  /**
+   * Confirm that a particular field is valid and unambiguous for a given
+   * schema. The return value with be the fully-specified version of the
+   * (possibly abbreviated) field name. For example, looking up 'zip' may return
+   * 'address.zip'. Any fields in the index that don't match the specified type
+   * will not be considered to be matches. Currently, a type argument of
+   * 'string' will match an index field of type 'string' or an array of type
+   * 'string'.
+   *
+   * @param index field name, may be abbreviated
+   * @param type type of index
+   * @return fully-specified version of field value.
+   * @throws QueryValidationException if index and type is not found or
+   * ambiguous
+   */
+  public Field mapFieldNameAndTypeAgainstSchema(String index, String iType) throws QueryValidationException {
+    try {
+      Deque<String> path = new ArrayDeque<>();
+      JsonFactory jsonFactory = new JsonFactory();
+      JsonParser jp = jsonFactory.createParser(schemaJsonString);
+      Field field = recurseTop(index, iType, path, jp);
+      if (field == null) {
+        throw queryValidationException(index, null);
       }
+      if (iType != null && !iType.equals(field.type)) {
+        throw queryValidationException(index, iType);
+      }
+      return field;
+    } catch (IOException ex) {
+      System.out.println("IOException ex=" + ex.getLocalizedMessage());
+      return null;
+    } catch (SchemaException ex) {
+      System.out.println("SchemaException ex=" + ex.getLocalizedMessage());
+      return null;
     }
   }
 
-  void recordFoundNode(String type, String items, String fieldName, List<String> breadcrumbs) throws SchemaException {
-    if (type == null) {
-      return;
-    }
-    if (type.equals("array") && items == null) {
-      throw new SchemaException("Array type nodes require an items object to identify the object type in the array. "
-          + ITEMS_USAGE_MESSAGE);
-    }
-    breadcrumbs.add(fieldName);
-    JsonPath path = new JsonPath();
-    path.path = String.join(".", breadcrumbs);
-    path.type = type;
-    path.items = items;
-    int breadcrumbsSize = breadcrumbs.size();
-    for (int i = breadcrumbsSize-1; i >= 0; i--) {
-      saveToNodeNameMap( path, String.join(".",breadcrumbs.subList(i, breadcrumbsSize)) );
-    }
-    breadcrumbs.remove(breadcrumbsSize-1);
+  /**
+   * Create a QueryValidationExceptionn for index and type that are not found.
+   *
+   * @param index index
+   * @param type type (may be null)
+   * @return the exception
+   */
+  private QueryValidationException queryValidationException(String index, String type) {
+    return new QueryValidationException(
+      "Field name '" + index
+      + (type == null ? "" : "' with type '" + type)
+      + "' is not present in index.");
   }
-
-  private void saveToNodeNameMap(JsonPath path, String nodeName) {
-    if (! byNodeName.containsKey(nodeName)) {
-      byNodeName.put(nodeName, path);
-    } else {
-      JsonPath prevPath = byNodeName.get(nodeName);
-      if (prevPath instanceof MultipleJsonPath) {
-        ((MultipleJsonPath) prevPath).paths.add(path);
-      } else {
-        MultipleJsonPath multiPath = new MultipleJsonPath();
-        multiPath.paths.add(prevPath);
-        multiPath.paths.add(path);
-        byNodeName.put(nodeName, multiPath);
-      }
-    }
-  }
-
-  String getItems(JsonParser jp, List<String> breadcrumbs) throws IOException, SchemaException {
-    JsonToken jt = jp.nextToken();
-    String type = null;
-    if (!jt.equals(JsonToken.START_OBJECT))
-      throw new SchemaException(ITEMS_USAGE_MESSAGE);
-    while ( ! jp.isClosed() && ! jt.equals(JsonToken.END_OBJECT)) {
-      jt = jp.nextToken();
-      if (! jt.equals(JsonToken.FIELD_NAME)) {
-        continue;
-      }
-      switch (jp.getCurrentName()) {
-      case TYPE:
-        jp.nextValue();
-        type = jp.getValueAsString();
-        break;
-      case PROPERTIES:
-        iteratePropertiesArray(jp,breadcrumbs);
-        break;
-      default:
-        // ignore
-      }
-    }
-    if (type == null)
-      throw new SchemaException(ITEMS_USAGE_MESSAGE);
-    return type;
-  }
-
 }

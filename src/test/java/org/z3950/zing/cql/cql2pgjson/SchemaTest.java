@@ -4,17 +4,11 @@ import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.*;
-
 import java.io.IOException;
-import java.util.Collections;
-
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
-
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParser;
 
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
@@ -119,39 +113,38 @@ public class SchemaTest {
   @Test
   public void ambiguousQueryMessageTest() throws IOException, SchemaException, QueryValidationException {
     Schema s = new Schema( Util.getResource("complex.json") );
-    expect(QueryAmbiguousException.class, "Field name 'color' was ambiguous in index. "
-        + "(parent.shirt.color, parent.pants.color, parent.shoes.color, child.pet.color)");
+    expect(QueryAmbiguousException.class, "Field name 'color' is ambiguous");
     s.mapFieldNameAgainstSchema("color");
   }
 
   @Test
-  public void objectWithoutType() throws SchemaException, IOException {
-    expect(SchemaException.class, "should be a Json object containing `type` field");
-    new Schema("{ \"title\": \"T\", \"type\": \"object\", \"properties\": { "
-        + "\"foo\": { \"type\": \"array\", \"items\" : {} } } }");
+  @Parameters({
+    "id,                                       id",
+    "metadata.name,                            metadata.name",
+    "email,                                    metadata.email",
+    "query.term,                               query.term",
+    "query.boolean.op,                         query.boolean.op",
+    "query.boolean.right.term,                 query.boolean.right.term",
+    "query.boolean.right.boolean.left.term,    query.boolean.right.boolean.left.term",
+    "query.prox.term,                          query.prox.term",
+    "query.prox.prox.prox.term,                query.prox.prox.prox.term"
+  })
+  public void testRef(String field, String fullField) throws IOException, SchemaException, QueryValidationException {
+    Schema s = new Schema(Util.getResource("refs.json"));
+    assertThat(s.mapFieldNameAgainstSchema(field).getPath(), is(fullField));
   }
 
   @Test
-  public void arrayWithoutContent() throws SchemaException, IOException {
-    expect(SchemaException.class, "Array type nodes require an items object");
-    new Schema("{ \"title\": \"T\", \"type\": \"object\", \"properties\": { "
-        + "\"foo\": { \"type\": \"array\" }"
-        + "} }");
-  }
-
-  @Test
-  public void recordFoundNodeNullType() throws Exception {
-    Schema s = new Schema("{}");
-    s.recordFoundNode(null, "items", "fieldName", Collections.emptyList());
-  }
-
-  @Test
-  public void getItemsWithoutStartObject() throws Exception {
-    JsonParser jp = new JsonFactory().createParser("{}");
-    jp.nextToken();
-    Schema s = new Schema("{}");
-    expect(SchemaException.class, "should be a Json object");
-    s.getItems(jp, Collections.emptyList());
+  @Parameters({
+    "term",
+    "op",
+    "prox.term",
+    "boolean.right.term",
+  })
+  public void ambiguousQueryTest(String field) throws QueryValidationException, IOException, SchemaException {
+    Schema s = new Schema( Util.getResource("refs.json") );
+    expect(QueryAmbiguousException.class);
+    s.mapFieldNameAgainstSchema(field);
   }
 
   @Test
