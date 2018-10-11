@@ -580,6 +580,7 @@ public class CQL2PgJSON {
       && node.getRightOperand().getClass() == CQLTermNode.class) {
       CQLTermNode r = (CQLTermNode) (node.getRightOperand());
       if ("*".equals(r.getTerm()) && "=".equals(r.getRelation().getBase())) {
+        logger.log(Level.FINE, "pgFT(): Simplifying =* OR =* ");
         return pg(node.getLeftOperand());
       }
     }
