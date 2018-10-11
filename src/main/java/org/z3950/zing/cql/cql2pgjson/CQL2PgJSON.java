@@ -579,6 +579,7 @@ public class CQL2PgJSON {
       && node.getRightOperand().getClass() == CQLTermNode.class) {
       CQLTermNode r = (CQLTermNode) (node.getRightOperand());
       if ("*".equals(r.getTerm()) && "=".equals(r.getRelation().getBase())) {
+        logger.log(Level.FINE, "pgFT(): Simplifying =* OR =* ");
         return pg(node.getLeftOperand());
       }
     }
@@ -878,7 +879,8 @@ public class CQL2PgJSON {
   @SuppressWarnings("squid:S1192")  // suppress "String literals should not be duplicated"
   private String index2sql(String index, CQLTermNode node, String jsonMatch) throws QueryValidationException {
 
-    if (dbTable != null) {
+    if (dbTable != null) {  // we have schema.json, and can look up indexes.
+      // Full text indexes
       JSONObject ftIndex = null;
       if (dbTable.has("fullTextIndex")) {
         JSONArray ftIndexes = dbTable.getJSONArray("fullTextIndex");
@@ -886,6 +888,10 @@ public class CQL2PgJSON {
         if (ftIndex != null) {
           return pgFT(node, ftIndex, index);
         }
+      }
+      // Special handling for id queries
+      if ("id".equals(index)) {
+        return pgId(node);
       }
     }
 
@@ -1038,6 +1044,59 @@ public class CQL2PgJSON {
     }
     return res.toString();
   }
+  /**
+   * Handle a termnode that does a search on the id. We use the primary key
+   * column in the query, it is clearly faster, and we use a numerical
+   * comparison instead of truncation. That way PG will use the primary key,
+   * which is pretty much faster. Assumes that the UUID has already been
+   * validated to be in the right format.
+   *
+   * @param node
+   * @return SQL where clause component for this term
+   * @throws QueryValidationException
+   */
+  private String pgId(CQLTermNode node) throws QueryValidationException {
+    final String uuidPattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
+    String pkColumnName = this.dbTable.getString("pkColumnName");
+    String comparator = node.getRelation().getBase();
+    if (!node.getRelation().getModifiers().isEmpty()) {
+      throw new QueryValidationException("CQL: Unsupported modifier "
+        + node.getRelation().getModifiers().get(0).getType());
+    }
+    if ("==".equals(comparator)) {
+      comparator = "=";
+    }
+    if (!"=".equals(comparator)) {
+      throw new QueryValidationException("CQL: Unsupported operator '" + comparator + "' "
+        + "id only supports '=' or '==' (possibly with right truncation)");
+    } // maybe some day we could implement '<' and '>', but why bother
+    String term = node.getTerm();
+    if (term.equals("") || term.equals("*")) {
+      return "true";  // no need to check
+      // not even for "", since id is a mandatory field, so
+      // "all that have id" is the same as "all records"
+    }
+
+    if (!term.contains("*")) { // exact match
+      if (!term.matches(uuidPattern)) {
+        throw new QueryValidationException("CQL: Invalid UUID " + term);
+      }
+      return pkColumnName + "=" + "'" + term + "'";
+    }
+    String truncTerm = term.replaceFirst("\\*$", ""); // remove trailing '*'
+    if (truncTerm.contains("*")) { // any remaining '*' is an error
+      throw new QueryValidationException("CQL: only right truncation supported for id:  " + term);
+    }
+    String lo = new StringBuilder("00000000-0000-0000-0000-000000000000")
+      .replace(0, truncTerm.length(), truncTerm).toString();
+    String hi = new StringBuilder("ffffffff-ffff-ffff-ffff-ffffffffffff")
+      .replace(0, truncTerm.length(), truncTerm).toString();
+    if (!lo.matches(uuidPattern) || !hi.matches(uuidPattern)) {
+      throw new QueryValidationException("CQL: Invalid UUID " + term);
+    }
+    return "(" + pkColumnName + ">='" + lo + "'"
+      + " and " + pkColumnName + "<='" + hi + "')";
+  }
 
   /**
    * Translates a term node.
@@ -1052,19 +1111,26 @@ public class CQL2PgJSON {
       throw new QueryValidationException("CQL: Unsupported modifier "
         + node.getRelation().getModifiers().get(0).getType());
     }
+
     final String fld = index2sqlText(this.jsonField, index);
     if ((comparator.equals("=") || comparator.equals("<>")
       || comparator.equals("adj") || comparator.equals("any") || comparator.equals("all"))
       && ftIndex != null) { // fulltext search
-      String term = node.getTerm().replaceAll(" +\\*","").trim(); // Remove stand-alone '*', not a valid word
-        // The UI happily appends '*' to anything, even a space. The user can also type in loose '*'s
-      if ((term.isEmpty() || "*".equals(term))
-        && (comparator.equals("=") || comparator.equals("adj")
-        || comparator.equals("any") || comparator.equals("all"))) {
-        // field = "" or field = "*" means that the field is defined, for any value, even empty
-        String sql = fld + " ~ ''";
-        logger.log(Level.FINE, "pgFT(): special case: empty term ''='' {0}", sql);
-        return sql;
+      // Clean the term. Remove stand-alone ' *', not valid word.
+      String term = node.getTerm().replaceAll(" +\\*", "").trim();
+      // Special cases ="" and ="*"
+      if (comparator.equals("=") || comparator.equals("adj")
+        || comparator.equals("any") || comparator.equals("all")) {
+        if (term.equals("*")) {  // Plain "*" means all records.
+          String sql = "true";
+          logger.log(Level.FINE, "pgFT(): special case: plain '*' ''='' {0}", sql);
+          return sql;
+        }
+        if (term.equals("")) {
+          String sql = fld + " ~ ''";
+          logger.log(Level.FINE, "pgFT(): special case: empty term ''='' {0}", sql);
+          return sql;
+        }
       }
       String[] words = term.trim().split("\\s+");  // split at whitespace
       for (int i = 0; i < words.length; i++) {
