@@ -1073,6 +1073,8 @@ public class CQL2PgJSON {
     String term = node.getTerm();
     if (term.equals("") || term.equals("*")) {
       return "true";  // no need to check
+      // not even for "", since id is a mandatory field, so
+      // "all that have id" is the same as "all records"
     }
 
     if (!term.contains("*")) { // exact match
@@ -1114,15 +1116,21 @@ public class CQL2PgJSON {
     if ((comparator.equals("=") || comparator.equals("<>")
       || comparator.equals("adj") || comparator.equals("any") || comparator.equals("all"))
       && ftIndex != null) { // fulltext search
-      String term = node.getTerm().replaceAll(" +\\*","").trim(); // Remove stand-alone '*', not a valid word
-        // The UI happily appends '*' to anything, even a space. The user can also type in loose '*'s
-      if ((term.isEmpty() || "*".equals(term))
-        && (comparator.equals("=") || comparator.equals("adj")
-        || comparator.equals("any") || comparator.equals("all"))) {
-        // field = "" or field = "*" means that the field is defined, for any value, even empty
-        String sql = fld + " ~ ''";
-        logger.log(Level.FINE, "pgFT(): special case: empty term ''='' {0}", sql);
-        return sql;
+      // Clean the term. Remove stand-alone ' *', not valid word.
+      String term = node.getTerm().replaceAll(" +\\*", "").trim();
+      // Special cases ="" and ="*"
+      if (comparator.equals("=") || comparator.equals("adj")
+        || comparator.equals("any") || comparator.equals("all")) {
+        if (term.equals("*")) {  // Plain "*" means all records.
+          String sql = "true";
+          logger.log(Level.FINE, "pgFT(): special case: plain '*' ''='' {0}", sql);
+          return sql;
+        }
+        if (term.equals("")) {
+          String sql = fld + " ~ ''";
+          logger.log(Level.FINE, "pgFT(): special case: empty term ''='' {0}", sql);
+          return sql;
+        }
       }
       String[] words = term.trim().split("\\s+");  // split at whitespace
       for (int i = 0; i < words.length; i++) {

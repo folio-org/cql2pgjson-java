@@ -887,9 +887,13 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Test
   public void optimizedOR() throws QueryValidationException {
     SqlSelect s = cql2pgJson.toSql("name=* OR email=*");
-    assertEquals("users.user_data->>'name' ~ ''", s.getWhere());
+    assertEquals("true", s.getWhere());
     s = cql2pgJson.toSql("name=* OR email=* OR zip=*");
+    assertEquals("true", s.getWhere());
+    s = cql2pgJson.toSql("name=\"\"");  // any that has a name
     assertEquals("users.user_data->>'name' ~ ''", s.getWhere());
+    s = cql2pgJson.toSql("name=\"\" OR email=\"\"");
+    assertEquals("(users.user_data->>'name' ~ '') OR (users.user_data->>'email' ~ '')", s.getWhere());
   }
 
   @Test(expected = QueryValidationException.class)
