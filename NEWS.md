@@ -1,3 +1,15 @@
+## 3.0.0 2018-10-12
+* CQLPG-63: Drop field name to full field path resolution. This is a
+  breaking change, using the unambiguous suffix "email" no longer resolves
+  to "personal.email".
+* CQLPG-61: Equals empty is not same as equals star. Matching "*" means
+  all records, matching "" means all records where that field is defined.
+  This is a breaking change.
+* CQLPG-60: Follow refs so can have schema cycles.
+* CQLPG-58: Performance: Convert id searches using '=' or '==' into primary
+  key \_id searches. This is a breaking change because it restricts the
+  operators allowed for id and assumes that id is a UUID.
+
 ## 2.2.3 2018-09-16
  * CQLPG-55: Trim trailing space and loose * that breaks fulltext search.
 

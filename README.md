@@ -66,6 +66,12 @@ If invoked without schema specification like `userSchemaJson` then the produced 
 does not contain optimizations to use database indexes and may run with bad performance on
 large datasets.
 
+## id
+
+The field id is not searched in the JSON but in a separate \_id field (the table's
+primary key). Only `=` and `==` operators are supported, and `*` is allowed for right
+truncation only. It must be an UUID.
+
 ## Relations
 
 Only these relations have been implemented yet:
