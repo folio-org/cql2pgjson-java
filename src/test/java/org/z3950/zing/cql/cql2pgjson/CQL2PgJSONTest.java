@@ -843,7 +843,6 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Parameters({
     "name=Long                      # Lea Long",
     "address.zip=2791               # Lea Long",
-    "zip=2791                       # Lea Long",
   })
   @Test
   public void schema(String testcase) throws IOException, CQL2PgJSONException {

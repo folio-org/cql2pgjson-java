@@ -65,9 +65,11 @@ public class Schema {
   private String schemaJsonString = null;
 
   /* End of private use variables and object structures*/
+
   /**
    * Load JSON schema
    *
+   * @param schemaJson  JSON schema describing name, path and type of allowed fields.
    * @throws IOException on parse failure
    * @throws SchemaException if the schema in not well formed
    */
@@ -79,7 +81,7 @@ public class Schema {
 
   private Field matchLeaf(String index, String iType, Deque<String> path, String type) {
     String pathP = String.join(".", path);
-    if (pathP.endsWith(index) && (iType == null || iType.endsWith(type))) {
+    if (pathP.equals(index) && (iType == null || iType.endsWith(type))) {
       return new Field(pathP, type);
     }
     return null;
@@ -202,9 +204,6 @@ public class Schema {
           // ignore
         }
         if (f != null) {
-          if (field != null) {
-            throw new QueryAmbiguousException("Field name \'" + index + "\' is ambiguous");
-          }
           field = f;
         }
       }
@@ -227,9 +226,6 @@ public class Schema {
       if (jt.equals(JsonToken.FIELD_NAME)) {
         Field f = recurseProperty(index, iType, path, jp);
         if (f != null) {
-          if (field != null) {
-            throw new QueryAmbiguousException("Field name \'" + index + "\' is ambiguous");
-          }
           field = f;
         }
       }
