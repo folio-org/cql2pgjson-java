@@ -65,6 +65,19 @@
           }
         }
       }
+    },
+    "type"       : { "type" : "string" },
+    "properties" : { "type" : "integer" },
+    "pet" : {
+      "type" : "array",
+      "items": {
+        "type" : "object",
+        "properties" : {
+          "name"   : { "type" : "string" },
+          "type"   : { "type" : "string" },
+          "color"  : { "type" : "string" }
+        }
+      }
     }
   }
 }

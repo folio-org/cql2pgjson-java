@@ -18,15 +18,6 @@ public class SchemaTest {
   @Rule
   public ExpectedException thrown = ExpectedException.none();
 
-  private void expect(Class<? extends Throwable> type) {
-    thrown.expect(type);
-  }
-
-  private void expect(Class<? extends Throwable> type, String substring) {
-    thrown.expect(type);
-    thrown.expectMessage(containsString(substring));
-  }
-
   private void expect(Class<? extends Throwable> type, String substring1, String substring2, String substring3) {
     thrown.expect(type);
     thrown.expectMessage(allOf(containsString(substring1), containsString(substring2), containsString(substring3)));
@@ -39,41 +30,38 @@ public class SchemaTest {
 
   @Test
   @Parameters({
-    "city,         address.city",
-    "address.city, address.city",
-    "zip,          address.zip",
-    "address.zip,  address.zip",
-    "name,         name",
+    "address.city",
+    "address.zip",
+    "name",
   })
-  public void validFieldLookupsTest(String field, String fullField) throws Exception {
+  public void validFieldLookupsTest(String field) throws Exception {
     Schema s = new Schema(Util.getResource("userdata.json"));
-    assertThat(s.mapFieldNameAgainstSchema(field).getPath(), is(fullField));
+    assertThat(s.mapFieldNameAgainstSchema(field).getPath(), is(field));
   }
 
   /* Both `type` and `properties` are structural keywords, but can still be used for attributes. */
   @Test
   @Parameters({
-    "type,           child.pet.type",
-    "pet.type,       child.pet.type",
-    "child.pet.type, child.pet.type",
-    "properties,     parent.properties",
-    "favoriteColor,  child.favoriteColor",
+    "type",
+    "child.pet.type",
+    "properties",
+    "parent.properties",
+    "child.favoriteColor",
   })
-  public void noReservedWordsTest(String field, String fullField) throws Exception {
+  public void noReservedWordsTest(String field) throws Exception {
     Schema s = new Schema(Util.getResource("complex.json"));
-    assertThat(s.mapFieldNameAgainstSchema(field).getPath(), is(fullField));
+    assertThat(s.mapFieldNameAgainstSchema(field).getPath(), is(field));
   }
 
   @Test
   @Parameters({
-    "userdata.json, city,         address.city",
-    "userdata.json, address.city, address.city",
-    "userdata.json, name,         name",
-    "complex.json,  size,         parent.shirt.size",  // other size attributes are integers
+    "userdata.json, address.city",
+    "userdata.json, name",
+    "complex.json,  parent.shirt.size",  // other size attributes are integers
   })
-  public void validFieldsWithTypeSpeficiedTest(String schema, String field, String fullField) throws Exception {
+  public void validFieldsWithTypeSpeficiedTest(String schema, String field) throws Exception {
     Schema s = new Schema(Util.getResource(schema));
-    assertThat(s.mapFieldNameAndTypeAgainstSchema(field, "string").getPath(), is(fullField));
+    assertThat(s.mapFieldNameAndTypeAgainstSchema(field, "string").getPath(), is(field));
   }
 
   @Test
@@ -84,10 +72,10 @@ public class SchemaTest {
   }
 
   @Test
-  public void invalidFieldLookupTest() throws QueryValidationException, IOException, SchemaException {
+  public void invalidFieldWithoutPath() throws QueryValidationException, IOException, SchemaException {
     Schema s = new Schema( Util.getResource("userdata.json") );
-    expect(QueryValidationException.class, "Field name", "fakeField", "is not present");
-    s.mapFieldNameAgainstSchema("fakeField");
+    expect(QueryValidationException.class, "Field name", "city", "is not present");
+    s.mapFieldNameAgainstSchema("city");  // correct with path: address.city
   }
 
   @Test
@@ -98,30 +86,10 @@ public class SchemaTest {
   }
 
   @Test
-  public void ambiguousQueryTest() throws QueryValidationException, IOException, SchemaException {
-    Schema s = new Schema( Util.getResource("complex.json") );
-    expect(QueryAmbiguousException.class);
-    s.mapFieldNameAgainstSchema("size");
-  }
-  @Test
-  public void ambiguousQueryTestWithType() throws QueryValidationException, IOException, SchemaException {
-    Schema s = new Schema( Util.getResource("complex.json") );
-    expect(QueryAmbiguousException.class);
-    s.mapFieldNameAndTypeAgainstSchema("size","integer");
-  }
-
-  @Test
-  public void ambiguousQueryMessageTest() throws IOException, SchemaException, QueryValidationException {
-    Schema s = new Schema( Util.getResource("complex.json") );
-    expect(QueryAmbiguousException.class, "Field name 'color' is ambiguous");
-    s.mapFieldNameAgainstSchema("color");
-  }
-
-  @Test
   @Parameters({
     "id,                                       id",
+    "metadata.id,                              metadata.id",
     "metadata.name,                            metadata.name",
-    "email,                                    metadata.email",
     "query.term,                               query.term",
     "query.boolean.op,                         query.boolean.op",
     "query.boolean.right.term,                 query.boolean.right.term",
@@ -132,19 +100,6 @@ public class SchemaTest {
   public void testRef(String field, String fullField) throws IOException, SchemaException, QueryValidationException {
     Schema s = new Schema(Util.getResource("refs.json"));
     assertThat(s.mapFieldNameAgainstSchema(field).getPath(), is(fullField));
-  }
-
-  @Test
-  @Parameters({
-    "term",
-    "op",
-    "prox.term",
-    "boolean.right.term",
-  })
-  public void ambiguousQueryTest(String field) throws QueryValidationException, IOException, SchemaException {
-    Schema s = new Schema( Util.getResource("refs.json") );
-    expect(QueryAmbiguousException.class);
-    s.mapFieldNameAgainstSchema(field);
   }
 
   @Test
