@@ -1,3 +1,6 @@
+## 3.0.1 2018-10-14
+* CQLPG-66: Fix validating of array field names
+
 ## 3.0.0 2018-10-12
 * CQLPG-63: Drop field name to full field path resolution. This is a
   breaking change, using the unambiguous suffix "email" no longer resolves
