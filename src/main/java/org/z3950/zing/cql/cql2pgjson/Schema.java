@@ -79,12 +79,31 @@ public class Schema {
     jsonFactory.createParser(schemaJson);
   }
 
-  private Field matchLeaf(String index, String iType, Deque<String> path, String type) {
+  private Field matchLeaf(Field field, String index, String iType, Deque<String> path, String type)
+      throws QueryValidationException {
+
     String pathP = String.join(".", path);
-    if (pathP.equals(index) && (iType == null || iType.endsWith(type))) {
-      return new Field(pathP, type);
+    if (field != null) {
+      if ("array".equals(type) && field.getPath().length() > pathP.length()) {
+        throw new QueryValidationException("A subfield of an array is not allowed. " +
+            field.getPath() + " is subfield of array " + pathP);
+      }
+      return field;
     }
-    return null;
+
+    if (! pathP.equals(index)) {
+      return null;
+    }
+    if ("array".equals(type)) {
+      if (iType != null && !iType.endsWith("string")) {
+        return null;
+      }
+      return new Field(pathP, "string");
+    }
+    if (iType != null && !iType.endsWith(type)) {
+      return null;
+    }
+    return new Field(pathP, type);
   }
 
   private Field recurseItems(String index, String iType, Deque<String> path, JsonParser jp)
@@ -92,39 +111,30 @@ public class Schema {
     Field field = null;
     JsonToken jt = jp.nextToken();
     String type = null;
-    boolean gotProperties = false;
     if (!jt.equals(JsonToken.START_OBJECT)) {
       throw new SchemaException(ITEMS_USAGE_MESSAGE);
     }
     while (!jp.isClosed() && !jt.equals(JsonToken.END_OBJECT)) {
       jt = jp.nextToken();
       if (jt.equals(JsonToken.FIELD_NAME)) {
-        Field f = null;
         switch (jp.getCurrentName()) {
           case TYPE:
             jp.nextValue();
             type = jp.getValueAsString();
             break;
           case PROPERTIES:
-            f = recurseProperties(index, iType, path, jp);
-            gotProperties = true;
+            field = recurseProperties(index, iType, path, jp);
             break;
           case REF:
             jp.nextToken();
-            f = recurseRef(index, iType, path, jp.getValueAsString());
-            gotProperties = true;
+            field = recurseRef(index, iType, path, jp.getValueAsString());
             break;
           default:
           // ignore
         }
-        if (f != null) {
-          field = f;
-        }
       }
     }
-    if (!gotProperties) {
-      field = matchLeaf(index, iType, path, type);
-    }
+    field = matchLeaf(field, index, iType, path, type);
     return field;
   }
 
@@ -173,44 +183,33 @@ public class Schema {
     String fieldName = jp.getCurrentName();
     path.addLast(fieldName);
     String type = null;
-    boolean gotProperties = false;
-    boolean gotItems = false;
     while (!jp.isClosed()) {
       JsonToken jt = jp.nextToken();
       if (jt == null || jt.equals(JsonToken.END_OBJECT)) {
         break;
       }
       if (jt.equals(JsonToken.FIELD_NAME)) {
-        Field f = null;
         switch (jp.getCurrentName()) {
           case PROPERTIES:
-            f = recurseProperties(index, iType, path, jp);
-            gotProperties = true;
+            field = recurseProperties(index, iType, path, jp);
             break;
           case TYPE:
             jp.nextToken();
             type = jp.getValueAsString();
             break;
           case ITEMS:
-            f = recurseItems(index, iType, path, jp);
-            gotItems = true;
+            field = recurseItems(index, iType, path, jp);
             break;
           case REF:
             jp.nextToken();
-            f = recurseRef(index, iType, path, jp.getValueAsString());
-            gotProperties = true;
+            field = recurseRef(index, iType, path, jp.getValueAsString());
             break;
           default:
           // ignore
         }
-        if (f != null) {
-          field = f;
-        }
       }
     }
-    if (!gotItems && !gotProperties) {
-      field = matchLeaf(index, iType, path, type);
-    }
+    field = matchLeaf(field, index, iType, path, type);
     path.removeLast();
     return field;
   }
@@ -252,33 +251,30 @@ public class Schema {
   }
 
   /**
-   * Confirm that a particular field is valid and unambiguous for a given
-   * schema. Returns a Field with type and the fully-specified version of the
-   * (possibly abbreviated) field name. For example, looking up 'zip' may return
-   * 'address.zip' as path.
+   * Confirm that a particular field is valid for a given
+   * schema. Returns a Field with type and field name.
    *
-   * @param index field name, may be abbreviated
+   * <p>The type of an array is string.
+   *
+   * @param index field name
    * @return type and path of the field.
-   * @throws QueryValidationException on ambiguous index
+   * @throws QueryValidationException if index does not exist in schema
    */
   public Field mapFieldNameAgainstSchema(String index) throws QueryValidationException {
     return mapFieldNameAndTypeAgainstSchema(index, null);
   }
 
   /**
-   * Confirm that a particular field is valid and unambiguous for a given
-   * schema. The return value with be the fully-specified version of the
-   * (possibly abbreviated) field name. For example, looking up 'zip' may return
-   * 'address.zip'. Any fields in the index that don't match the specified type
-   * will not be considered to be matches. Currently, a type argument of
-   * 'string' will match an index field of type 'string' or an array of type
-   * 'string'.
+   * Confirm that a particular field exists in the schema. If iType is not null
+   * it also confirms that iType is the same as specified in the schema.
    *
-   * @param index field name, may be abbreviated
-   * @param type type of index
-   * @return fully-specified version of field value.
-   * @throws QueryValidationException if index and type is not found or
-   * ambiguous
+   * <p>Currently, a type argument of
+   * 'string' will match an index field of type 'string' or an array of any type.
+   *
+   * @param index field name
+   * @param iType type of index
+   * @return index
+   * @throws QueryValidationException if index is not found in the schema
    */
   public Field mapFieldNameAndTypeAgainstSchema(String index, String iType) throws QueryValidationException {
     try {
@@ -289,14 +285,9 @@ public class Schema {
       if (field == null) {
         throw queryValidationException(index, null);
       }
-      if (iType != null && !iType.equals(field.type)) {
-        throw queryValidationException(index, iType);
-      }
       return field;
-    } catch (IOException ex) {
-      throw new QueryValidationException("IOException: " + ex.getLocalizedMessage());
-    } catch (SchemaException ex) {
-      throw new QueryValidationException("SchemException: " + ex.getLocalizedMessage());
+    } catch (IOException|SchemaException e) {
+      throw new QueryValidationException(e);
     }
   }
 
