@@ -8,6 +8,8 @@
         "name" : { "type" : "string" },
         "dob"  : { "type" : "date" },
         "properties" : { "type" : "integer" },
+        "type" : { "type" : "string" },
+        "items" : { "type" : "string" },
         "address" : {
           "type"       : "object",
           "someOtherField" : "foo Bar",
@@ -16,7 +18,13 @@
             "street"       : { "type" : "string" },
             "city"         : { "type" : "string" },
             "zip"          : { "type" : "integer" },
-            "apartment"    : { "type" : "string" }
+            "apartment"    : { "type" : "string" },
+            "phoneNumbers" : {
+              "type" : "array",
+              "items": {
+                "type" : "string"
+              }
+            }
           }
         },
         "shirt" : {
@@ -39,6 +47,21 @@
             "size"  : { "type" : "integer" },
             "color" : { "type" : "string" },
             "style" : { "type" : "string" }
+          }
+        },
+        "hats" : {
+          "type" : "array",
+          "items": {
+            "type" : "string"
+          }
+        },
+        "umbrellas" : {
+          "type" : "array",
+          "items": {
+            "type" : "object",
+            "properties" : {
+              "color"  : { "type" : "string" }
+            }
           }
         }
       }
@@ -68,6 +91,7 @@
     },
     "type"       : { "type" : "string" },
     "properties" : { "type" : "integer" },
+    "items"      : { "type" : "string" },
     "pet" : {
       "type" : "array",
       "items": {
@@ -77,6 +101,12 @@
           "type"   : { "type" : "string" },
           "color"  : { "type" : "string" }
         }
+      }
+    },
+    "relatives" : {
+      "type" : "array",
+      "items": {
+        "type" : "string"
       }
     }
   }
