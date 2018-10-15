@@ -901,20 +901,26 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   }
 
   @Test
-  public void pKey() throws QueryValidationException {
-    SqlSelect s = cql2pgJson.toSql("id=*");
-    assertEquals("true", s.getWhere());
-    s = cql2pgJson.toSql("id=\"11111111-1111-1111-1111-111111111111\"");
-    assertEquals("_id='11111111-1111-1111-1111-111111111111'", s.getWhere());
-    s = cql2pgJson.toSql("id=\"2*\"");
-    assertEquals("(_id>='20000000-0000-0000-0000-000000000000' and "
-      + "_id<='2fffffff-ffff-ffff-ffff-ffffffffffff')", s.getWhere());
-    s = cql2pgJson.toSql("id=\"22222222*\"");
-    assertEquals("(_id>='22222222-0000-0000-0000-000000000000' and "
-      + "_id<='22222222-ffff-ffff-ffff-ffffffffffff')", s.getWhere());
-    s = cql2pgJson.toSql("id=\"22222222*\"");
-    assertEquals("(_id>='22222222-0000-0000-0000-000000000000' and "
-      + "_id<='22222222-ffff-ffff-ffff-ffffffffffff')", s.getWhere());
+  @Parameters({
+    "id=*, true",
+    "id=\"11111111-1111-1111-1111-111111111111\", _id='11111111-1111-1111-1111-111111111111'",
+    "id=\"2*\", (_id>='20000000-0000-0000-0000-000000000000' and "
+              + "_id<='2fffffff-ffff-ffff-ffff-ffffffffffff')",
+    "id=\"22222222*\", (_id>='22222222-0000-0000-0000-000000000000' and "
+                     + "_id<='22222222-ffff-ffff-ffff-ffffffffffff')",
+  })
+  public void pKey(String cql, String sql) throws QueryValidationException {
+    SqlSelect s = cql2pgJson.toSql(cql);
+    assertEquals(sql, s.getWhere());
+  }
+
+  @Test
+  public void pKeyDefault() throws CQL2PgJSONException {
+    CQL2PgJSON c = new CQL2PgJSON("users.user_data");
+    c.dbTable.remove("pkColumnName");
+    String sql = c.toSql("id=\"11111111-1111-1111-1111-111111111111\"").getWhere();
+    // default pkColumnName is id without underscore
+    assertEquals("id='11111111-1111-1111-1111-111111111111'", sql);
   }
 
   @Test
@@ -934,9 +940,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "id=/ignoreCase 11                         # Unsupported modifier",  })
   public void badId(String testcase)
     throws IOException, FieldException, SchemaException, ServerChoiceIndexesException {
-    System.out.println("badId: " + testcase);
     select(cql2pgJson, testcase);
-    System.out.println("badId: " + testcase + " OK ");
   }
 
   //
