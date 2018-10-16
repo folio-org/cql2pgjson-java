@@ -6,6 +6,8 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import java.io.File;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -144,29 +146,39 @@ public class Schema {
     if (path.size() > MIN_DEPTH && String.join(".", path).length() > index.length()) {
       return null;
     }
-    if (!refVal.startsWith("file")) {
-      throw new IOException("$ref: Cannot resolve path " + refVal);
+    String uPath;
+    try {
+      URI u = new URI(refVal);
+      if (!"file".equals(u.getScheme())) {
+        return null;
+      }
+      uPath = u.getPath();
+    } catch (URISyntaxException ex) {
+      throw new IOException(ex.getLocalizedMessage());
     }
-    refVal = refVal.replace(File.separator, "/");
+    if (uPath == null) {
+      throw new IOException("$ref: no path component in " + refVal);
+    }
+    uPath = uPath.replace(File.separator, "/");
     int idx = -1;
     if (idx == -1) {
       final String lead1 = "target/test-classes/";
-      idx = refVal.indexOf(lead1);
+      idx = uPath.indexOf(lead1);
       if (idx != -1) {
         idx += lead1.length();
       }
     }
     if (idx == -1) {
       final String lead2 = "target/classes/";
-      idx = refVal.indexOf(lead2);
+      idx = uPath.indexOf(lead2);
       if (idx != -1) {
         idx += lead2.length();
       }
     }
     if (idx == -1) {
-      throw new IOException("$ref: Cannot resolve path " + refVal);
+      throw new IOException("$ref: Cannot find target/classes path in  " + refVal);
     }
-    final String resourceName = refVal.substring(idx);
+    final String resourceName = uPath.substring(idx);
     URL url = Thread.currentThread().getContextClassLoader().getResource(resourceName);
     if (url == null) {
       throw new IOException("$ref: Cannot get resource for " + resourceName);

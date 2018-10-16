@@ -6,10 +6,10 @@
     },
     "metadata": {
       "type": "object",
-      "$ref" :  "file:x/target/test-classes/userdata.json"
+      "$ref" :  "file:/x/target/test-classes/userdata.json"
     },
     "query": {
-      "$ref" :  "file:x/target/test-classes/query.json"
+      "$ref" :  "file:/x/target/test-classes/query.json"
     }
   }
 }
