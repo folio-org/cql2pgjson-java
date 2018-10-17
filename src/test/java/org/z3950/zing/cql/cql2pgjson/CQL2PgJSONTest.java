@@ -918,6 +918,15 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   }
 
   @Test
+  public void pKeyDefault() throws CQL2PgJSONException {
+    CQL2PgJSON c = new CQL2PgJSON("users.user_data");
+    c.dbTable.remove("pkColumnName");
+    String sql = c.toSql("id=\"11111111-1111-1111-1111-111111111111\"").getWhere();
+    // default pkColumnName is id without underscore
+    assertEquals("id='11111111-1111-1111-1111-111111111111'", sql);
+  }
+
+  @Test
   @Parameters({
     "id=11111111-1111-1111-1111-111111111111   # Jo Jane",
     "id=zz                                     #",         // invalid UUID doesn't match any record

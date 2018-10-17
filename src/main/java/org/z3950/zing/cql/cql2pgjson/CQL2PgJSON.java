@@ -55,7 +55,7 @@ public class CQL2PgJSON {
   private Schema schema;
   private Map<String, Schema> schemas;
   private static JSONObject dbSchema = loadDbSchema(); // The whole schema.json, with all tables etc
-  private JSONObject dbTable; // Our primary table inside the dbSchema
+  JSONObject dbTable; // Our primary table inside the dbSchema
 
   /** Postgres regexp that matches at any punctuation and space character
    * and at the beginning of the string */
@@ -1063,7 +1063,7 @@ public class CQL2PgJSON {
    */
   private String pgId(CQLTermNode node) throws QueryValidationException {
     final String uuidPattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
-    String pkColumnName = this.dbTable.getString("pkColumnName");
+    String pkColumnName = dbTable.optString("pkColumnName", /* default = */ "id");
     String comparator = node.getRelation().getBase();
     CqlModifiers cqlModifiers = new CqlModifiers(CqlAccents.RESPECT_ACCENTS, node);
     if (cqlModifiers.cqlAccents == CqlAccents.IGNORE_ACCENTS) {
