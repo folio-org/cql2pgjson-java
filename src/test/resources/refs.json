@@ -1,4 +1,4 @@
-{ 
+{
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",  "properties": {
     "id": {
@@ -10,6 +10,9 @@
     },
     "query": {
       "$ref" :  "file:/x/target/test-classes/query.json"
+    },
+    "query": {
+      "$ref" :  "http://example.com/x/target/test-classes/query.json"
     }
   }
 }
