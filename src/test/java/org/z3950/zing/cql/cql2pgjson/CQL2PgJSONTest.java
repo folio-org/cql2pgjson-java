@@ -929,6 +929,8 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Test
   @Parameters({
     "id=11111111-1111-1111-1111-111111111111   # Jo Jane",
+    "id=33333333-3333-3333-3333-33333333333a   # Lea Long",
+    "id=33333333-3333-3333-3333-33333333333A   # Lea Long",
     "id=zz                                     #",         // invalid UUID doesn't match any record
     "id=11111111111111111111111111111111       #",
     "id=11111111+1111-1111-1111-111111111111   #",
