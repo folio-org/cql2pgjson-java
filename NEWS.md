@@ -1,5 +1,12 @@
+## 3.0.2 2018-10-17
+* CQLPG-70: Comparing id to invalid UUID: Don't throw error message, simply don't match.
+* CQLPG-71: Forbid modifiers like /ignoreCase /masked /respectAccents for the primary key id field.
+* CQLPG-67: Default pkColumnName = "id".
+* CQLPG-68: Probably incorrect handling of ref in method.
+* CQLPG-69: Security vulnerability reported in jackson-databind, PostgreSQL, PostgreSQL JDBC Driver.
+
 ## 3.0.1 2018-10-14
-* CQLPG-66: Fix validating of array field names
+* CQLPG-66: Fix validating of array field names.
 
 ## 3.0.0 2018-10-12
 * CQLPG-63: Drop field name to full field path resolution. This is a
