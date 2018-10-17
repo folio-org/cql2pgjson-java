@@ -6,6 +6,8 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import java.io.File;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -107,7 +109,7 @@ public class Schema {
   }
 
   private Field recurseItems(String index, String iType, Deque<String> path, JsonParser jp)
-    throws IOException, SchemaException, QueryValidationException {
+    throws IOException, SchemaException, QueryValidationException, URISyntaxException {
     Field field = null;
     JsonToken jt = jp.nextToken();
     String type = null;
@@ -139,34 +141,34 @@ public class Schema {
   }
 
   private Field recurseRef(String index, String iType, Deque<String> path, String refVal)
-    throws IOException, SchemaException, QueryValidationException {
+    throws IOException, SchemaException, QueryValidationException, URISyntaxException {
 
     if (path.size() > MIN_DEPTH && String.join(".", path).length() > index.length()) {
       return null;
     }
-    if (!refVal.startsWith("file")) {
-      throw new IOException("$ref: Cannot resolve path " + refVal);
+    URI u = new URI(refVal);
+    if (!"file".equals(u.getScheme())) {
+      return null;
     }
-    refVal = refVal.replace(File.separator, "/");
-    int idx = -1;
-    if (idx == -1) {
-      final String lead1 = "target/test-classes/";
-      idx = refVal.indexOf(lead1);
+    String uPath = u.getPath();
+    if (uPath == null) {
+      throw new IOException("$ref: no path component in " + refVal);
+    }
+    uPath = uPath.replace(File.separator, "/");
+
+    String resourceName = null;
+    String [] leads = { "/target/test-classes/", "/target/classes/" };
+    for (String lead : leads) {
+      int idx = uPath.indexOf(lead);
       if (idx != -1) {
-        idx += lead1.length();
+        resourceName = uPath.substring(idx + lead.length());
+        break;
       }
     }
-    if (idx == -1) {
-      final String lead2 = "target/classes/";
-      idx = refVal.indexOf(lead2);
-      if (idx != -1) {
-        idx += lead2.length();
-      }
+    if (resourceName == null) {
+      throw new IOException("$ref: Cannot find target/classes path in  " + refVal);
     }
-    if (idx == -1) {
-      throw new IOException("$ref: Cannot resolve path " + refVal);
-    }
-    final String resourceName = refVal.substring(idx);
+
     URL url = Thread.currentThread().getContextClassLoader().getResource(resourceName);
     if (url == null) {
       throw new IOException("$ref: Cannot get resource for " + resourceName);
@@ -177,8 +179,9 @@ public class Schema {
     return recurseTop(index, iType, path, jp);
   }
 
-  private Field recurseProperty(String index, String iType,
-    Deque<String> path, JsonParser jp) throws IOException, SchemaException, QueryValidationException {
+  private Field recurseProperty(String index, String iType, Deque<String> path, JsonParser jp)
+        throws IOException, SchemaException, QueryValidationException, URISyntaxException {
+
     Field field = null;
     String fieldName = jp.getCurrentName();
     path.addLast(fieldName);
@@ -215,7 +218,7 @@ public class Schema {
   }
 
   private Field recurseProperties(String index, String iType, Deque<String> path, JsonParser jp)
-    throws IOException, SchemaException, QueryValidationException {
+      throws IOException, SchemaException, QueryValidationException, URISyntaxException {
     Field field = null;
     while (!jp.isClosed()) {
       JsonToken jt = jp.nextToken();
@@ -233,7 +236,7 @@ public class Schema {
   }
 
   private Field recurseTop(String index, String iType, Deque<String> path, JsonParser jp)
-    throws QueryValidationException, IOException, SchemaException {
+      throws QueryValidationException, IOException, SchemaException, URISyntaxException {
     while (!jp.isClosed()) {
       JsonToken jt = jp.nextToken();
       if (jt == null) {
@@ -286,7 +289,7 @@ public class Schema {
         throw queryValidationException(index, null);
       }
       return field;
-    } catch (IOException|SchemaException e) {
+    } catch (IOException | SchemaException | URISyntaxException e) {
       throw new QueryValidationException(e);
     }
   }

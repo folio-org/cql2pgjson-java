@@ -12,10 +12,10 @@
           "type": "string"
         },
         "left": {
-          "$ref" : "file://target/classes/query.json"
+          "$ref" : "file:/q/target/classes/query.json"
         },
         "right": {
-          "$ref" : "file:/target/classes/query.json"
+          "$ref" : "file:/q/target/classes/query.json"
         }
       }
     },
@@ -23,7 +23,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "$ref" : "file:/target/classes/query.json"
+        "$ref" : "file:/q/target/classes/query.json"
       }
     }
   }

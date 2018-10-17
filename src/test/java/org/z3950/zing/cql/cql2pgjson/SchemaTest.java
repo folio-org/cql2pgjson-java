@@ -2,9 +2,12 @@ package org.z3950.zing.cql.cql2pgjson;
 
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.*;
 import java.io.IOException;
+import java.net.URISyntaxException;
+
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -132,6 +135,37 @@ public class SchemaTest {
   public void testRef(String field) throws IOException, SchemaException, QueryValidationException {
     Schema s = new Schema(Util.getResource("refs.json"));
     assertThat(s.mapFieldNameAgainstSchema(field).getPath(), is(field));
+  }
+
+  @Test
+  public void recurseRefUriSyntaxException() throws Exception {
+    thrown.expect(QueryValidationException.class);
+    thrown.expectCause(is(instanceOf(URISyntaxException.class)));
+    new Schema(Util.getResource("ref-uri-syntax.json")).mapFieldNameAgainstSchema("badref.x");
+  }
+
+  @Test
+  public void recurseRefUriWithoutPath() throws Exception {
+    thrown.expect(QueryValidationException.class);
+    thrown.expectCause(is(instanceOf(IOException.class)));
+    thrown.expectMessage("no path component");
+    new Schema(Util.getResource("ref-without-path.json")).mapFieldNameAgainstSchema("badref.x");
+  }
+
+  @Test
+  public void recurseRefUriWithoutTargetPath() throws Exception {
+    thrown.expect(QueryValidationException.class);
+    thrown.expectCause(is(instanceOf(IOException.class)));
+    thrown.expectMessage("Cannot find target");
+    new Schema(Util.getResource("ref-without-target-path.json")).mapFieldNameAgainstSchema("badref.x");
+  }
+
+  @Test
+  public void recurseRefUriMissingResource() throws Exception {
+    thrown.expect(QueryValidationException.class);
+    thrown.expectCause(is(instanceOf(IOException.class)));
+    thrown.expectMessage("Cannot get resource");
+    new Schema(Util.getResource("ref-with-missing-resource.json")).mapFieldNameAgainstSchema("badref.x");
   }
 
   @Test
