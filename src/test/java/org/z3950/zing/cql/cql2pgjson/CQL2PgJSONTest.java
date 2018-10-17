@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -25,6 +26,7 @@ import junitparams.Parameters;
 
 @RunWith(JUnitParamsRunner.class)
 public class CQL2PgJSONTest extends DatabaseTestBase {
+  private static Logger logger = Logger.getLogger(CQL2PgJSONTest.class.getName());
   private static CQL2PgJSON cql2pgJson;
 
   @BeforeClass
@@ -65,10 +67,10 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
       String where = aCql2pgJson.cql2pgJson(cql);
       //sql = "select user_data->'name' from users where " + where;
       sql = "select " + blob + "->'name' from " + tablename + " where " + where;
-      System.out.println("select: cql: " + cql);
-      System.out.println("select: sql:" + sql);
+      logger.fine("select: cql: " + cql);
+      logger.fine("select: sql:" + sql);
       runSqlFile(sqlFile);
-      System.out.println("select: sqlfile done");
+      logger.fine("select: sqlfile done");
       String actualNames = "";
       try ( Statement statement = conn.createStatement();
             ResultSet result = statement.executeQuery(sql) ) {
@@ -81,20 +83,22 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
         }
       }
       if (!expectedNames.equals(actualNames)) {
-        System.out.println("select: Test FAILURE on " + cql + "#" + expectedNames);
+        logger.fine("select: Test FAILURE on " + cql + "#" + expectedNames);
       }
-      System.out.println("select: Got names [" + actualNames + "], expected [" + expectedNames + "]");
+      logger.fine("select: Got names [" + actualNames + "], expected [" + expectedNames + "]");
       assertEquals("CQL: " + cql + ", SQL: " + where, expectedNames, actualNames);
     } catch (QueryValidationException e) {
-      System.out.println("select: RuntimeException "
+      logger.fine("select: QueryValidationException "
         + " for query " + cql + " : " + e.getMessage());
-      assertTrue(e.toString().contains(expectedNames));
-      //throw new RuntimeException(sql != null ? sql : cql, e);
+      if (expectedNames.isEmpty()) {
+        throw new RuntimeException(sql != null ? sql : cql, e);
+      }
+      assertThat(e.toString(), containsString(expectedNames));
     } catch (SQLException e) {
-      System.out.println("select: SQL Exception " + e.getMessage());
+      logger.fine("select: SQL Exception " + e.getMessage());
       throw new RuntimeException(sql != null ? sql : cql, e);
     }
-    System.out.println("select: done with " + cql);
+    logger.fine("select: done with " + cql);
   }
 
   public void select(String sqlFile, String testcase) {
@@ -140,8 +144,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
       cql2pgJson.cql2pgJson(cql);
     } catch (Throwable e) {
       if (!clazz.isInstance(e)) {
-        System.out.println("Wrong exception. Expected " + clazz + ". "
-          + "but got " + e);
+        logger.fine("Wrong exception. Expected " + clazz + ". " + "but got " + e);
         throw new RuntimeException(e);
       }
       for (String s : contains) {
@@ -902,16 +905,16 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "id=*, true",
-    "id=\"11111111-1111-1111-1111-111111111111\", _id='11111111-1111-1111-1111-111111111111'",
-    "id=\"2*\", (_id>='20000000-0000-0000-0000-000000000000' and "
-              + "_id<='2fffffff-ffff-ffff-ffff-ffffffffffff')",
-    "id=\"22222222*\", (_id>='22222222-0000-0000-0000-000000000000' and "
-                     + "_id<='22222222-ffff-ffff-ffff-ffffffffffff')",
+    "id=*,                                        true",
+    "id=\"11111111-1111-1111-1111-111111111111\",  _id='11111111-1111-1111-1111-111111111111'",
+    "id=\"2*\",                                  (_id>='20000000-0000-0000-0000-000000000000' and "
+                                               + "_id<='2fffffff-ffff-ffff-ffff-ffffffffffff')",
+    "id=\"22222222*\",                           (_id>='22222222-0000-0000-0000-000000000000' and "
+                                               + "_id<='22222222-ffff-ffff-ffff-ffffffffffff')",
   })
-  public void pKey(String cql, String sql) throws QueryValidationException {
-    SqlSelect s = cql2pgJson.toSql(cql);
-    assertEquals(sql, s.getWhere());
+  public void pKeySql(String cql, String expectedSql) throws QueryValidationException {
+    assertEquals(expectedSql, cql2pgJson.toSql(cql).getWhere());
+    assertEquals(expectedSql, cql2pgJson.toSql(cql.replace("=", "==")).getWhere());
   }
 
   @Test
@@ -926,20 +929,30 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Test
   @Parameters({
     "id=11111111-1111-1111-1111-111111111111   # Jo Jane",
-    "id=zz                                     # Invalid UUID",
-    "id=11111111111111111111111111111111       # Invalid UUID",
-    "id=11111111+1111-1111-1111-111111111111   # Invalid UUID",
-    "id=11111111-1111-1111-1111-11111111111    # Invalid UUID",
-    "id=11111111-1111-1111-1111-1111111111111  # Invalid UUID",
-    "id=11111111-1111-1111-1111-111111111111-1 # Invalid UUID",
+    "id=33333333-3333-3333-3333-33333333333a   # Lea Long",
+    "id=33333333-3333-3333-3333-33333333333A   # Lea Long",
+    "id=zz                                     #",         // invalid UUID doesn't match any record
+    "id=11111111111111111111111111111111       #",
+    "id=11111111+1111-1111-1111-111111111111   #",
+    "id=11111111-1111-1111-1111-11111111111    #",
+    "id=11111111-1111-1111-1111-1111111111111  #",
+    "id=11111111-1111-1111-1111-111111111111-1 #",
     "id=1*                                     # Jo Jane",
-    "id=1z*                                    # Invalid UUID",
+    "id=1z*                                    #",
     "id=11111111-1111-1111-1111-111111111111*  # Jo Jane", // ok to trunc after full match, the UI does
     "id=*                                      # Jo Jane; Ka Keller; Lea Long",
-    "id>11                                     # Unsupported operator",
-    "id=/ignoreCase 11                         # Unsupported modifier",  })
-  public void badId(String testcase)
-    throws IOException, FieldException, SchemaException, ServerChoiceIndexesException {
+    "id=*1                                     # only right truncation supported for id",
+    "id=*1*                                    # only right truncation supported for id",
+    "id=11111111*1111-1111-1111-111111111111   # only right truncation supported for id",
+    "id>                11111111-1111-1111-1111-111111111111   # Unsupported operator",
+    "id=/ignoreCase     11111111-1111-1111-1111-111111111111   # Unsupported modifier ignorecase",
+    "id=/respectCase    11111111-1111-1111-1111-111111111111   # Unsupported modifier respectcase",
+    "id=/masked         11111111-1111-1111-1111-111111111111   # Unsupported modifier masked",
+    "id=/regexp         11111111-1111-1111-1111-111111111111   # Unsupported modifier regexp",
+    "id=/respectAccents 11111111-1111-1111-1111-111111111111   # Unsupported modifier respectaccents",
+    "id=/ignoreAccents  11111111-1111-1111-1111-111111111111   # Unsupported modifier ignoreaccents",
+  })
+  public void pKey(String testcase) {
     select(cql2pgJson, testcase);
   }
 
@@ -991,10 +1004,10 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 })
   public void basicFT(String testcase)
     throws IOException, FieldException, SchemaException, ServerChoiceIndexesException {
-    System.out.println("basicFT: " + testcase);
+    logger.fine("basicFT: " + testcase);
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email"));
     select(aCql2pgJson, testcase);
-    System.out.println("basicFT: " + testcase + " OK ");
+    logger.fine("basicFT: " + testcase + " OK ");
   }
 
   @Test
@@ -1020,10 +1033,10 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "name adj \"Long Lea\"                 #",})
   public void allAnyAdjFT(String testcase)
     throws IOException, FieldException, SchemaException, ServerChoiceIndexesException {
-    System.out.println("allFT: " + testcase);
+    logger.fine("allFT: " + testcase);
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email"));
     select(aCql2pgJson, testcase);
-    System.out.println("allFT: " + testcase + " OK ");
+    logger.fine("allFT: " + testcase + " OK ");
   }
 
 
@@ -1043,11 +1056,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "name=/ignoreAccents Long              # Unsupported modifier ignoreaccents"
   })
   public void unsupportedFT(String testcase) throws IOException, CQL2PgJSONException {
-    System.out.println("unsupportedFT():" + testcase);
+    logger.fine("unsupportedFT():" + testcase);
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON(
       "users.user_data", Arrays.asList("name"));
     select(aCql2pgJson, testcase);
-    System.out.println("unsupportedFT(): " + testcase + " OK");
+    logger.fine("unsupportedFT(): " + testcase + " OK");
   }
 
   @Test
@@ -1069,11 +1082,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "cql.allRecords=1 NOT lang = \"\"                                    # n",
    */})
   public void arrayFT(String testcase) throws IOException, CQL2PgJSONException {
-    System.out.println("arrayFT():" + testcase);
+    logger.fine("arrayFT():" + testcase);
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON(
       "users.user_data", Arrays.asList("name"));
     select(aCql2pgJson, "array.sql", testcase);
-    System.out.println("arrayFT(): " + testcase + " OK");
+    logger.fine("arrayFT(): " + testcase + " OK");
   }
 
   /* Need to sort out the array stuff first
@@ -1089,11 +1102,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "name==*a* sortBy address.zip                  # Ka Keller; Jo Jane; Lea Long",
    })
   public void sortFT(String testcase) throws IOException, CQL2PgJSONException {
-    System.out.println("sortFT():" + testcase);
+    logger.fine("sortFT():" + testcase);
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON(
       "users.user_data", dbSchema, Arrays.asList("name"));
     select(aCql2pgJson, testcase);
-    System.out.println("sortFT(): " + testcase + " OK");
+    logger.fine("sortFT(): " + testcase + " OK");
     select(testcase);
   }
 */
@@ -1110,10 +1123,10 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "groups.name = first   # Ka Keller "
   })
   public void subFT(String testcase) throws IOException, CQL2PgJSONException {
-    System.out.println("subFT():" + testcase);
+    logger.fine("subFT():" + testcase);
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON("users.user_data");
     select(aCql2pgJson, testcase);
-    System.out.println("subFT(): " + testcase + " OK");
+    logger.fine("subFT(): " + testcase + " OK");
   }
 
   /* More complex subqueries, on instances, holdings, and items.
@@ -1171,10 +1184,10 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
    */ //
   })
   public void instanceSubFT(String testcase) throws IOException, CQL2PgJSONException {
-    System.out.println("instanceSubFT():" + testcase);
+    logger.fine("instanceSubFT():" + testcase);
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON("instances.jsonb");
     select(aCql2pgJson, "instances.sql", testcase);
-    System.out.println("instanceSubFT(): " + testcase + " OK");
+    logger.fine("instanceSubFT(): " + testcase + " OK");
   }
 
 }

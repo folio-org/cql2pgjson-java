@@ -103,6 +103,12 @@ public class CQL2PgJSON {
       readModifiers(node.getRelation().getModifiers());
     }
 
+    /** read the modifiers from node but use cqlAccentsDefault as default */
+    public CqlModifiers(CqlAccents cqlAccentsDefault, CQLTermNode node) {
+      cqlAccents = cqlAccentsDefault;
+      readModifiers(node.getRelation().getModifiers());
+    }
+
     public CqlModifiers(ModifierSet modifierSet) {
       readModifiers(modifierSet.getModifiers());
     }
@@ -1079,7 +1085,7 @@ public class CQL2PgJSON {
 
     if (!term.contains("*")) { // exact match
       if (!term.matches(uuidPattern)) {
-        throw new QueryValidationException("CQL: Invalid UUID " + term);
+        return "false /* id == invalid UUID */";  // avoid SQL injection, don't put term into comment
       }
       return pkColumnName + "=" + "'" + term + "'";
     }
@@ -1092,7 +1098,7 @@ public class CQL2PgJSON {
     String hi = new StringBuilder("ffffffff-ffff-ffff-ffff-ffffffffffff")
       .replace(0, truncTerm.length(), truncTerm).toString();
     if (!lo.matches(uuidPattern) || !hi.matches(uuidPattern)) {
-      throw new QueryValidationException("CQL: Invalid UUID " + term);
+      return "false /* id == invalid UUID */";  // avoid SQL injection, don't put term into comment
     }
     return "(" + pkColumnName + ">='" + lo + "'"
       + " and " + pkColumnName + "<='" + hi + "')";
