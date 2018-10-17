@@ -944,13 +944,13 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "id=*1                                     # only right truncation supported for id",
     "id=*1*                                    # only right truncation supported for id",
     "id=11111111*1111-1111-1111-111111111111   # only right truncation supported for id",
-    "id>11                                     # Unsupported operator",
-    "id=/ignoreCase     11111111-1111-1111-1111-111111111111   # Jo Jane",
-    "id=/respectCase    11111111-1111-1111-1111-111111111111   # id field does not support modifier respectCase",
-    "id=/masked         11111111-1111-1111-1111-111111111111   # Jo Jane",
-    "id=/regexp         11111111-1111-1111-1111-111111111111   # id field only supports the 'masked' matching modifier",
-    "id=/respectAccents 11111111-1111-1111-1111-111111111111   # Jo Jane",
-    "id=/ignoreAccents  11111111-1111-1111-1111-111111111111   # id field does not support modifier ignoreAccents",
+    "id>                11111111-1111-1111-1111-111111111111   # Unsupported operator",
+    "id=/ignoreCase     11111111-1111-1111-1111-111111111111   # Unsupported modifier ignorecase",
+    "id=/respectCase    11111111-1111-1111-1111-111111111111   # Unsupported modifier respectcase",
+    "id=/masked         11111111-1111-1111-1111-111111111111   # Unsupported modifier masked",
+    "id=/regexp         11111111-1111-1111-1111-111111111111   # Unsupported modifier regexp",
+    "id=/respectAccents 11111111-1111-1111-1111-111111111111   # Unsupported modifier respectaccents",
+    "id=/ignoreAccents  11111111-1111-1111-1111-111111111111   # Unsupported modifier ignoreaccents",
   })
   public void pKey(String testcase) {
     select(cql2pgJson, testcase);

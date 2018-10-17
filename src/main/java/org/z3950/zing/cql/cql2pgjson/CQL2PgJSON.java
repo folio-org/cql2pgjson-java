@@ -1065,16 +1065,9 @@ public class CQL2PgJSON {
     final String uuidPattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
     String pkColumnName = dbTable.optString("pkColumnName", /* default = */ "id");
     String comparator = node.getRelation().getBase();
-    CqlModifiers cqlModifiers = new CqlModifiers(CqlAccents.RESPECT_ACCENTS, node);
-    if (cqlModifiers.cqlAccents == CqlAccents.IGNORE_ACCENTS) {
-      throw new QueryValidationException("CQL: id field does not support modifier ignoreAccents");
-    }
-    if (cqlModifiers.cqlCase == CqlCase.RESPECT_CASE) {
-      throw new QueryValidationException("CQL: id field does not support modifier respectCase");
-    }
-    if (cqlModifiers.cqlMasking != CqlMasking.MASKED) {
-      throw new QueryValidationException("CQL: id field only supports the 'masked' matching modifier but found "
-          + cqlModifiers.cqlMasking.toString());
+    if (!node.getRelation().getModifiers().isEmpty()) {
+      throw new QueryValidationException("CQL: Unsupported modifier "
+        + node.getRelation().getModifiers().get(0).getType());
     }
     if ("==".equals(comparator)) {
       comparator = "=";
