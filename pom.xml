@@ -5,7 +5,7 @@
   <groupId>org.z3950.zing</groupId>
   <artifactId>cql2pgjson</artifactId>
   <packaging>jar</packaging>
-  <version>3.0.2-SNAPSHOT</version>
+  <version>3.0.2</version>
   <name>cql2pgjson</name>
 
   <prerequisites>
@@ -174,7 +174,7 @@
     <url>https://github.com/folio-org/cql2pgjson</url>
     <connection>scm:git:git://github.com/folio-org/cql2pgjson.git</connection>
     <developerConnection>scm:git:git@github.com/folio-org/cql2pgjson.git</developerConnection>
-    <tag>HEAD</tag>
+    <tag>v3.0.2</tag>
   </scm>
 
   <distributionManagement>
