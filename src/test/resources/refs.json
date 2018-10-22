@@ -11,7 +11,7 @@
     "query": {
       "$ref" :  "file:/x/target/test-classes/query.json"
     },
-    "query": {
+    "http": {
       "$ref" :  "http://example.com/x/target/test-classes/query.json"
     }
   }
