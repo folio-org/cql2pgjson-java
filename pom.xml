@@ -8,10 +8,6 @@
   <version>3.0.3-SNAPSHOT</version>
   <name>cql2pgjson</name>
 
-  <prerequisites>
-    <maven>3.1.1</maven>
-  </prerequisites>
-
   <licenses>
     <license>
       <name>Apache License 2.0</name>
@@ -98,6 +94,27 @@
 
   <build>
     <plugins>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>3.0.0-M2</version>
+        <executions>
+          <execution>
+            <id>enforce-maven</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireMavenVersion>
+                  <version>3.1.1</version>
+                </requireMavenVersion>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
 
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
