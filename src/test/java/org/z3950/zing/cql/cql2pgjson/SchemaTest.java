@@ -138,6 +138,13 @@ public class SchemaTest {
   }
 
   @Test
+  public void testRefHttp() throws Exception {
+    thrown.expect(QueryValidationException.class);
+    thrown.expectMessage("'http.term' is not present in index");
+    new Schema(Util.getResource("refs.json")).mapFieldNameAgainstSchema("http.term");
+  }
+
+  @Test
   public void recurseRefUriSyntaxException() throws Exception {
     thrown.expect(QueryValidationException.class);
     thrown.expectCause(is(instanceOf(URISyntaxException.class)));
