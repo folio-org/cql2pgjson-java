@@ -131,6 +131,8 @@ public class SchemaTest {
     "query.boolean.right.boolean.right.term",
     "query.boolean.right.boolean.left.term",
     "query.boolean.left.boolean.right.term",
+    "subdir.relative.query.term",
+    "windows.id",
   })
   public void testRef(String field) throws IOException, SchemaException, QueryValidationException {
     Schema s = new Schema(Util.getResource("refs.json"));
