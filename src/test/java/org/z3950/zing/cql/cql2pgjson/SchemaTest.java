@@ -147,7 +147,6 @@ public class SchemaTest {
   @Test
   public void recurseRefUriSyntaxException() throws Exception {
     thrown.expect(QueryValidationException.class);
-    thrown.expectCause(is(instanceOf(URISyntaxException.class)));
     new Schema(Util.getResource("ref-uri-syntax.json")).mapFieldNameAgainstSchema("badref.x");
   }
 
@@ -155,7 +154,7 @@ public class SchemaTest {
   public void recurseRefUriWithoutPath() throws Exception {
     thrown.expect(QueryValidationException.class);
     thrown.expectCause(is(instanceOf(IOException.class)));
-    thrown.expectMessage("no path component");
+    thrown.expectMessage("Cannot find target");
     new Schema(Util.getResource("ref-without-path.json")).mapFieldNameAgainstSchema("badref.x");
   }
 

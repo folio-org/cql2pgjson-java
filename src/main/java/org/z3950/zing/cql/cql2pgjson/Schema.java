@@ -6,7 +6,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import java.io.File;
-import java.net.URI;
+import java.net.URLDecoder;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayDeque;
@@ -146,22 +146,17 @@ public class Schema {
     if (path.size() > MIN_DEPTH && String.join(".", path).length() > index.length()) {
       return null;
     }
-    URI u = new URI(refVal);
-    if (!"file".equals(u.getScheme())) {
+    if (!refVal.startsWith("file:")) {
       return null;
     }
-    String uPath = u.getPath();
-    if (uPath == null) {
-      throw new IOException("$ref: no path component in " + refVal);
-    }
-    uPath = uPath.replace(File.separator, "/");
+    refVal = URLDecoder.decode(refVal, "UTF-8").replace(File.separator, "/");
 
     String resourceName = null;
     String [] leads = { "/target/test-classes/", "/target/classes/" };
     for (String lead : leads) {
-      int idx = uPath.indexOf(lead);
+      int idx = refVal.indexOf(lead);
       if (idx != -1) {
-        resourceName = uPath.substring(idx + lead.length());
+        resourceName = refVal.substring(idx + lead.length());
         break;
       }
     }
