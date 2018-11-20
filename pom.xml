@@ -152,6 +152,7 @@
         <configuration>
           <!-- @{argLine} required for sonarqube jacoco -->
           <argLine>@{argLine} -Dfile.encoding=${project.build.sourceEncoding}</argLine>
+          <useSystemClassLoader>false</useSystemClassLoader>
         </configuration>
       </plugin>
 
