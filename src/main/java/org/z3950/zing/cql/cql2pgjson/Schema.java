@@ -149,7 +149,7 @@ public class Schema {
     if (!refVal.startsWith("file:")) {
       return null;
     }
-    refVal = URLDecoder.decode(refVal, "UTF-8").replace(File.separator, "/");
+    refVal = URLDecoder.decode(refVal, "UTF-8").replace('\\', '/');
 
     String resourceName = null;
     String [] leads = { "/target/test-classes/", "/target/classes/" };
