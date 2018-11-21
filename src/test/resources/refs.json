@@ -11,6 +11,12 @@
     "query": {
       "$ref" :  "file:/x/target/test-classes/query.json"
     },
+    "subdir": {
+      "$ref" :  "file:/z/target/classes/dir/goback.json"
+    },
+    "windows": {
+      "$ref" :  "file:C:%5CUsers%5Citsme%5Cmod-users%5Ctarget%5Cclasses%5Cuserdata.json"
+    },
     "http": {
       "$ref" :  "http://example.com/x/target/test-classes/query.json"
     }

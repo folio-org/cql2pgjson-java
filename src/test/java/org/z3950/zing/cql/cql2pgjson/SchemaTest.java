@@ -6,7 +6,6 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.*;
 import java.io.IOException;
-import java.net.URISyntaxException;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -131,6 +130,8 @@ public class SchemaTest {
     "query.boolean.right.boolean.right.term",
     "query.boolean.right.boolean.left.term",
     "query.boolean.left.boolean.right.term",
+    "subdir.relative.query.term",
+    "windows.id",
   })
   public void testRef(String field) throws IOException, SchemaException, QueryValidationException {
     Schema s = new Schema(Util.getResource("refs.json"));
@@ -147,7 +148,6 @@ public class SchemaTest {
   @Test
   public void recurseRefUriSyntaxException() throws Exception {
     thrown.expect(QueryValidationException.class);
-    thrown.expectCause(is(instanceOf(URISyntaxException.class)));
     new Schema(Util.getResource("ref-uri-syntax.json")).mapFieldNameAgainstSchema("badref.x");
   }
 
@@ -155,7 +155,7 @@ public class SchemaTest {
   public void recurseRefUriWithoutPath() throws Exception {
     thrown.expect(QueryValidationException.class);
     thrown.expectCause(is(instanceOf(IOException.class)));
-    thrown.expectMessage("no path component");
+    thrown.expectMessage("Cannot find target");
     new Schema(Util.getResource("ref-without-path.json")).mapFieldNameAgainstSchema("badref.x");
   }
 
