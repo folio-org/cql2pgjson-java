@@ -1,3 +1,11 @@
+## 3.0.3 2018-12-13
+
+* CQLPG-75: Fix still issue with schema refs on Windows
+* CQLPG-74: Broken maven-surefire-plugin
+* CQLPG-73: Replace <prerequisites><maven> by maven-enforcer-plugin
+  requireMavenVersion
+* CQLPG-72: Finish unit test for $ref http://
+
 ## 3.0.2 2018-10-17
 * CQLPG-70: Comparing id to invalid UUID: Don't throw error message, simply don't match.
 * CQLPG-71: Forbid modifiers like /ignoreCase /masked /respectAccents for the primary key id field.
