@@ -1,3 +1,6 @@
+## 3.0.4 2019-01-06
+* CQLPG-76: Update jackson-databind to 2.9.8 fixing security vulnerabilities.
+
 ## 3.0.3 2018-12-13
 
 * CQLPG-75: Fix still issue with schema refs on Windows
