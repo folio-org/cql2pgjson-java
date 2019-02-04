@@ -155,6 +155,18 @@ an array element value does not contain double quotes):
         "value": "6316800312", "identifierTypeId": "8261054f-be78-422d-bd51-4ed9f33c3422"
       } ]
 
+To avoid the complicated syntax all ISBN values or all values can be extracted and used to create a view or an index:
+
+    SELECT COALESCE(jsonb_agg(value), '[]')
+       FROM jsonb_to_recordset(jsonb->'identifiers')
+         AS y(key text, value text)
+       WHERE key='8261054f-be78-422d-bd51-4ed9f33c3422'
+
+    SELECT COALESCE(jsonb_agg(value), '[]')
+      FROM jsonb_to_recordset(jsonb->'identifiers')
+        AS x(key text, value text)
+      WHERE value IS NOT NULL
+
 ## Matching and comparing numbers
 
 Correct number matching must result in 3.4 = 3.400 = 0.34e1 and correct number comparison must result in 10 > 2
