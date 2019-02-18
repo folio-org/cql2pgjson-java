@@ -1,3 +1,6 @@
+## 3.1.0 2019-02-18
+* CQLPG-86 Allow <> operator for id searches
+
 ## 3.0.4 2019-01-06
 * CQLPG-76: Update jackson-databind to 2.9.8 fixing security vulnerabilities.
 
