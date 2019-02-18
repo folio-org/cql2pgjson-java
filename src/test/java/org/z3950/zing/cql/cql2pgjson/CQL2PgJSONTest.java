@@ -944,8 +944,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "id=11111111-1111-1111-1111-11111111111    #",
     "id=11111111-1111-1111-1111-1111111111111  #",
     "id=11111111-1111-1111-1111-111111111111-1 #",
+    "id=\"\"                                   # Jo Jane; Ka Keller; Lea Long",
+    "id<>\"\"                                  #",
     "id=1*                                     # Jo Jane",
     "id=1z*                                    #",
+    "id<>2ä*                                   # Jo Jane; Ka Keller; Lea Long",  // a umlaut
     "id<>1*                                    # Ka Keller; Lea Long",
     "id<>2*                                    # Jo Jane; Lea Long",
     "id<>3*                                    # Jo Jane; Ka Keller",
