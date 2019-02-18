@@ -929,9 +929,16 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Test
   @Parameters({
     "id=11111111-1111-1111-1111-111111111111   # Jo Jane",
+    "id=22222222-2222-2222-2222-222222222222   # Ka Keller",
     "id=33333333-3333-3333-3333-33333333333a   # Lea Long",
     "id=33333333-3333-3333-3333-33333333333A   # Lea Long",
+    "id==33333333-3333-3333-3333-33333333333A  # Lea Long",
+    "id<>11111111-1111-1111-1111-111111111111  # Ka Keller; Lea Long",
+    "id<>22222222-2222-2222-2222-222222222222  # Jo Jane; Lea Long",
+    "id<>33333333-3333-3333-3333-33333333333A  # Jo Jane; Ka Keller",
     "id=zz                                     #",         // invalid UUID doesn't match any record
+    "id==zz                                    #",
+    "id<>zz                                    # Jo Jane; Ka Keller; Lea Long",
     "id=11111111111111111111111111111111       #",
     "id=11111111+1111-1111-1111-111111111111   #",
     "id=11111111-1111-1111-1111-11111111111    #",
@@ -939,8 +946,12 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "id=11111111-1111-1111-1111-111111111111-1 #",
     "id=1*                                     # Jo Jane",
     "id=1z*                                    #",
+    "id<>1*                                    # Ka Keller; Lea Long",
+    "id<>2*                                    # Jo Jane; Lea Long",
+    "id<>3*                                    # Jo Jane; Ka Keller",
     "id=11111111-1111-1111-1111-111111111111*  # Jo Jane", // ok to trunc after full match, the UI does
     "id=*                                      # Jo Jane; Ka Keller; Lea Long",
+    "id<>*                                     #",
     "id=*1                                     # only right truncation supported for id",
     "id=*1*                                    # only right truncation supported for id",
     "id=11111111*1111-1111-1111-111111111111   # only right truncation supported for id",

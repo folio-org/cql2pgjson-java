@@ -71,8 +71,8 @@ large datasets.
 The UUID field id is not searched in the JSON but in a separate \_id field (the table's
 primary key as specified in the db schema file, defaults to id).
 
-Only `=` and `==` operators are supported, `*` is allowed for right truncation only,
-and there must be no modifier.
+Only `=`, `==`, and `<>` relations are supported, `*` is allowed for right truncation only,
+modifiers are forbidden.
 
 ## Relations
 
