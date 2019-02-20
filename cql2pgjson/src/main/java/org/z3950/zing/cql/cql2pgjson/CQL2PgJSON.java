@@ -1102,30 +1102,39 @@ public class CQL2PgJSON {
   private String pgId(CQLTermNode node) throws QueryValidationException {
     final String uuidPattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
     String pkColumnName = dbTable.optString("pkColumnName", /* default = */ "id");
-    String comparator = node.getRelation().getBase();
+    String comparator = StringUtils.defaultString(node.getRelation().getBase());
     if (!node.getRelation().getModifiers().isEmpty()) {
       throw new QueryValidationException("CQL: Unsupported modifier "
         + node.getRelation().getModifiers().get(0).getType());
     }
-    if ("==".equals(comparator)) {
+    boolean equals = true;
+    switch (comparator) {
+    case "==":
+    case "=":
       comparator = "=";
-    }
-    if (!"=".equals(comparator)) {
+      break;
+    case "<>":
+      equals = false;
+      break;
+    default:
       throw new QueryValidationException("CQL: Unsupported operator '" + comparator + "' "
-        + "id only supports '=' or '==' (possibly with right truncation)");
-    } // maybe some day we could implement '<' and '>', but why bother
+          + "id only supports '=', '==', and '<>' (possibly with right truncation)");
+    }
     String term = node.getTerm();
     if (term.equals("") || term.equals("*")) {
-      return "true";  // no need to check
+      return equals ? "true" : "false";  // no need to check
       // not even for "", since id is a mandatory field, so
       // "all that have id" is the same as "all records"
     }
 
     if (!term.contains("*")) { // exact match
       if (!term.matches(uuidPattern)) {
-        return "false /* id == invalid UUID */";  // avoid SQL injection, don't put term into comment
+        // avoid SQL injection, don't put term into comment
+        return equals
+            ? "false /* id == invalid UUID */"
+            : "true /* id <> invalid UUID */";
       }
-      return pkColumnName + "=" + "'" + term + "'";
+      return pkColumnName + comparator + "'" + term + "'";
     }
     String truncTerm = term.replaceFirst("\\*$", ""); // remove trailing '*'
     if (truncTerm.contains("*")) { // any remaining '*' is an error
@@ -1136,10 +1145,17 @@ public class CQL2PgJSON {
     String hi = new StringBuilder("ffffffff-ffff-ffff-ffff-ffffffffffff")
       .replace(0, truncTerm.length(), truncTerm).toString();
     if (!lo.matches(uuidPattern) || !hi.matches(uuidPattern)) {
-      return "false /* id == invalid UUID */";  // avoid SQL injection, don't put term into comment
+      // avoid SQL injection, don't put term into comment
+      return equals ? "false /* id == invalid UUID */"
+                    : "true /* id <> invalid UUID */";
     }
-    return "(" + pkColumnName + ">='" + lo + "'"
-      + " and " + pkColumnName + "<='" + hi + "')";
+    if (equals) {
+      return "(" + pkColumnName + ">='" + lo + "'"
+        + " and " + pkColumnName + "<='" + hi + "')";
+    } else {
+      return "(" + pkColumnName + "<'" + lo + "'"
+          + " or " + pkColumnName + ">'" + hi + "')";
+    }
   }
 
   /**
