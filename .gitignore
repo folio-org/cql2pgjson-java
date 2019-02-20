@@ -12,3 +12,6 @@
 hs_err_pid*
 /target/
 /bin/
+/cql2pgjson-library/target/
+/cql2pgjson-cli/target/
+/cql2pgjson/target/
