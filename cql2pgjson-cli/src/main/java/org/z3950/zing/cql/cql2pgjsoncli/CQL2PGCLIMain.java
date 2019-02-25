@@ -41,7 +41,7 @@ public class CQL2PGCLIMain {
     
     Option field = Option.builder("f")
         .hasArg()
-        .required(true)
+        .required(false)
         .desc("Postgres field name")
         .build();
     
@@ -69,7 +69,7 @@ public class CQL2PGCLIMain {
     CommandLineParser parser = new DefaultParser();
     CommandLine line = parser.parse(options, args);
     CQL2PgJSON cql2pgJson = null;
-    String fullFieldName = line.getOptionValue("t") + "." + line.getOptionValue("f");
+    String fullFieldName = line.getOptionValue("t") + "." + line.getOptionValue("f", "json");
     if(!line.hasOption("m")) {
       if(line.hasOption("b")) {
         cql2pgJson = new CQL2PgJSON(fullFieldName, null, line.getOptionValue("b"));

@@ -8,6 +8,8 @@ import java.nio.file.Paths;
 import org.apache.commons.cli.ParseException;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import org.junit.Before;
 import org.junit.Test;
 import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
@@ -31,51 +33,41 @@ public class TestCLI {
   }
   
   @Test
-  public void testCLIWithNoSchemaOrDBSchema() throws FieldException, IOException, SchemaException, QueryValidationException, ParseException {
+  public void testCLIWithNoSchemaOrDBSchema() throws FieldException, IOException,
+      SchemaException, QueryValidationException, ParseException {
     String cql = "holdingsRecords.permanentLocationId=\"fcd64ce1-6995-48f0-840e-89ffa2\"";
     String[] args = new String[] {"-t", "instance", "-f", "jsonb", cql };
     String fullFieldName = "instance.jsonb";
     CQL2PgJSON cql2pgjson = new CQL2PgJSON(fullFieldName);
     String output = CQL2PGCLIMain.parseCQL(cql2pgjson, "instance", cql);
     String cli_output = CQL2PGCLIMain.handleOptions(args);
-    if(!output.equals(cli_output)) {
-      throw new ParseException(String.format("%s != %s", output, cli_output)); 
-    }
+    assertNotNull(output);
+    assertEquals(output, cli_output);
   }
   
   @Test
-  public void testCLIWithSchema() throws IOException, FieldException, SchemaException, QueryValidationException, ParseException {
+  public void testCLIWithSchema() throws IOException, FieldException, SchemaException,
+      QueryValidationException, ParseException {
     String cql = "hrid=\"fcd64ce1-6995-48f0-840e-89ffa2\"";
     String[] args = new String[] {"-t", "instance", "-f", "jsonb", "-s", instanceSchemaPath, cql };
     String fullFieldName = "instance.jsonb";
     CQL2PgJSON cql2pgjson = new CQL2PgJSON(fullFieldName, readFile(instanceSchemaPath, Charset.forName("UTF-8")));
     String output = CQL2PGCLIMain.parseCQL(cql2pgjson, "instance", cql);
     String cli_output = CQL2PGCLIMain.handleOptions(args);
-    if(!output.equals(cli_output)) {
-      throw new ParseException(String.format("%s != %s", output, cli_output)); 
-    }
+    assertNotNull(output);
+    assertEquals(output, cli_output);
   }
   
   @Test
-  public void testCLIWithDBSchema() throws FieldException, IOException, SchemaException {
+  public void testCLIWithDBSchema() throws FieldException, IOException, SchemaException,
+      ParseException, QueryValidationException {
     String cql = "hrid=\"fcd64ce1-6995-48f0-840e-89ffa2\"";
     String[] args = new String[] {"-t", "instance", "-f", "jsonb", "-b", dbSchemaPath, cql };
     String fullFieldName = "instance.jsonb";
-    CQL2PgJSON cql2pgjson = new CQL2PgJSON(fullFieldName, null, readFile(dbSchemaPath, Charset.forName("UTF-8")));
-  }
-  
-  private void testParserOutput(CQL2PgJSON cql2pgjson1, CQL2PgJSON cql2pgjson2, String cql) throws Exception {
-    SqlSelect sql1 = cql2pgjson1.toSql(cql);
-    SqlSelect sql2 = cql2pgjson2.toSql(cql);
-    
-    if(!sql1.getWhere().equals(sql2.getWhere())) {
-      throw new Exception(String.format("Different SQL 'where' generated: '%s' does not match '%s'",
-        sql1.getWhere(), sql2.getWhere()));
-    }
-    
-    if(!sql1.getOrderBy().equals(sql2.getOrderBy())) {
-      throw new Exception(String.format("Different SQL 'order by' generated: '%s' does not match '%s'",
-        sql1.getOrderBy(), sql2.getOrderBy()));
-    }
+    CQL2PgJSON cql2pgjson = new CQL2PgJSON(fullFieldName, null, dbSchemaPath);
+    String output = CQL2PGCLIMain.parseCQL(cql2pgjson, "instance", cql);
+    String cli_output = CQL2PGCLIMain.handleOptions(args);
+    assertNotNull(output);
+    assertEquals(output, cli_output);
   }
 }
