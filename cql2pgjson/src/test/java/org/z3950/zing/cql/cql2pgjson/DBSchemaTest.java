@@ -2,24 +2,14 @@ package org.z3950.zing.cql.cql2pgjson;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import junitparams.JUnitParamsRunner;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
-@RunWith(JUnitParamsRunner.class)
 public class DBSchemaTest {
-  public static void runOnceBeforeClass() {
-    
-  } 
-  
-  public static void runOnceAfterClass() {
-    
-  }
   
   @Test
-  public void makeInstance() throws Exception {
+  public void makeInstanceWithSpecifiedDBSchemaPath() throws Exception {
     Path dbSchemaPath = Paths.get(ClassLoader.getSystemResource("test_db_schema.json").toURI());
     if(dbSchemaPath == null) {
       throw new Exception("Can't find path");
@@ -37,7 +27,7 @@ public class DBSchemaTest {
           break;
         }
       }
-      if(found == false) {
+      if(!found) {
         throw new Exception(String.format("Missing tableName '%s' in db schema", tableName));
       }
     }

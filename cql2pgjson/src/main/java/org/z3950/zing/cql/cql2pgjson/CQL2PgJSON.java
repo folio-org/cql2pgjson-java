@@ -169,12 +169,14 @@ public class CQL2PgJSON {
           return null;
         }
         dbJson = IOUtils.toString(resourceAsStream, "UTF-8");
+        logger.log(Level.INFO, "loadDbSchema: Loaded 'templates/db_scripts/schema.json' OK");
       } else {
         File jsonFile = new File(schemaPath);
         dbJson = FileUtils.readFileToString(jsonFile, Charset.forName("UTF-8"));
+        logger.log(Level.INFO, "loadDbSchema: Loaded " + schemaPath + " OK");
       }      
       
-      logger.log(Level.INFO, "loadDbSchema: Loaded 'templates/db_scripts/schema.json' OK");
+      
       return new JSONObject(dbJson);
     } catch (IOException ex) {
       logger.log(Level.SEVERE, "No schema.json found", ex);
