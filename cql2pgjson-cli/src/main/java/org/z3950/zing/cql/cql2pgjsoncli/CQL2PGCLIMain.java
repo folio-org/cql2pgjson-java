@@ -6,6 +6,8 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.IntConsumer;
+
 import org.apache.commons.cli.*;
 import org.json.JSONException;
 import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
@@ -15,57 +17,60 @@ import org.z3950.zing.cql.cql2pgjson.SchemaException;
 import org.z3950.zing.cql.cql2pgjson.SqlSelect;
 import org.json.JSONObject;
 
-public class CQL2PGCLIMain { 
-  
-  public static void main( String[] args ) {    
+public class CQL2PGCLIMain {
+
+  /** allow to inject a different exit method for unit testing */
+  static IntConsumer exit = System::exit;
+
+  public static void main( String[] args ) {
     try {
       System.out.println(handleOptions(args));
     } catch( Exception e ) {
-      System.err.println(String.format("Got error %s, %s: ", e.getClass().toString(), 
+      System.err.println(String.format("Got error %s, %s: ", e.getClass().toString(),
           e.getLocalizedMessage()));
       e.printStackTrace();
-      System.exit(1);
-    }    
+      exit.accept(1);
+    }
   }
-  
-  static String handleOptions(String[] args) throws 
+
+  static String handleOptions(String[] args) throws
       FieldException, SchemaException, IOException, QueryValidationException,
       ParseException {
     Options options = new Options();
-    
+
     Option database = Option.builder("t")
         .hasArg()
         .required(true)
         .desc("Postgres table name")
         .build();
-    
+
     Option field = Option.builder("f")
         .hasArg()
         .required(false)
         .desc("Postgres field name")
         .build();
-    
+
     Option schema = Option.builder("s")
         .hasArg()
         .desc("Path to JSON schema file")
         .build();
-    
+
     Option schemamap = Option.builder("m")
         .hasArg()
         .desc("A JSON string or a pathname to a JSON file to describe the db/schema map")
         .build();
-    
+
     Option dbschema = Option.builder("b")
         .hasArg()
         .desc("Path to RMB-style schema.json to describe database")
-        .build();    
-    
+        .build();
+
     options.addOption(schema);
     options.addOption(database);
     options.addOption(field);
     options.addOption(schemamap);
     options.addOption(dbschema);
-    
+
     CommandLineParser parser = new DefaultParser();
     CommandLine line = parser.parse(options, args);
     CQL2PgJSON cql2pgJson = null;
@@ -73,22 +78,22 @@ public class CQL2PGCLIMain {
     if(!line.hasOption("m")) {
       if(line.hasOption("b")) {
         cql2pgJson = new CQL2PgJSON(fullFieldName, null, line.getOptionValue("b"));
-      } else if(line.hasOption("s")) {       
-        String schemaText = readFile(line.getOptionValue("s"), Charset.forName("UTF-8"));   
+      } else if(line.hasOption("s")) {
+        String schemaText = readFile(line.getOptionValue("s"), Charset.forName("UTF-8"));
         cql2pgJson = new CQL2PgJSON(fullFieldName, schemaText);
       } else {
         cql2pgJson = new CQL2PgJSON(fullFieldName); //No schemas
       }
     } else {
       Map<String, String> fieldSchemaMap = parseDatabaseSchemaString(line.getOptionValue("m"));
-      cql2pgJson = new CQL2PgJSON(fieldSchemaMap);        
+      cql2pgJson = new CQL2PgJSON(fieldSchemaMap);
     }
-    List<String> cliArgs = line.getArgList();  
+    List<String> cliArgs = line.getArgList();
     String cql = cliArgs.get(0);
     return parseCQL(cql2pgJson, line.getOptionValue("t"), cql);
   }
-  
-  static String readFile(String path, Charset encoding) throws IOException 
+
+  static String readFile(String path, Charset encoding) throws IOException
   {
     System.out.println("Reading file " + path);
     byte[] encoded = Files.readAllBytes(Paths.get(path));
@@ -96,17 +101,17 @@ public class CQL2PGCLIMain {
     //System.out.println(String.format("Content of %s is: %s", path, content));
     return content;
   }
-  
+
   static protected String parseCQL(CQL2PgJSON cql2pgJson, String dbName, String cql) throws IOException,
       FieldException, SchemaException, QueryValidationException {
     SqlSelect sql = cql2pgJson.toSql(cql);
     return String.format("select * from %s where %s order by %s",
         dbName, sql.getWhere(), sql.getOrderBy());
   }
-  
+
   /*
-    If the string is valid JSON, read the values from the JSON object. If the 
-    string is a path to a JSON file, load the file and read the JSON from the 
+    If the string is valid JSON, read the values from the JSON object. If the
+    string is a path to a JSON file, load the file and read the JSON from the
     file
   */
   static Map<String, String> parseDatabaseSchemaString(String dbsString) throws
@@ -121,7 +126,7 @@ public class CQL2PGCLIMain {
     }
     if(fieldSchemaJson == null) {
       String fieldSchemaJsonText = readFile(dbsString, Charset.forName("UTF-8"));
-      fieldSchemaJson = new JSONObject(fieldSchemaJsonText);     
+      fieldSchemaJson = new JSONObject(fieldSchemaJsonText);
     }
     if(fieldSchemaJson == null) {
       throw new IOException(String.format("Unable to get valid JSON from string or file path for %s",
@@ -133,5 +138,5 @@ public class CQL2PGCLIMain {
     }
     return fieldSchemaMap;
   }
-  
+
 }
