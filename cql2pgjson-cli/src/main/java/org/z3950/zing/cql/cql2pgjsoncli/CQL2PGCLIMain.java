@@ -1,6 +1,7 @@
 package org.z3950.zing.cql.cql2pgjsoncli;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -69,12 +70,12 @@ public class CQL2PGCLIMain {
     CommandLineParser parser = new DefaultParser();
     CommandLine line = parser.parse(options, args);
     CQL2PgJSON cql2pgJson = null;
-    String fullFieldName = line.getOptionValue("t") + "." + line.getOptionValue("f", "json");
+    String fullFieldName = line.getOptionValue("t") + "." + line.getOptionValue("f", "jsonb");
     if(!line.hasOption("m")) {
       if(line.hasOption("b")) {
         cql2pgJson = new CQL2PgJSON(fullFieldName, null, line.getOptionValue("b"));
       } else if(line.hasOption("s")) {       
-        String schemaText = readFile(line.getOptionValue("s"), Charset.forName("UTF-8"));   
+        String schemaText = readFile(line.getOptionValue("s"), StandardCharsets.UTF_8);
         cql2pgJson = new CQL2PgJSON(fullFieldName, schemaText);
       } else {
         cql2pgJson = new CQL2PgJSON(fullFieldName); //No schemas
@@ -100,8 +101,14 @@ public class CQL2PGCLIMain {
   static protected String parseCQL(CQL2PgJSON cql2pgJson, String dbName, String cql) throws IOException,
       FieldException, SchemaException, QueryValidationException {
     SqlSelect sql = cql2pgJson.toSql(cql);
-    return String.format("select * from %s where %s order by %s",
-        dbName, sql.getWhere(), sql.getOrderBy());
+    String orderby = sql.getOrderBy();
+    if(orderby != null && orderby.length() > 0) {
+      return String.format("select * from %s where %s order by %s",
+          dbName, sql.getWhere(), orderby);
+    } else {
+       return String.format("select * from %s where %s",
+          dbName, sql.getWhere());
+    }
   }
   
   /*
@@ -120,15 +127,11 @@ public class CQL2PGCLIMain {
           dbsString, je.getLocalizedMessage()));
     }
     if(fieldSchemaJson == null) {
-      String fieldSchemaJsonText = readFile(dbsString, Charset.forName("UTF-8"));
+      String fieldSchemaJsonText = readFile(dbsString, StandardCharsets.UTF_8);
       fieldSchemaJson = new JSONObject(fieldSchemaJsonText);     
     }
-    if(fieldSchemaJson == null) {
-      throw new IOException(String.format("Unable to get valid JSON from string or file path for %s",
-          dbsString));
-    }
     for(String key : fieldSchemaJson.keySet()) {
-      String value = readFile(fieldSchemaJson.getString(key), Charset.forName("UTF-8"));
+      String value = readFile(fieldSchemaJson.getString(key), StandardCharsets.UTF_8);
       fieldSchemaMap.put(key, value);
     }
     return fieldSchemaMap;
