@@ -51,6 +51,10 @@ public class TestCLI {
     return CQL2PGCLIMain.handleOptions(arguments.split(" "));
   }
 
+  private String handleOptions(String[] arguments) throws Exception {
+    return CQL2PGCLIMain.handleOptions(arguments);
+  }
+
   @Test
   public void testCLIWithNoSchemaOrDBSchema() throws FieldException, IOException,
       SchemaException, QueryValidationException, ParseException {
@@ -109,7 +113,8 @@ public class TestCLI {
   }
 
   void testCLI(String cql, String expectedSql) throws Exception {
-      String actualSql = handleOptions("-t instance -s " + instanceSchemaPath + " " + cql);
+      String[] args = new String[] { "-t", "instance", "-s", instanceSchemaPath, cql };
+      String actualSql = handleOptions(args);
       assertEquals(expectedSql, actualSql);
   }
 

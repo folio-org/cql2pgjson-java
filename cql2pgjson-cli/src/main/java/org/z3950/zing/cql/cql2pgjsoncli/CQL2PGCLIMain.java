@@ -8,6 +8,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.IntConsumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.apache.commons.cli.*;
 import org.json.JSONException;
@@ -22,6 +24,7 @@ public class CQL2PGCLIMain {
 
   /** allow to inject a different exit method for unit testing */
   static IntConsumer exit = System::exit;
+  private static Logger logger = Logger.getLogger(CQL2PGCLIMain.class.getName());
 
   public static void main( String[] args ) {
     try {
@@ -107,7 +110,8 @@ public class CQL2PGCLIMain {
       FieldException, SchemaException, QueryValidationException {
     SqlSelect sql = cql2pgJson.toSql(cql);
     String orderby = sql.getOrderBy();
-    if(orderby != null && orderby.length() > 0) {
+    logger.log(Level.FINE, String.format("orderby for cql query '%s' is '%s'", cql, orderby));
+    if(orderby != null && orderby.trim().length() > 0) {
       return String.format("select * from %s where %s order by %s",
           dbName, sql.getWhere(), orderby);
     } else {
