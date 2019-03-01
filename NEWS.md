@@ -42,7 +42,7 @@
    to get around stopwords.
 
 ## 2.2.1 2018-09-06
- * CQLPG-53: FIx the title='*' search in fulltext, now it finds all where
+ * CQLPG-53: Fix the title='*' search in fulltext, now it finds all where
    title is defined.
  * CQLPG-54: Optimize the title=* OR contributors=* OR identifier=* query.
    This is the most common query from the UI, issued every time before the
