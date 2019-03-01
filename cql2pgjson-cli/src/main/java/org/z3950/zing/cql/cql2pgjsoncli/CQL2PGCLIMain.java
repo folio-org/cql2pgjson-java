@@ -12,6 +12,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.apache.commons.cli.*;
+import org.apache.commons.lang3.StringUtils;
 import org.json.JSONException;
 import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 import org.z3950.zing.cql.cql2pgjson.FieldException;
@@ -111,13 +112,11 @@ public class CQL2PGCLIMain {
     SqlSelect sql = cql2pgJson.toSql(cql);
     String orderby = sql.getOrderBy();
     logger.log(Level.FINE, String.format("orderby for cql query '%s' is '%s'", cql, orderby));
-    if(orderby != null && orderby.trim().length() > 0) {
-      return String.format("select * from %s where %s order by %s",
-          dbName, sql.getWhere(), orderby);
-    } else {
-       return String.format("select * from %s where %s",
-          dbName, sql.getWhere());
+    if(StringUtils.isBlank(orderby)) {
+      return String.format("select * from %s where %s", dbName, sql.getWhere());
     }
+    return String.format("select * from %s where %s order by %s",
+        dbName, sql.getWhere(), orderby);
   }
 
   /*
