@@ -47,12 +47,6 @@
       <url>https://repository.folio.org/repository/maven-snapshots/</url>
       <layout>default</layout>
     </snapshotRepository>
-  </distributionManagement>
-
-
-
-
-
-   
+  </distributionManagement>   
 </project>
 
