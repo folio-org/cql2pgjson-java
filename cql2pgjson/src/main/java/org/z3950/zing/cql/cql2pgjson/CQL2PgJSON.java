@@ -1,7 +1,9 @@
 package org.z3950.zing.cql.cql2pgjson;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -12,6 +14,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
 
@@ -54,7 +57,7 @@ public class CQL2PgJSON {
   /** Local data model of JSON schema */
   private Schema schema;
   private Map<String, Schema> schemas;
-  private static JSONObject dbSchema = loadDbSchema(); // The whole schema.json, with all tables etc
+  protected JSONObject dbSchema; // The whole schema.json, with all tables etc
   JSONObject dbTable; // Our primary table inside the dbSchema
 
   /** Postgres regexp that matches at any punctuation and space character
@@ -150,17 +153,30 @@ public class CQL2PgJSON {
     }
   }
 
+  
   private static JSONObject loadDbSchema() {
+    return loadDbSchema(null);
+  }
+  
+  private static JSONObject loadDbSchema(String schemaPath) {
     try {
-      ClassLoader classLoader = CQL2PgJSON.class.getClassLoader();
-      InputStream resourceAsStream = classLoader.getResourceAsStream("templates/db_scripts/schema.json");
-      if (resourceAsStream == null) {
-        logger.log(Level.SEVERE, "loadDbSchema failed to load resource 'templates/db_scripts/schema.json'");
-        return null;
-      }
       String dbJson;
-      dbJson = IOUtils.toString(resourceAsStream, "UTF-8");
-      logger.log(Level.INFO, "loadDbSchema: Loaded 'templates/db_scripts/schema.json' OK");
+      if(schemaPath == null) {
+        ClassLoader classLoader = CQL2PgJSON.class.getClassLoader();
+        InputStream resourceAsStream = classLoader.getResourceAsStream("templates/db_scripts/schema.json");
+        if (resourceAsStream == null) {
+          logger.log(Level.SEVERE, "loadDbSchema failed to load resource 'templates/db_scripts/schema.json'");
+          return null;
+        }
+        dbJson = IOUtils.toString(resourceAsStream, "UTF-8");
+        logger.log(Level.INFO, "loadDbSchema: Loaded 'templates/db_scripts/schema.json' OK");
+      } else {
+        File jsonFile = new File(schemaPath);
+        dbJson = FileUtils.readFileToString(jsonFile, Charset.forName("UTF-8"));
+        logger.log(Level.INFO, "loadDbSchema: Loaded " + schemaPath + " OK");
+      }      
+      
+      
       return new JSONObject(dbJson);
     } catch (IOException ex) {
       logger.log(Level.SEVERE, "No schema.json found", ex);
@@ -185,6 +201,15 @@ public class CQL2PgJSON {
       logger.log(Level.SEVERE, "loadDbSchema loadDbSchema(): No 'tables' section found");
     }
   }
+  
+  private void doInit(String field, String dbSchemaPath) throws FieldException {
+    this.jsonField = trimNotEmpty(field);
+    if(dbSchemaPath != null) {
+      dbSchema = loadDbSchema(dbSchemaPath);
+    } else {
+      dbSchema = loadDbSchema();
+    }
+  }
 
   /**
    * Create an instance for the specified schema.
@@ -195,7 +220,7 @@ public class CQL2PgJSON {
    * @throws FieldException provided field is not valid
    */
   public CQL2PgJSON(String field) throws FieldException {
-    this.jsonField = trimNotEmpty(field);
+    doInit(field, null);
     getDbTable();
   }
 
@@ -213,6 +238,20 @@ public class CQL2PgJSON {
   public CQL2PgJSON(String field, String schemaJson) throws IOException, FieldException, SchemaException {
     this(field);
     setSchema(schemaJson);
+  }
+  
+  /**
+   * Create an instance with a specified schema and with 
+   * @param field
+   * @param schemaJson
+   * @param dbSchemaPath 
+   */
+  public CQL2PgJSON(String field, String schemaJson, String dbSchemaPath)
+      throws FieldException, IOException, SchemaException {
+    doInit(field, dbSchemaPath);
+    if(schemaJson != null) {
+      setSchema(schemaJson);
+    }
   }
 
   /**
@@ -262,6 +301,7 @@ public class CQL2PgJSON {
    * @throws FieldException (subclass of CQL2PgJSONException) - provided field is not valid
    */
   public CQL2PgJSON(List<String> fields) throws FieldException {
+    dbSchema = loadDbSchema();
     if (fields == null || fields.isEmpty())
       throw new FieldException( "fields list must not be empty" );
     this.jsonFields = new ArrayList<>();

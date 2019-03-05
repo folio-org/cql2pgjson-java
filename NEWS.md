@@ -1,5 +1,5 @@
 ## 3.1.0 2019-02-18
-* CQLPG-86 Allow <> operator for id searches
+* CQLPG-86 Allow <> operator for id searches.
 
 ## 3.0.4 2019-01-06
 * CQLPG-76: Update jackson-databind to 2.9.8 fixing security vulnerabilities.
@@ -42,7 +42,7 @@
    to get around stopwords.
 
 ## 2.2.1 2018-09-06
- * CQLPG-53: FIx the title='*' search in fulltext, now it finds all where
+ * CQLPG-53: Fix the title='*' search in fulltext, now it finds all where
    title is defined.
  * CQLPG-54: Optimize the title=* OR contributors=* OR identifier=* query.
    This is the most common query from the UI, issued every time before the

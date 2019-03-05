@@ -10,6 +10,8 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 
 /**
  * Resolves index names against a JSON schema. Can return the fully qualified
@@ -25,6 +27,7 @@ public class Schema {
   private static final String ITEMS_USAGE_MESSAGE
     = "`items` is a reserved field name, whose value should be a Json object containing `type` field.";
   private static final int MIN_DEPTH = 4;
+  private static Logger logger = Logger.getLogger(Schema.class.getName());
 
   /**
    * Container for path and RAML type of a field.
