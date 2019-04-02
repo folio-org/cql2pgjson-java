@@ -55,43 +55,23 @@ public class CQL2PGCLIMain {
         .desc("Postgres field name")
         .build();
 
-    Option schema = Option.builder("s")
-        .hasArg()
-        .desc("Path to JSON schema file")
-        .build();
-
-    Option schemamap = Option.builder("m")
-        .hasArg()
-        .desc("A JSON string or a pathname to a JSON file to describe the db/schema map")
-        .build();
-
     Option dbschema = Option.builder("b")
         .hasArg()
+        .required(false)
         .desc("Path to RMB-style schema.json to describe database")
         .build();
 
-    options.addOption(schema);
     options.addOption(database);
     options.addOption(field);
-    options.addOption(schemamap);
     options.addOption(dbschema);
 
     CommandLineParser parser = new DefaultParser();
     CommandLine line = parser.parse(options, args);
     CQL2PgJSON cql2pgJson = null;
     String fullFieldName = line.getOptionValue("t") + "." + line.getOptionValue("f", "jsonb");
-    if(!line.hasOption("m")) {
-      if(line.hasOption("b")) {
-        cql2pgJson = new CQL2PgJSON(fullFieldName, null, line.getOptionValue("b"));
-      } else if(line.hasOption("s")) {       
-        String schemaText = readFile(line.getOptionValue("s"), StandardCharsets.UTF_8);
-        cql2pgJson = new CQL2PgJSON(fullFieldName, schemaText);
-      } else {
-        cql2pgJson = new CQL2PgJSON(fullFieldName); //No schemas
-      }
-    } else {
-      Map<String, String> fieldSchemaMap = parseDatabaseSchemaString(line.getOptionValue("m"));
-      cql2pgJson = new CQL2PgJSON(fieldSchemaMap);
+    cql2pgJson = new CQL2PgJSON(fullFieldName);
+    if(line.hasOption("b")) {
+      cql2pgJson.setDbSchema(line.getOptionValue("b"));
     }
     List<String> cliArgs = line.getArgList();
     String cql = cliArgs.get(0);
@@ -136,7 +116,7 @@ public class CQL2PGCLIMain {
     }
     if(fieldSchemaJson == null) {
       String fieldSchemaJsonText = readFile(dbsString, StandardCharsets.UTF_8);
-      fieldSchemaJson = new JSONObject(fieldSchemaJsonText);     
+      fieldSchemaJson = new JSONObject(fieldSchemaJsonText);
     }
     for(String key : fieldSchemaJson.keySet()) {
       String value = readFile(fieldSchemaJson.getString(key), StandardCharsets.UTF_8);

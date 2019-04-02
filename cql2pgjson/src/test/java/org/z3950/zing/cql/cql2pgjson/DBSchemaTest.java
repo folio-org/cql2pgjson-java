@@ -7,14 +7,15 @@ import org.json.JSONObject;
 import org.junit.Test;
 
 public class DBSchemaTest {
-  
+
   @Test
   public void makeInstanceWithSpecifiedDBSchemaPath() throws Exception {
     Path dbSchemaPath = Paths.get(ClassLoader.getSystemResource("test_db_schema.json").toURI());
     if(dbSchemaPath == null) {
       throw new Exception("Can't find path");
     }
-    CQL2PgJSON cql2pgjson = new CQL2PgJSON("instance.jsonb", null, dbSchemaPath.toString());
+    CQL2PgJSON cql2pgjson = new CQL2PgJSON("instance.jsonb");
+    cql2pgjson.setDbSchema(dbSchemaPath.toString());
     JSONObject dbSchema = cql2pgjson.dbSchema;
     JSONArray tables = dbSchema.getJSONArray("tables");
     String[] tableArray = new String[]{ "loan_type", "material_type", "service_point_user" };
