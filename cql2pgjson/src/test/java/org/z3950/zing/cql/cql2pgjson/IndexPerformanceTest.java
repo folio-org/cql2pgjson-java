@@ -101,7 +101,7 @@ public class IndexPerformanceTest extends DatabaseTestBase {
     runSqlStatement("DROP INDEX IF EXISTS idx_value;");
     runSqlStatement("CREATE INDEX idx_value ON config_data "
         + "((lower(f_unaccent(jsonb->>'value'))) text_pattern_ops);");
-    CQL2PgJSON cql2pgJsonSchema = new CQL2PgJSON("jsonb", Util.getResource("indexPerformanceTest.json"));
+    CQL2PgJSON cql2pgJsonSchema = new CQL2PgJSON("jsonb");
     CQL2PgJSON cql2pgJson       = new CQL2PgJSON("jsonb");
     in50ms("WHERE " + cql2pgJsonSchema.cql2pgJson("value == a1* sortBy value"));
     in50ms("WHERE " + cql2pgJson      .cql2pgJson("value == b2* sortBy value"));
@@ -114,7 +114,7 @@ public class IndexPerformanceTest extends DatabaseTestBase {
   public void cqlNum() throws CQL2PgJSONException, IOException {
     runSqlStatement("DROP INDEX IF EXISTS idx_num;");
     runSqlStatement("CREATE INDEX idx_num ON config_data ((jsonb->'num'));");
-    CQL2PgJSON cql2pgJsonSchema = new CQL2PgJSON("jsonb", Util.getResource("indexPerformanceTest.json"));
+    CQL2PgJSON cql2pgJsonSchema = new CQL2PgJSON("jsonb");
     CQL2PgJSON cql2pgJson       = new CQL2PgJSON("jsonb");
     in50ms("WHERE " + cql2pgJsonSchema.cql2pgJson("num == 0.003  sortBy num"));
     in50ms("WHERE " + cql2pgJsonSchema.cql2pgJson("num == 0.0040 sortBy num"));
