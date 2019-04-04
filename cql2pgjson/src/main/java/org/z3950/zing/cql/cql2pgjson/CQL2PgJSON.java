@@ -73,6 +73,10 @@ public class CQL2PgJSON {
     ASCENDING, DESCENDING;
   }
 
+  private enum CqlSortType {
+    NUMBER, TEXT;
+  }
+
   private enum CqlCase {
     IGNORE_CASE, RESPECT_CASE;
   }
@@ -93,10 +97,11 @@ public class CQL2PgJSON {
   }
 
   private static class CqlModifiers {
-    CqlSort    cqlSort    = CqlSort   .ASCENDING;
-    CqlCase    cqlCase    = CqlCase   .IGNORE_CASE;
-    CqlAccents cqlAccents = CqlAccents.IGNORE_ACCENTS;
-    CqlMasking cqlMasking = CqlMasking.MASKED;
+    CqlSort      cqlSort      = CqlSort    .ASCENDING;
+    CqlSortType  cqlSortType  = CqlSortType.TEXT;
+    CqlCase      cqlCase      = CqlCase    .IGNORE_CASE;
+    CqlAccents   cqlAccents   = CqlAccents .IGNORE_ACCENTS;
+    CqlMasking   cqlMasking   = CqlMasking .MASKED;
 
     public CqlModifiers(CQLTermNode node) {
       readModifiers(node.getRelation().getModifiers());
@@ -122,25 +127,29 @@ public class CQL2PgJSON {
     public final void readModifiers(List<Modifier> modifiers) {
       for (Modifier m : modifiers) {
         switch (m.getType()) {
-        case "sort.ascending" : cqlSort    = CqlSort   .ASCENDING;
+        case "sort.ascending" : cqlSort    = CqlSort    .ASCENDING;
         break;
-        case "sort.descending": cqlSort    = CqlSort   .DESCENDING;
+        case "sort.descending": cqlSort    = CqlSort    .DESCENDING;
         break;
-        case "ignorecase"     : cqlCase    = CqlCase   .IGNORE_CASE;
+        case "sort.number"    : cqlSortType= CqlSortType.NUMBER;
         break;
-        case "respectcase"    : cqlCase    = CqlCase   .RESPECT_CASE;
+        case "sort.text"      : cqlSortType= CqlSortType.TEXT;
         break;
-        case "ignoreaccents"  : cqlAccents = CqlAccents.IGNORE_ACCENTS;
+        case "ignorecase"     : cqlCase    = CqlCase    .IGNORE_CASE;
         break;
-        case "respectaccents" : cqlAccents = CqlAccents.RESPECT_ACCENTS;
+        case "respectcase"    : cqlCase    = CqlCase    .RESPECT_CASE;
         break;
-        case "masked"         : cqlMasking = CqlMasking.MASKED;
+        case "ignoreaccents"  : cqlAccents = CqlAccents .IGNORE_ACCENTS;
         break;
-        case "unmasked"       : cqlMasking = CqlMasking.UNMASKED;
+        case "respectaccents" : cqlAccents = CqlAccents .RESPECT_ACCENTS;
         break;
-        case "substring"      : cqlMasking = CqlMasking.SUBSTRING;
+        case "masked"         : cqlMasking = CqlMasking .MASKED;
         break;
-        case "regexp"         : cqlMasking = CqlMasking.REGEXP;
+        case "unmasked"       : cqlMasking = CqlMasking .UNMASKED;
+        break;
+        case "substring"      : cqlMasking = CqlMasking .SUBSTRING;
+        break;
+        case "regexp"         : cqlMasking = CqlMasking .REGEXP;
         break;
         default:
           // ignore
@@ -473,6 +482,12 @@ public class CQL2PgJSON {
         continue;
       default:
         break;
+      }
+
+      // if number sort is specified explicitly
+      if (modifiers.cqlSortType == CqlSortType.NUMBER) {
+        order.append(vals.indexJson).append(desc);
+        continue;
       }
 
       // We assume that a CREATE INDEX for this has been installed.
