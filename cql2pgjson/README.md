@@ -14,7 +14,7 @@ Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 Invoke like this:
 
     // users.user_data is a JSONB field in the users table.
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data", userSchemaJson);
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data");
     String cql = "name=Miller";
     String where = cql2pgJson.cql2pgJson(cql);
     String sql = "select * from users where " + where;
@@ -24,18 +24,16 @@ Invoke like this:
 
 Or use `toSql(String cql)` to get the `ORDER BY` clause separately:
 
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data", userSchemaJson);
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data");
     String cql = "name=Miller";
     SqlSelect sqlSelect = cql2pgJson.toSql(cql);
     String sql = "select * from users where " + sqlSelect.getWhere()
                                + " order by " + sqlSelect.getOrderBy();
 
-`userSchemaJson` is the schema definition like [userdata.json](src/test/resources/userdata.json),
-learn more from [raml-module-builder's documentation](https://github.com/folio-org/raml-module-builder#step-1-describe-the-apis-to-be-exposed-by-the-new-module).
 
 Setting server choice indexes is possible, the next example searches `name=Miller or email=Miller`:
 
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data", userSchemaJson, Arrays.asList("name", "email"));
+    CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email"));
     String cql = "Miller";
     String where = cql2pgJson.cql2pgJson(cql);
     String sql = "select * from users where " + where;
@@ -44,27 +42,13 @@ Searching across multiple JSONB fields works like this. The _first_ json field s
 in the constructor will be applied to any query arguments that aren't prefixed with the appropriate
 field name:
 
-    // Instantiation without schemas
+    // Instantiation
     CQL2PgJSON cql2pgJson = new CQL2PgJSON(Arrays.asList("users.user_data","users.group_data"));
-
-    // Instantiation with schemas
-    LinkedHashMap<String,String> fieldsAndSchemas = new LinkedHashMap<>();
-    fieldsAndSchemas.put("users.user_data",         userSchemaJson);
-    fieldsAndSchemas.put("users.group_data",        groupSchemaJson);
-    fieldsAndSchemas.put("users.uncontrolled_data", null);
-    cql2pgJson = new CQL2PgJSON( fieldsAndSchemas );
 
     // Query processing
     where = cql2pgJson.cql2pgJson( "users.user_data.name=Miller" );
     where = cql2pgJson.cql2pgJson( "users.group_data.name==Students" );
-    where = cql2pgJson.cql2pgJson( "users.uncontrolled_data.name==*Zanzibar*" );
     where = cql2pgJson.cql2pgJson( "name=Miller" ); // implies users.user_data
-
-## Schema
-
-If invoked without schema specification like `userSchemaJson` then the produced SQL code
-does not contain optimizations to use database indexes and may run with bad performance on
-large datasets.
 
 ## id
 
@@ -169,17 +153,10 @@ To avoid the complicated syntax all ISBN values or all values can be extracted a
 
 ## Matching and comparing numbers
 
-Correct number matching must result in 3.4 = 3.400 = 0.34e1 and correct number comparison must result in 10 > 2
+Correct number matching must result in 3.4 == 3.400 == 0.34e1 and correct number comparison must result in 10 > 2
 (in contrast to string comparison where "10" < "2").
 
-If the search term is a number then a numeric mode is used for "==", "<>", "<", "<=", ">", ">=", and "=".
-
-If the schema (see section [Schema](#schema) above) specifies a JSON field type
-then numeric mode is only used when that type is either `integer` or `number`.
-
-If the comparator is "=" and the JSON field type is not specified in the schema
-then numeric mode is only used if the actual JSONB type of the stored value is `number`
-(JSONB has no `integer` type).
+If the search term is a number then a numeric mode is used for "==", "<>", "<", "<=", ">",and ">=".
 
 ## Exceptions
 
