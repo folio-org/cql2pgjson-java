@@ -557,14 +557,14 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Parameters({
     "example   sortBy name                           # Jo Jane; Ka Keller; Lea Long",
     "example   sortBy name/sort.ascending            # Jo Jane; Ka Keller; Lea Long",
-    "example   sortBy name/sort.descending           # Lea Long; Ka Keller; Jo Jane",
     "example   sortBy name/sort.ascending/sort.text  # Jo Jane; Ka Keller; Lea Long",
+    "example   sortBy name/sort.descending           # Lea Long; Ka Keller; Jo Jane",
     "example   sortBy name/sort.descending/sort.text # Lea Long; Ka Keller; Jo Jane",
     "example   sortBy address.zip                    # Ka Keller; Jo Jane; Lea Long",
     "name=\"\" sortBy name                           # Jo Jane; Ka Keller; Lea Long",
     "name=\"\" sortBy name/sort.ascending            # Jo Jane; Ka Keller; Lea Long",
-    "name=\"\" sortBy name/sort.descending           # Lea Long; Ka Keller; Jo Jane",
     "name=\"\" sortBy name/sort.ascending/sort.text  # Jo Jane; Ka Keller; Lea Long",
+    "name=\"\" sortBy name/sort.descending           # Lea Long; Ka Keller; Jo Jane",
     "name=\"\" sortBy name/sort.descending/sort.text # Lea Long; Ka Keller; Jo Jane",
     "name=\"\" sortBy address.zip                    # Ka Keller; Jo Jane; Lea Long"
   })
