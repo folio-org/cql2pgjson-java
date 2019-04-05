@@ -475,19 +475,19 @@ public class CQL2PgJSON {
 
       IndexTextAndJsonValues vals = getIndexTextAndJsonValues(modifierSet.getBase());
 
-      switch (vals.type) {
-      case "number":
-      case "integer":
-        order.append(vals.indexJson).append(desc);
-        continue;
-      default:
-        break;
-      }
-
       // if number sort is specified explicitly
       if (modifiers.cqlSortType == CqlSortType.NUMBER) {
         order.append(vals.indexJson).append(desc);
         continue;
+      } else {
+        switch (vals.type) {
+        case "number":
+        case "integer":
+          order.append(vals.indexJson).append(desc);
+          continue;
+        default:
+          break;
+        }
       }
 
       // We assume that a CREATE INDEX for this has been installed.
@@ -895,9 +895,8 @@ public class CQL2PgJSON {
 
     // if no json field name prefix is found, the default field name gets applied.
     String defaultJsonField = this.jsonFields.get(0);
-    String finalIndex = index;
-    vals.indexJson = index2sqlJson(defaultJsonField, finalIndex);
-    vals.indexText = index2sqlText(defaultJsonField, finalIndex);
+    vals.indexJson = index2sqlJson(defaultJsonField, index);
+    vals.indexText = index2sqlText(defaultJsonField, index);
     return vals;
   }
 
