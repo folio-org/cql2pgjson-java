@@ -3,6 +3,8 @@ package org.z3950.zing.cql.cql2pgjsoncli;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Paths;
+import java.util.logging.Logger;
+
 import org.apache.commons.cli.ParseException;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -14,6 +16,9 @@ import org.z3950.zing.cql.cql2pgjson.QueryValidationException;
 import org.z3950.zing.cql.cql2pgjson.SchemaException;
 
 public class TestCLI {
+
+  private static Logger logger = Logger.getLogger(TestCLI.class.getName());
+
   int exitStatus;
   String instanceSchemaPath;
   String holdingSchemaPath;
@@ -55,8 +60,8 @@ public class TestCLI {
     CQL2PgJSON cql2pgjson = new CQL2PgJSON(fullFieldName);
     String output = CQL2PGCLIMain.parseCQL(cql2pgjson, "instance", cql);
     String cli_output = CQL2PGCLIMain.handleOptions(args);
-    System.out.println(output);
-    System.out.println(cli_output);
+    logger.info(output);
+    logger.info(cli_output);
     assertNotNull(output);
     assertEquals(output, cli_output);
   }
@@ -72,8 +77,8 @@ public class TestCLI {
     String output = CQL2PGCLIMain.parseCQL(cql2pgjson, "instance", cql);
     String cli_output = CQL2PGCLIMain.handleOptions(args);
     assertNotNull(output);
-    System.out.println(output);
-    System.out.println(cli_output);
+    logger.info(output);
+    logger.info(cli_output);
     assertEquals(output, cli_output);
   }
 
@@ -101,4 +106,8 @@ public class TestCLI {
         "select * from instance where to_tsvector('simple', instance.jsonb->>'title') @@ to_tsquery('simple','foo')");
   }
 
+  @Test(expected = QueryValidationException.class)
+  public void testCLIParseException() throws Exception {
+    testCLI("=", null);
+  }
 }

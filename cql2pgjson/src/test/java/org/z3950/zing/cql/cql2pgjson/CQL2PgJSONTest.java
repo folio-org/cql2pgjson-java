@@ -555,14 +555,18 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "example   sortBy name                         # Jo Jane; Ka Keller; Lea Long",
-    "example   sortBy name/sort.ascending          # Jo Jane; Ka Keller; Lea Long",
-    "example   sortBy name/sort.descending         # Lea Long; Ka Keller; Jo Jane",
-    "example   sortBy address.zip                  # Ka Keller; Jo Jane; Lea Long",
-    "name=\"\" sortBy name                         # Jo Jane; Ka Keller; Lea Long",
-    "name=\"\" sortBy name/sort.ascending          # Jo Jane; Ka Keller; Lea Long",
-    "name=\"\" sortBy name/sort.descending         # Lea Long; Ka Keller; Jo Jane",
-    "name=\"\" sortBy address.zip                  # Ka Keller; Jo Jane; Lea Long"
+    "example   sortBy name                           # Jo Jane; Ka Keller; Lea Long",
+    "example   sortBy name/sort.ascending            # Jo Jane; Ka Keller; Lea Long",
+    "example   sortBy name/sort.descending           # Lea Long; Ka Keller; Jo Jane",
+    "example   sortBy name/sort.ascending/sort.text  # Jo Jane; Ka Keller; Lea Long",
+    "example   sortBy name/sort.descending/sort.text # Lea Long; Ka Keller; Jo Jane",
+    "example   sortBy address.zip                    # Ka Keller; Jo Jane; Lea Long",
+    "name=\"\" sortBy name                           # Jo Jane; Ka Keller; Lea Long",
+    "name=\"\" sortBy name/sort.ascending            # Jo Jane; Ka Keller; Lea Long",
+    "name=\"\" sortBy name/sort.descending           # Lea Long; Ka Keller; Jo Jane",
+    "name=\"\" sortBy name/sort.ascending/sort.text  # Jo Jane; Ka Keller; Lea Long",
+    "name=\"\" sortBy name/sort.descending/sort.text # Lea Long; Ka Keller; Jo Jane",
+    "name=\"\" sortBy address.zip                    # Ka Keller; Jo Jane; Lea Long"
   })
   public void sort(String testcase) {
     select(testcase);
@@ -570,8 +574,8 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "cql.allRecords=1 sortBy address.zip/sort.ascending/sort.number  name  # a; b; c; d; e; f; g; h",
-    "cql.allRecords=1 sortBy address.zip/sort.descending/sort.number name  # h; g; d; e; f; c; b; a",
+    "cql.allRecords=1 sortBy address.zip/sort.ascending/sort.number  name # a; b; c; d; e; f; g; h",
+    "cql.allRecords=1 sortBy address.zip/sort.descending/sort.number name # h; g; d; e; f; c; b; a",
   })
   public void sortNumber(String testcase) {
     select("special.sql", testcase);
