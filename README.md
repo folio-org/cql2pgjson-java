@@ -156,7 +156,8 @@ To avoid the complicated syntax all ISBN values or all values can be extracted a
 Correct number matching must result in 3.4 == 3.400 == 0.34e1 and correct number comparison must result in 10 > 2
 (in contrast to string comparison where "10" < "2").
 
-If the search term is a number then a numeric mode is used for "==", "<>", "<", "<=", ">",and ">=".
+If the search term is a number then a numeric mode is used for "==", "<>", "<", "<=", ">",and ">=" if the actual JSONB type of the stored value is `number`
+(JSONB has no `integer` type).
 
 ## Exceptions
 
