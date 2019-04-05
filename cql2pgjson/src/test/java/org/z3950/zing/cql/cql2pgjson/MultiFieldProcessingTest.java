@@ -4,9 +4,7 @@ import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertThat;
 
-import java.io.IOException;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 
 import org.junit.Test;
 
@@ -31,22 +29,6 @@ public class MultiFieldProcessingTest {
         containsString("f_unaccent(field2->>'name') ~ f_unaccent('"));
     assertThat(converter.cql2pgJson("name=/respectAccents v"),
         containsString("lower(field1->>'name') ~ lower('"));
-
-  }
-
-  @Test
-  public void testApplicationOfFieldNamesWithSchema()
-      throws FieldException, QueryValidationException, SchemaException, IOException {
-    LinkedHashMap<String,String> fieldsAndSchemas = new LinkedHashMap<>();
-    fieldsAndSchemas.put("field1", Util.getResource("userdata.json"));
-    fieldsAndSchemas.put("field2", Util.getResource("userdata.json"));
-    CQL2PgJSON converter = new CQL2PgJSON( fieldsAndSchemas );
-    assertThat(converter.cql2pgJson("field1.name=v"),
-        containsString("lower(f_unaccent(field1->>'name')) ~ lower(f_unaccent('"));
-    assertThat(converter.cql2pgJson("field2.name=/respectCase v"),
-        containsString("f_unaccent(field2->>'name') ~ f_unaccent('"));
-    assertThat(converter.cql2pgJson("name=/respectAccents v"),
-        containsString("lower(field1->>'name') ~ lower('"));
   }
 
   @Test
@@ -62,16 +44,6 @@ public class MultiFieldProcessingTest {
     converter.setServerChoiceIndexes(Arrays.asList("name"));
     assertThat(converter.cql2pgJson("v"),
         containsString("lower(f_unaccent(field1->>'name')) ~ lower(f_unaccent('"));
-  }
-
-  @Test(expected = QueryValidationException.class)
-  public void testSchemaValidationInMultiFieldQuery()
-      throws FieldException, SchemaException, IOException, QueryValidationException {
-    LinkedHashMap<String,String> fieldsAndSchemas = new LinkedHashMap<>();
-    fieldsAndSchemas.put("field1", Util.getResource("userdata.json"));
-    fieldsAndSchemas.put("field2", Util.getResource("userdata.json"));
-    CQL2PgJSON converter = new CQL2PgJSON( fieldsAndSchemas );
-    converter.cql2pgJson("field2.notInSchema=/respectCase v");
   }
 
   @Test

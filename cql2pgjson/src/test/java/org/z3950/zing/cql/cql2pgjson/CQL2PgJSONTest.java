@@ -9,11 +9,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.logging.Logger;
 
 import org.junit.AfterClass;
@@ -33,7 +30,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public static void runOnceBeforeClass() throws Exception {
     setupDatabase();
     runSqlFile("users.sql");
-    cql2pgJson = new CQL2PgJSON("users.user_data", Util.getResource("userdata.json"), Arrays.asList("name", "email"));
+    cql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email"));
   }
 
   @AfterClass
@@ -558,14 +555,18 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "example   sortBy name                         # Jo Jane; Ka Keller; Lea Long",
-    "example   sortBy name/sort.ascending          # Jo Jane; Ka Keller; Lea Long",
-    "example   sortBy name/sort.descending         # Lea Long; Ka Keller; Jo Jane",
-    "example   sortBy address.zip                  # Ka Keller; Jo Jane; Lea Long",
-    "name=\"\" sortBy name                         # Jo Jane; Ka Keller; Lea Long",
-    "name=\"\" sortBy name/sort.ascending          # Jo Jane; Ka Keller; Lea Long",
-    "name=\"\" sortBy name/sort.descending         # Lea Long; Ka Keller; Jo Jane",
-    "name=\"\" sortBy address.zip                  # Ka Keller; Jo Jane; Lea Long"
+    "example   sortBy name                           # Jo Jane; Ka Keller; Lea Long",
+    "example   sortBy name/sort.ascending            # Jo Jane; Ka Keller; Lea Long",
+    "example   sortBy name/sort.ascending/sort.text  # Jo Jane; Ka Keller; Lea Long",
+    "example   sortBy name/sort.descending           # Lea Long; Ka Keller; Jo Jane",
+    "example   sortBy name/sort.descending/sort.text # Lea Long; Ka Keller; Jo Jane",
+    "example   sortBy address.zip                    # Ka Keller; Jo Jane; Lea Long",
+    "name=\"\" sortBy name                           # Jo Jane; Ka Keller; Lea Long",
+    "name=\"\" sortBy name/sort.ascending            # Jo Jane; Ka Keller; Lea Long",
+    "name=\"\" sortBy name/sort.ascending/sort.text  # Jo Jane; Ka Keller; Lea Long",
+    "name=\"\" sortBy name/sort.descending           # Lea Long; Ka Keller; Jo Jane",
+    "name=\"\" sortBy name/sort.descending/sort.text # Lea Long; Ka Keller; Jo Jane",
+    "name=\"\" sortBy address.zip                    # Ka Keller; Jo Jane; Lea Long"
   })
   public void sort(String testcase) {
     select(testcase);
@@ -573,56 +574,10 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "email=example   sortBy name                   # Jo Jane; Ka Keller; Lea Long",
-    "email=example   sortBy name/sort.ascending    # Jo Jane; Ka Keller; Lea Long",
-    "email=example   sortBy name/sort.descending   # Lea Long; Ka Keller; Jo Jane",
-    "email=example   sortBy address.zip            # Ka Keller; Jo Jane; Lea Long",
-    "name=\"\" sortBy name                         # Jo Jane; Ka Keller; Lea Long",
-    "name=\"\" sortBy name/sort.ascending          # Jo Jane; Ka Keller; Lea Long",
-    "name=\"\" sortBy name/sort.descending         # Lea Long; Ka Keller; Jo Jane",
-    "name=\"\" sortBy address.zip                  # Ka Keller; Jo Jane; Lea Long"
-  })
-  public void sortNoSchema(String testcase) throws FieldException {
-    CQL2PgJSON aCql2PgJson = new CQL2PgJSON("users.user_data");  // without schema
-    select(aCql2PgJson, testcase);
-  }
-
-  @Test
-  @Parameters({
-    "cql.allRecords=1 sortBy address.zip/sort.ascending  name  # a; b; c; d; e; f; g; h",
-    "cql.allRecords=1 sortBy address.zip/sort.descending name  # h; g; d; e; f; c; b; a",
+    "cql.allRecords=1 sortBy address.zip/sort.ascending/sort.number  name # a; b; c; d; e; f; g; h",
+    "cql.allRecords=1 sortBy address.zip/sort.descending/sort.number name # h; g; d; e; f; c; b; a",
   })
   public void sortNumber(String testcase) {
-    select("special.sql", testcase);
-  }
-
-  @Test
-  @Parameters({
-    "address.zip<1                  #",
-    "address.zip<2                  # a",
-    "address.zip<3                  # a; b",
-    "address.zip<=0                 #",
-    "address.zip<=1                 # a",
-    "address.zip<=2                 # a; b",
-    "address.zip>16                 # g; h",
-    "address.zip>17                 # h",
-    "address.zip>18                 #",
-    "address.zip>=17                # g; h",
-    "address.zip>=18                # h",
-    "address.zip>=19                #",
-    "address.zip= 4                 # d; e; f",
-    "address.zip==4                 # d; e; f",
-    "address.zip= 4.0               # d; e; f",
-    "address.zip==4.0               # d; e; f",
-    "address.zip= 4e0               # d; e; f",
-    "address.zip==4e0               # d; e; f",
-    "address.zip<>4                 # a; b; c; g; h",
-    "address.zip<>4.0               # a; b; c; g; h",
-    "address.zip<>4e0               # a; b; c; g; h",
-    "address.zip=1                  # a",  // must not match 17, 18
-    "address.zip==1                 # a",
-  })
-  public void compareNumber(String testcase) {
     select("special.sql", testcase);
   }
 
@@ -650,9 +605,8 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "address.zip<>4.0               # a; b; c; g; h",
     "address.zip<>4e0               # a; b; c; g; h",
   })
-  public void compareNumberNoSchema(String testcase) throws CQL2PgJSONException {
-    CQL2PgJSON aCql2PgJson = new CQL2PgJSON("users.user_data");  // without schema
-    select(aCql2PgJson, "special.sql", testcase);
+  public void compareNumber(String testcase) throws CQL2PgJSONException {
+    select("special.sql", testcase);
   }
 
   @Test
@@ -665,17 +619,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "address.city ==  01234                 # g",
   })
   public void numberInStringField(String testcase) throws CQL2PgJSONException {
-    // with schema
     select("special.sql", testcase);
-
-    // without schema
-    CQL2PgJSON aCql2PgJson = new CQL2PgJSON("users.user_data");
-    select(aCql2PgJson, "special.sql", testcase);
-  }
-
-  @Test
-  public void numberInSchema() throws CQL2PgJSONException {
-    select("number=4.0  # Jo Jane");
   }
 
   @Test
@@ -685,19 +629,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "name> \"Ka Keller\"  # Lea Long",
     "name>=\"Ka Keller\"  # Ka Keller; Lea Long",
     "name<>\"Ka Keller\"  # Jo Jane; Lea Long",
-  })
-  public void compareString(String testcase) {
-    select(testcase);
-  }
-
-  @Test
-  @Parameters({
     "name<>4              # Jo Jane; Ka Keller; Lea Long",
     "name=4               #",
   })
-  public void compareStringNoSchema(String testcase) throws FieldException {
-    CQL2PgJSON aCql2PgJson = new CQL2PgJSON("users.user_data");  // without schema
-    select(aCql2PgJson, "jo-ka-lea.sql", testcase);
+  public void compareString(String testcase) {
+    select(testcase);
   }
 
   @Test
@@ -728,8 +664,6 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     cql2pgJsonException(new CQL2PgJSON("users.user_data", Arrays.asList()),
         "Jane", QueryValidationException.class, "serverChoiceIndex");
     cql2pgJsonException(new CQL2PgJSON("users.user_data", (List<String>) null),
-        "Jane", QueryValidationException.class, "serverChoiceIndex");
-    cql2pgJsonException(new CQL2PgJSON("users.user_data", "{}"),
         "Jane", QueryValidationException.class, "serverChoiceIndex");
   }
 
@@ -775,96 +709,10 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     new CQL2PgJSON(Arrays.asList());
   }
 
-  @Test(expected = FieldException.class)
-  public void nullSchemaList() throws CQL2PgJSONException, IOException {
-    new CQL2PgJSON((Map<String,String>) null);
-  }
-
-  @Test(expected = FieldException.class)
-  public void emptySchemaList() throws CQL2PgJSONException, IOException {
-    new CQL2PgJSON(Collections.emptyMap());
-  }
-
-  @Test(expected = FieldException.class)
-  public void schemaListContainsNull() throws CQL2PgJSONException, IOException {
-    Map<String,String> map = new HashMap<>();
-    map.put(null,  null);
-    new CQL2PgJSON(map);
-  }
-
-  private void schemaList(String fieldname) throws Exception {
-    Map<String,String> map = new HashMap<>();
-    map.put(fieldname,  "{}");
-    new CQL2PgJSON(map);
-  }
-
-  @Test(expected = FieldException.class)
-  public void schemaListWithNullFieldname() throws Exception {
-    schemaList(null);
-  }
-
-  @Test(expected = FieldException.class)
-  public void schemaListWithEmptyFieldname() throws Exception {
-    schemaList("");
-  }
-
-  @Test(expected = FieldException.class)
-  public void schemaListWithSpaceFieldname() throws Exception {
-    schemaList(" ");
-  }
-
-  @Test
-  public void schemaListWithEmptySchema() throws Exception {
-    Map<String,String> map = new HashMap<>();
-    map.put("fieldname", "");
-    new CQL2PgJSON(map);
-  }
-
-  @Test
-  public void schemaListOneField() throws Exception {
-    Map<String,String> map = new HashMap<>();
-    map.put("users.user_data", Util.getResource("userdata.json"));
-    CQL2PgJSON aCql2pgJson = new CQL2PgJSON(map, Arrays.asList("name"));
-    select(aCql2pgJson, "Long   # Lea Long");
-  }
-
-  @Test
-  public void schemaListTwoFields() throws Exception {
-    Map<String,String> map = new HashMap<>();
-    map.put("users.user_data", Util.getResource("userdata.json"));
-    map.put("users.user_data2", Util.getResource("userdata.json"));
-    CQL2PgJSON aCql2pgJson = new CQL2PgJSON(map, Arrays.asList("name"));
-    select(aCql2pgJson, "Long   # Lea Long");
-  }
-
   @Test
   public void singleField() throws CQL2PgJSONException {
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON(Arrays.asList("users.user_data"), Arrays.asList("name"));
     select(aCql2pgJson, "Long   # Lea Long");
-  }
-
-  @Parameters({
-    "name=Long                      # Lea Long",
-    "address.zip=2791               # Lea Long",
-  })
-  @Test
-  public void schema(String testcase) throws IOException, CQL2PgJSONException {
-    CQL2PgJSON aCql2pgJson = new CQL2PgJSON("users.user_data", Util.getResource("userdata.json"));
-    select(aCql2pgJson, testcase);
-  }
-
-  @Test
-  public void notInSchema() throws IOException, CQL2PgJSONException {
-    CQL2PgJSON aCql2pgJson = new CQL2PgJSON(
-        "users.user_data", Util.getResource("userdata.json"), Arrays.asList("name"));
-    cql2pgJsonException(aCql2pgJson, "foobar=x", QueryValidationException.class);
-  }
-
-  @Test
-  public void sortIndexNotInSchema() throws IOException, CQL2PgJSONException {
-    CQL2PgJSON aCql2pgJson = new CQL2PgJSON(
-        "users.user_data", Util.getResource("userdata.json"), Arrays.asList("name"));
-    cql2pgJsonException(aCql2pgJson, "name<>x sortBy notExistingIndex", QueryValidationException.class);
   }
 
   @Test
@@ -886,6 +734,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     assertTrue(sql.endsWith(" ORDER BY "
       + "lower(f_unaccent(users.user_data->>'name')) DESC"));
   }
+
   @Test
   public void optimizedOR() throws QueryValidationException {
     SqlSelect s = cql2pgJson.toSql("name=* OR email=*");
