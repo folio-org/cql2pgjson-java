@@ -1,3 +1,8 @@
+## 4.0.0 2019-04-09
+* CQLPG-90 Remove legacy query translation on individual json schema files
+* CQLPG-84 Add command line client for debugging
+* CQLPG-83 Allow CQL2PGJSON to specify the path for the 'schema.json' file
+
 ## 3.1.0 2019-02-18
 * CQLPG-86 Allow <> operator for id searches.
 
