@@ -27,8 +27,8 @@
 
   <scm>
     <url>https://github.com/folio-org/cql2pgjson-java</url>
-    <connection>scm:git:git://github.com/folio-org/cql2pgjson-java.git</connection>
-    <developerConnection>scm:git:git@github.com/folio-org/cql2pgjson-java.git</developerConnection>
+    <connection>scm:git:git://github.com:folio-org/cql2pgjson-java.git</connection>
+    <developerConnection>scm:git:git@github.com:folio-org/cql2pgjson-java.git</developerConnection>
     <tag>HEAD</tag>
   </scm>
 
