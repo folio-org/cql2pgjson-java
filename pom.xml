@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <groupId>org.z3950.zing</groupId>
-    <artifactId>cql2pgjson-proj</artifactId>
-    <packaging>pom</packaging>
-    <version>4.0.0-SNAPSHOT</version>
-    <name>cql2pgjson-proj</name>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.z3950.zing</groupId>
+  <artifactId>cql2pgjson-proj</artifactId>
+  <packaging>pom</packaging>
+  <version>4.1.0-SNAPSHOT</version>
+  <name>cql2pgjson-proj</name>
 
-    <modules>
-        <module>cql2pgjson</module>
-        <module>cql2pgjson-cli</module>
-    </modules>
+  <modules>
+    <module>cql2pgjson</module>
+    <module>cql2pgjson-cli</module>
+  </modules>
 
-   <licenses>
-     <license>
+  <licenses>
+    <license>
       <name>Apache License 2.0</name>
       <url>http://spdx.org/licenses/Apache-2.0</url>
     </license>
-   </licenses>
+  </licenses>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -25,10 +25,26 @@
     <argLine />
   </properties>
 
- <scm>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-release-plugin</artifactId>
+        <version>2.5.3</version>
+        <configuration>
+          <preparationGoals>clean verify</preparationGoals>
+          <tagNameFormat>v@{project.version}</tagNameFormat>
+          <pushChanges>false</pushChanges>
+          <localCheckout>true</localCheckout>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <scm>
     <url>https://github.com/folio-org/cql2pgjson-java</url>
-    <connection>scm:git:git://github.com/folio-org/cql2pgjson-java.git</connection>
-    <developerConnection>scm:git:git@github.com/folio-org/cql2pgjson-java.git</developerConnection>
+    <connection>scm:git:git://github.com:folio-org/cql2pgjson-java.git</connection>
+    <developerConnection>scm:git:git@github.com:folio-org/cql2pgjson-java.git</developerConnection>
     <tag>HEAD</tag>
   </scm>
 
