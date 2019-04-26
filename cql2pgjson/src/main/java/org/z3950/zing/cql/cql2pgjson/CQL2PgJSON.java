@@ -611,7 +611,7 @@ public class CQL2PgJSON {
 
   private static String [] allRegexp(String textIndex, CqlModifiers modifiers, String cql) {
     String [] split = cql.trim().split("\\s+");  // split at whitespace
-    if (split.length == 1 && "".equals(split[0])) {
+    if (split.length == 1 && ("".equals(split[0]) || "*".equals(split[0]))) {
       // The variable cql contains whitespace only. honorWhitespace is not implemented yet.
       // So there is no word at all. Therefore no restrictions for matching - anything matches.
       return new String [] { textIndex + " ~ ''" };  // matches any (existing non-null) value
@@ -657,7 +657,7 @@ public class CQL2PgJSON {
    */
   private static String [] adjRegexp(String textIndex, CqlModifiers modifiers, String cql) {
     String [] split = cql.trim().split("\\s+");  // split at whitespace
-    if (split.length == 1 && "".equals(split[0])) {
+    if (split.length == 1 && ("".equals(split[0]) || "*".equals(split[0]))) {
       // The variable cql contains whitespace only. honorWhitespace is not implemented yet.
       // So there is no word at all. Therefore no restrictions for matching - anything matches.
       return new String [] { textIndex + " ~ ''" };  // matches any (existing non-null) value

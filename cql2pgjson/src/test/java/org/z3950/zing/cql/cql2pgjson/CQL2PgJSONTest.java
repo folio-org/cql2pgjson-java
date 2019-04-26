@@ -1,5 +1,6 @@
 package org.z3950.zing.cql.cql2pgjson;
 
+import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.*;
 import org.junit.runner.RunWith;
@@ -726,11 +727,12 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Test
   public void toSql() throws QueryValidationException {
     SqlSelect s = cql2pgJson.toSql("email=Long sortBy name/sort.descending");
-    assertEquals("lower(f_unaccent(users.user_data->>'email')) ~", s.getWhere().substring(0, 46));
+    assertThat(s.getWhere(),
+        allOf(containsString("to_tsvector"),
+            containsString("users.user_data->>'email'")));
     assertEquals("lower(f_unaccent(users.user_data->>'name')) DESC", s.getOrderBy());
     String sql = s.toString();
-    assertTrue(sql.startsWith("WHERE "
-      + "lower(f_unaccent(users.user_data->>'email')) ~"));
+    assertTrue(sql.startsWith("WHERE to_tsvector('simple',"));
     assertTrue(sql.endsWith(" ORDER BY "
       + "lower(f_unaccent(users.user_data->>'name')) DESC"));
   }
