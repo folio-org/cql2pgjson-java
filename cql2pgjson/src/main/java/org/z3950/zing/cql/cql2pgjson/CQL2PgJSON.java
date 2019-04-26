@@ -585,7 +585,7 @@ public class CQL2PgJSON {
    * @return resulting regexps
    */
   @SuppressWarnings("squid:S1192")  // suppress "String literals should not be duplicated"
-  private static String [] allRegexp(String textIndex, CqlModifiers modifiers, String cql) {
+  private static String [] allRegexpOld(String textIndex, CqlModifiers modifiers, String cql) {
     String [] split = cql.trim().split("\\s+");  // split at whitespace
     if (split.length == 1 && "".equals(split[0])) {
       // The variable cql contains whitespace only. honorWhitespace is not implemented yet.
@@ -609,6 +609,38 @@ public class CQL2PgJSON {
     return split;
   }
 
+  private static String [] allRegexp(String textIndex, CqlModifiers modifiers, String cql) {
+    String [] split = cql.trim().split("\\s+");  // split at whitespace
+    if (split.length == 1 && "".equals(split[0])) {
+      // The variable cql contains whitespace only. honorWhitespace is not implemented yet.
+      // So there is no word at all. Therefore no restrictions for matching - anything matches.
+      return new String [] { textIndex + " ~ ''" };  // matches any (existing non-null) value
+      // don't use "TRUE" because that also matches when the field is not defined or is null
+    }
+
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < split.length; i++) {
+      try {
+        split[i] = fTTerm(split[i]);
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    }
+    String tsTerm = String.join(" & ", split);
+    sb.append("to_tsvector('simple', f_unaccent(" + textIndex + ")) "
+        + "@@ to_tsquery('simple', f_unaccent('" + tsTerm + "'))");
+
+    if (modifiers.cqlAccents == CqlAccents.RESPECT_ACCENTS ||
+        modifiers.cqlCase == CqlCase.RESPECT_CASE) {
+      for (int i = 0; i < split.length; i++) {
+        sb.append(" AND " + wrapInLowerUnaccent(textIndex, modifiers) +
+          " LIKE '%' || " + wrapInLowerUnaccent("'" + split[i] + "'", modifiers) + " || '%'");
+      }
+    }
+
+    return new String[] { sb.toString() };
+  }
+
   /**
    * Return SQL regexp expressions for do an "adj" CQL match (phrase match) of the cql string.
    * "adj" means that all words match, and must be adjacent to each other
@@ -624,6 +656,38 @@ public class CQL2PgJSON {
    * @return resulting regexps
    */
   private static String [] adjRegexp(String textIndex, CqlModifiers modifiers, String cql) {
+    String [] split = cql.trim().split("\\s+");  // split at whitespace
+    if (split.length == 1 && "".equals(split[0])) {
+      // The variable cql contains whitespace only. honorWhitespace is not implemented yet.
+      // So there is no word at all. Therefore no restrictions for matching - anything matches.
+      return new String [] { textIndex + " ~ ''" };  // matches any (existing non-null) value
+      // don't use "TRUE" because that also matches when the field is not defined or is null
+    }
+
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < split.length; i++) {
+      try {
+        split[i] = fTTerm(split[i]);
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    }
+    String tsTerm = String.join("<->", split);
+    sb.append("to_tsvector('simple', f_unaccent(" + textIndex + ")) "
+      + "@@ to_tsquery('simple', f_unaccent('" + tsTerm + "'))");
+
+    if (modifiers.cqlAccents == CqlAccents.RESPECT_ACCENTS ||
+        modifiers.cqlCase == CqlCase.RESPECT_CASE) {
+      for (int i = 0; i < split.length; i++) {
+        sb.append(" AND " + wrapInLowerUnaccent(textIndex, modifiers) +
+          " LIKE '%' || " + wrapInLowerUnaccent("'" + split[i] + "'", modifiers) + " || '%'");
+      }
+    }
+
+    return new String[] { sb.toString() };
+  }
+
+  private static String [] adjRegexpOld(String textIndex, CqlModifiers modifiers, String cql) {
     String [] split = cql.trim().split("\\s+");  // split at whitespace
     if (split.length == 1 && "".equals(split[0])) {
       // The variable cql contains whitespace only. honorWhitespace is not implemented yet.
@@ -931,7 +995,7 @@ public class CQL2PgJSON {
   // refactoring the code to avoid that would make it much less
   // readable.
   })
-  private String fTTerm(String term) throws QueryValidationException {
+  private static String fTTerm(String term) throws QueryValidationException {
     StringBuilder res = new StringBuilder();
     term = term.trim();
     for (int i = 0; i < term.length(); i++) {
