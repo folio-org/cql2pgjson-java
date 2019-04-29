@@ -609,7 +609,7 @@ public class CQL2PgJSON {
     return split;
   }
 
-  private static String [] allRegexp(String textIndex, CqlModifiers modifiers, String cql) {
+  private static String [] allRegexp(String textIndex, CqlModifiers modifiers, String cql, boolean all) {
     String [] split = cql.trim().split("\\s+");  // split at whitespace
     if (split.length == 1 && ("".equals(split[0]) || "*".equals(split[0]))) {
       // The variable cql contains whitespace only. honorWhitespace is not implemented yet.
@@ -626,7 +626,7 @@ public class CQL2PgJSON {
         throw new RuntimeException(e);
       }
     }
-    String tsTerm = String.join(" & ", split);
+    String tsTerm = String.join(all ? " & " : " | ", split);
     sb.append("to_tsvector('simple', f_unaccent(" + textIndex + ")) "
         + "@@ to_tsquery('simple', f_unaccent('" + tsTerm + "'))");
 
@@ -728,17 +728,13 @@ public class CQL2PgJSON {
       return fullMatch(textIndex, modifiers, node.getTerm(), true);
     case "<>":
       return fullMatch(textIndex, modifiers, node.getTerm(), false);
-    case "all":
-      return allRegexp(textIndex, modifiers, node.getTerm());
     case "=":   // use "adj"
     case "adj":
       return adjRegexp(textIndex, modifiers, node.getTerm());
+    case "all":
+      return allRegexp(textIndex, modifiers, node.getTerm(), true);
     case "any":
-      String [] matches = allRegexp(textIndex, modifiers, node.getTerm());
-      if (matches.length == 1) {
-        return matches;
-      }
-      return new String [] { "(" + String.join(") OR (", matches) + ")" };
+      return allRegexp(textIndex, modifiers, node.getTerm(), false);
     case "<":
     case "<=":
     case ">":
