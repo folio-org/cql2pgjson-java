@@ -31,7 +31,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public static void runOnceBeforeClass() throws Exception {
     setupDatabase();
     runSqlFile("users.sql");
-    cql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email"));
+    cql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email", "email_parts"));
   }
 
   @AfterClass
@@ -165,8 +165,8 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "ong                            #",
     "jo@example.com                 # Jo Jane",
     "example                        # Jo Jane; Ka Keller; Lea Long",
-    "email=example.com              # Jo Jane; Ka Keller; Lea Long",
-    "email=\"example com\"          # Jo Jane; Ka Keller; Lea Long",
+    "email_parts=example.com              # Jo Jane; Ka Keller; Lea Long",
+    "email_parts=\"example com\"          # Jo Jane; Ka Keller; Lea Long",
     "email=\"com example\"          #",
     "email==example.com             #",
     "email<>example.com             # Jo Jane; Ka Keller; Lea Long",
@@ -191,15 +191,15 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "name all \"Lea Long\"                 # Lea Long",
     "name all \"Long Lea\"                 # Lea Long",
     "name all \"FooBar\"                   #",
-    "email all \"com example ka\"          # Ka Keller",
-    "email all \"com example\"             # Jo Jane; Ka Keller; Lea Long",
-    "email all \"ka@example.\"             # Ka Keller",
-    "email all \"@example.com\"            # Jo Jane; Ka Keller; Lea Long",
-    "email all example.com                 # Jo Jane; Ka Keller; Lea Long",
-    "email all/respectCase example.com     # Jo Jane; Ka Keller; Lea Long",
-    "email all/respectCase Example.com     #",
-    "email all/respectAccents Example.com  # Jo Jane; Ka Keller; Lea Long",
-    "email all/respectAccents Exämple.com  #",
+    "email_parts all \"com example ka\"          # Ka Keller",
+    "email_parts all \"com example\"             # Jo Jane; Ka Keller; Lea Long",
+    "email_parts all \"ka@example.\"             # Ka Keller",
+    "email_parts all \"@example.com\"            # Jo Jane; Ka Keller; Lea Long",
+    "email_parts all example.com                 # Jo Jane; Ka Keller; Lea Long",
+    "email_parts all/respectCase example.com     # Jo Jane; Ka Keller; Lea Long",
+    "email_parts all/respectCase Example.com     #",
+    "email_parts all/respectAccents Example.com  # Jo Jane; Ka Keller; Lea Long",
+    "email_parts all/respectAccents Exämple.com  #",
   })
   public void all(String testcase) {
     select(testcase);
@@ -214,14 +214,14 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "name any \"Long Lea\"                 # Lea Long",
     "name any \"Lea FooBar\"               # Lea Long",
     "name any \"FooBar Long\"              # Lea Long",
-    "email any \"com example ka\"          # Jo Jane; Ka Keller; Lea Long",
-    "email any \"com example\"             # Jo Jane; Ka Keller; Lea Long",
-    "email any \"ka@example.\"             # Ka Keller",
-    "email any \"@example.com\"            # Jo Jane; Ka Keller; Lea Long",
-    "email any/respectCase example.com     # Jo Jane; Ka Keller; Lea Long",
-    "email any/respectCase Example.com     #",
-    "email any/respectAccents Example.com  # Jo Jane; Ka Keller; Lea Long",
-    "email any/respectAccents Exämple.com  #",
+    "email_parts any \"com example ka\"          # Jo Jane; Ka Keller; Lea Long",
+    "email_parts any \"com example\"             # Jo Jane; Ka Keller; Lea Long",
+    "email_parts any \"ka@example.\"             # Ka Keller",
+    "email_parts any \"@example.com\"            # Jo Jane; Ka Keller; Lea Long",
+    "email_parts any/respectCase example.com     # Jo Jane; Ka Keller; Lea Long",
+    "email_parts any/respectCase Example.com     #",
+    "email_parts any/respectAccents Example.com  # Jo Jane; Ka Keller; Lea Long",
+    "email_parts any/respectAccents Exämple.com  #",
   })
   public void any(String testcase) {
     select(testcase);
@@ -234,19 +234,19 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "name adj Long                         # Lea Long",
     "name adj \"Lea Long\"                 # Lea Long",
     "name adj \"Long Lea\"                 #",
-    "email adj \"ka example com\"          # Ka Keller",
-    "email adj \"ka example\"              # Ka Keller",
-    "email adj \"example com\"             # Jo Jane; Ka Keller; Lea Long",
-    "email adj \"ka@example.com\"          # Ka Keller",
-    "email adj \"ka@example\"              # Ka Keller",
-    "email adj \"ka@example.\"             # Ka Keller",
-    "email adj \"example.com\"             # Jo Jane; Ka Keller; Lea Long",
-    "email adj \"@example.com\"            # Jo Jane; Ka Keller; Lea Long",
-    "email adj example.com                 # Jo Jane; Ka Keller; Lea Long",
-    "email adj/respectCase example.com     # Jo Jane; Ka Keller; Lea Long",
-    "email adj/respectCase Example.com     #",
-    "email adj/respectAccents Example.com  # Jo Jane; Ka Keller; Lea Long",
-    "email adj/respectAccents Exämple.com  #",
+    "email_parts adj \"ka example com\"          # Ka Keller",
+    "email_parts adj \"ka example\"              # Ka Keller",
+    "email_parts adj \"example com\"             # Jo Jane; Ka Keller; Lea Long",
+    "email_parts adj \"ka@example.com\"          # Ka Keller",
+    "email_parts adj \"ka@example\"              # Ka Keller",
+    "email_parts adj \"ka@example.\"             # Ka Keller",
+    "email_parts adj \"example.com\"             # Jo Jane; Ka Keller; Lea Long",
+    "email_parts adj \"@example.com\"            # Jo Jane; Ka Keller; Lea Long",
+    "email_parts adj example.com                 # Jo Jane; Ka Keller; Lea Long",
+    "email_parts adj/respectCase example.com     # Jo Jane; Ka Keller; Lea Long",
+    "email_parts adj/respectCase Example.com     #",
+    "email_parts adj/respectAccents Example.com  # Jo Jane; Ka Keller; Lea Long",
+    "email_parts adj/respectAccents Exämple.com  #",
   })
   public void adj(String testcase) {
     select(testcase);
@@ -256,19 +256,19 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Parameters({ // Can not to left trucn on names, it is fulltext
     "name=ja*                                   # Jo Jane",
     "name=lo*                                   # Lea Long",
-    "              email=a*                     # Ka Keller; Lea Long",
-    "                           address.zip=0*  # Jo Jane; Ka Keller",
-    "name=lo* and  email=a*                     # Lea Long",
-    "name=lo* or   email=a*                     # Ka Keller; Lea Long",
-    "name=ja* not  email=a*                     # Jo Jane",
-    "name=lo* and  email=a* or  address.zip=0*  # Jo Jane; Ka Keller; Lea Long",
-    "name=lo* and (email=a* or  address.zip=0*) # Lea Long",
-    "name=lo* or   email=a* and address.zip=0*  # Ka Keller",
-    "name=lo* or  (email=a* and address.zip=0*) # Ka Keller; Lea Long",
-    "name=lo* not  email=a* or  address.zip=0*  # Jo Jane; Ka Keller",
-    "name=lo* not (email=a* or  address.zip=0*) #",
-    "name=lo* or   email=a* not address.zip=0*  # Lea Long",
-    "name=lo* or  (email=a* not address.zip=0*) # Lea Long",
+    "              email_parts=ka*                     # Ka Keller",
+    "                           address.zip=2*  # Jo Jane; Lea Long",
+    "name=lo* and  email_parts=lea*                     # Lea Long",
+    "name=lo* or   email_parts=ka*                     # Ka Keller; Lea Long",
+    "name=ja* not  email_parts=ka*             # Jo Jane",
+    "name=lo* and  email_parts=e* or  address.zip=2*  # Jo Jane; Lea Long",
+    "name=lo* and (email_parts=e* or  address.zip=0*) # Lea Long",
+    "name=lo* or   email_parts=e* and address.zip=1*  # Ka Keller",
+    "name=lo* or  (email_parts=e* and address.zip=1*) # Ka Keller; Lea Long",
+    "name=lo* not  email_parts=e* or  address.zip=0*  # ",
+    "name=lo* not (email_parts=e* or  address.zip=0*) #",
+    "name=lo* or   email_parts=lea* not address.zip=0*  # Lea Long",
+    "name=lo* or  (email_parts=lea* not address.zip=0*) # Lea Long",
     "\"lea example\"                            # Lea Long",  // both matches email
     "\"long example\"                           #",  // no match because "long" from name and "example" from email
   })
@@ -293,7 +293,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "long                           # Lea Long",
     "LONG                           # Lea Long",
     "lONG                           # Lea Long",
-    "email=JO                       # Jo Jane",
+    "email_parts=JO                       # Jo Jane",
     "\"lEA LoNg\"                   # Lea Long",
     //"name == \"LEA long\"           # Lea Long",
     "name == \"Lea Long\"           # Lea Long",
@@ -305,10 +305,10 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "email=/respectCase   lea         # Lea Long",
-    "email=/respectCase   lEa         # ",
-    "email=/respectCase \"lea\"       # Lea Long",
-    "email=/respectCase \"LEA\"       #"
+    "email_parts=/respectCase   lea         # Lea Long",
+    "email_parts=/respectCase   lEa         # ",
+    "email_parts=/respectCase \"lea\"       # Lea Long",
+    "email_parts=/respectCase \"LEA\"       #"
   })
   public void caseSensitive(String testcase) {
     select(testcase);
@@ -596,7 +596,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "address.zip>=17                # g; h",
     "address.zip>=18                # h",
     "address.zip>=19                #",
-    "address.zip= 4                 # d; e; f",   // because 4 is a word in "4.0" and "4e0"
+    "address.zip= 4                 # d; f",   // full text does not match 4 to 4.0
     "address.zip==4                 # d; e; f",
     "address.zip= 4.0               # e",
     "address.zip==4.0               # d; e; f",
@@ -852,12 +852,12 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     // The commented-out tests below are from mostly basic(), as things
     // used to work, the uncommented tests are how PG sees things.
     "example                          # Jo Jane; Ka Keller; Lea Long",
-    "email=example                  # Jo Jane; Ka Keller; Lea Long",
-    "email=ka@example*              # Ka Keller",
-    "email=ka@example.*             # Ka Keller",
-    "email=example.com              # Jo Jane; Ka Keller; Lea Long",
-    "email=\"example com\"          # Jo Jane; Ka Keller; Lea Long",
-    //"email=\"example com\"            #",
+    "email_parts=example                  # Jo Jane; Ka Keller; Lea Long",
+    "email_parts=ka@example*              # Ka Keller",
+    "email_parts=ka@example.*             # Ka Keller",
+    "email_parts=example.com              # Jo Jane; Ka Keller; Lea Long",
+    "email_parts=\"example com\"          # Jo Jane; Ka Keller; Lea Long",
+    //"email_parts=\"example com\"            #",
     "email<>example.com             # Jo Jane; Ka Keller; Lea Long",
     "email==ka@example.com          # Ka Keller",
     "name == \"Lea Long\"           # Lea Long",
@@ -870,7 +870,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   public void basicFT(String testcase)
     throws IOException, FieldException, SchemaException, ServerChoiceIndexesException {
     logger.fine("basicFT: " + testcase);
-    CQL2PgJSON aCql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email"));
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email", "email_parts"));
     select(aCql2pgJson, testcase);
     logger.fine("basicFT: " + testcase + " OK ");
   }
@@ -930,10 +930,10 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "lang = [] # a",
+  //"lang = [] # a",                     // disable this till CQL-PG83 is done
     "lang == [\"en\"]               # b",
-    "lang = [\"en\"]               # b", //
-  //  "lang = [\"au\"]               # i", //
+  //"lang = [\"en\"]               # b", // disable this till CQL-PG83 is done
+  //"lang = [\"au\"]               # i", //
   //
   /*    "                     lang ==/respectAccents []     # a",
     "cql.allRecords=1 NOT lang <>/respectAccents []     # a; n",
