@@ -165,8 +165,8 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "ong                            #",
     "jo@example.com                 # Jo Jane",
     "example                        # Jo Jane; Ka Keller; Lea Long",
-    "email_parts=example.com              # Jo Jane; Ka Keller; Lea Long",
-    "email_parts=\"example com\"          # Jo Jane; Ka Keller; Lea Long",
+    "email_parts=example.com        # Jo Jane; Ka Keller; Lea Long",
+    "email_parts=\"example com\"    # Jo Jane; Ka Keller; Lea Long",
     "email=\"com example\"          #",
     "email==example.com             #",
     "email<>example.com             # Jo Jane; Ka Keller; Lea Long",
@@ -185,12 +185,12 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "name all \"\"                         # Jo Jane; Ka Keller; Lea Long",
-    "name all Lea                          # Lea Long",
-    "name all Long                         # Lea Long",
-    "name all \"Lea Long\"                 # Lea Long",
-    "name all \"Long Lea\"                 # Lea Long",
-    "name all \"FooBar\"                   #",
+    "name all \"\"                               # Jo Jane; Ka Keller; Lea Long",
+    "name all Lea                                # Lea Long",
+    "name all Long                               # Lea Long",
+    "name all \"Lea Long\"                       # Lea Long",
+    "name all \"Long Lea\"                       # Lea Long",
+    "name all \"FooBar\"                         #",
     "email_parts all \"com example ka\"          # Ka Keller",
     "email_parts all \"com example\"             # Jo Jane; Ka Keller; Lea Long",
     "email_parts all \"ka@example.\"             # Ka Keller",
@@ -207,13 +207,13 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "name any \"\"                         # Jo Jane; Ka Keller; Lea Long",
-    "name any Lea                          # Lea Long",
-    "name any Long                         # Lea Long",
-    "name any \"Lea Long\"                 # Lea Long",
-    "name any \"Long Lea\"                 # Lea Long",
-    "name any \"Lea FooBar\"               # Lea Long",
-    "name any \"FooBar Long\"              # Lea Long",
+    "name any \"\"                               # Jo Jane; Ka Keller; Lea Long",
+    "name any Lea                                # Lea Long",
+    "name any Long                               # Lea Long",
+    "name any \"Lea Long\"                       # Lea Long",
+    "name any \"Long Lea\"                       # Lea Long",
+    "name any \"Lea FooBar\"                     # Lea Long",
+    "name any \"FooBar Long\"                    # Lea Long",
     "email_parts any \"com example ka\"          # Jo Jane; Ka Keller; Lea Long",
     "email_parts any \"com example\"             # Jo Jane; Ka Keller; Lea Long",
     "email_parts any \"ka@example.\"             # Ka Keller",
@@ -229,11 +229,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "name adj \"\"                         # Jo Jane; Ka Keller; Lea Long",
-    "name adj Lea                          # Lea Long",
-    "name adj Long                         # Lea Long",
-    "name adj \"Lea Long\"                 # Lea Long",
-    "name adj \"Long Lea\"                 #",
+    "name adj \"\"                               # Jo Jane; Ka Keller; Lea Long",
+    "name adj Lea                                # Lea Long",
+    "name adj Long                               # Lea Long",
+    "name adj \"Lea Long\"                       # Lea Long",
+    "name adj \"Long Lea\"                       #",
     "email_parts adj \"ka example com\"          # Ka Keller",
     "email_parts adj \"ka example\"              # Ka Keller",
     "email_parts adj \"example com\"             # Jo Jane; Ka Keller; Lea Long",
@@ -254,23 +254,23 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({ // Can not to left trucn on names, it is fulltext
-    "name=ja*                                   # Jo Jane",
-    "name=lo*                                   # Lea Long",
+    "name=ja*                                          # Jo Jane",
+    "name=lo*                                          # Lea Long",
     "              email_parts=ka*                     # Ka Keller",
-    "                           address.zip=2*  # Jo Jane; Lea Long",
-    "name=lo* and  email_parts=lea*                     # Lea Long",
+    "                           address.zip=2*         # Jo Jane; Lea Long",
+    "name=lo* and  email_parts=lea*                    # Lea Long",
     "name=lo* or   email_parts=ka*                     # Ka Keller; Lea Long",
-    "name=ja* not  email_parts=ka*             # Jo Jane",
-    "name=lo* and  email_parts=e* or  address.zip=2*  # Jo Jane; Lea Long",
-    "name=lo* and (email_parts=e* or  address.zip=0*) # Lea Long",
-    "name=lo* or   email_parts=e* and address.zip=1*  # Ka Keller",
-    "name=lo* or  (email_parts=e* and address.zip=1*) # Ka Keller; Lea Long",
-    "name=lo* not  email_parts=e* or  address.zip=0*  # ",
-    "name=lo* not (email_parts=e* or  address.zip=0*) #",
-    "name=lo* or   email_parts=lea* not address.zip=0*  # Lea Long",
-    "name=lo* or  (email_parts=lea* not address.zip=0*) # Lea Long",
-    "\"lea example\"                            # Lea Long",  // both matches email
-    "\"long example\"                           #",  // no match because "long" from name and "example" from email
+    "name=ja* not  email_parts=ka*                     # Jo Jane",
+    "name=lo* and  email_parts=e* or  address.zip=2*   # Jo Jane; Lea Long",
+    "name=lo* and (email_parts=e* or  address.zip=0*)  # Lea Long",
+    "name=lo* or   email_parts=e* and address.zip=1*   # Ka Keller",
+    "name=lo* or  (email_parts=e* and address.zip=1*)  # Ka Keller; Lea Long",
+    "name=lo* not  email_parts=e* or  address.zip=0*   # ",
+    "name=lo* not (email_parts=e* or  address.zip=0*)  #",
+    "name=lo* or   email_parts=lea* not address.zip=0* # Lea Long",
+    "name=lo* or  (email_parts=lea* not address.zip=0*)# Lea Long",
+    "\"lea example\"                                   # Lea Long",  // both matches email
+    "\"long example\"                                  #",  // no match because "long" from name and "example" from email
   })
   public void andOrNot(String testcase) {
     select(testcase);
@@ -293,9 +293,9 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "long                           # Lea Long",
     "LONG                           # Lea Long",
     "lONG                           # Lea Long",
-    "email_parts=JO                       # Jo Jane",
+    "email_parts=JO                 # Jo Jane",
     "\"lEA LoNg\"                   # Lea Long",
-    //"name == \"LEA long\"           # Lea Long",
+    //"name == \"LEA long\"         # Lea Long",
     "name == \"Lea Long\"           # Lea Long",
     "name == \"LEA long\"           #", // == means exact match, case and everything
   })
@@ -396,9 +396,9 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "                     lang ==/respectAccents []     # a",
-    "cql.allRecords=1 NOT lang <>/respectAccents []     # a; n",
-    "lang =/respectCase/respectAccents en               # b; c; d; f; g; h; i",
+    "                     lang ==/respectAccents []                      # a",
+    "cql.allRecords=1 NOT lang <>/respectAccents []                      # a; n",
+    "lang =/respectCase/respectAccents en                                # b; c; d; f; g; h; i",
 
     // note that \"en\" also matches case f ["\"en"]
     "                     lang =/respectCase/respectAccents \\\"en\\\"   # b; f; i",  // without Java quoting: \"en\"
@@ -846,18 +846,18 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     // truncate the rest)
     //
     // These tests work the same way as before:
-    "jo@example.com                   # Jo Jane", // complete email works
-    "email=\"com example\"            #",
-    "email==example.com               #",
+    "jo@example.com                 # Jo Jane", // complete email works
+    "email=\"com example\"          #",
+    "email==example.com             #",
     // The commented-out tests below are from mostly basic(), as things
     // used to work, the uncommented tests are how PG sees things.
-    "example                          # Jo Jane; Ka Keller; Lea Long",
-    "email_parts=example                  # Jo Jane; Ka Keller; Lea Long",
-    "email_parts=ka@example*              # Ka Keller",
-    "email_parts=ka@example.*             # Ka Keller",
-    "email_parts=example.com              # Jo Jane; Ka Keller; Lea Long",
-    "email_parts=\"example com\"          # Jo Jane; Ka Keller; Lea Long",
-    //"email_parts=\"example com\"            #",
+    "example                        # Jo Jane; Ka Keller; Lea Long",
+    "email_parts=example            # Jo Jane; Ka Keller; Lea Long",
+    "email_parts=ka@example*        # Ka Keller",
+    "email_parts=ka@example.*       # Ka Keller",
+    "email_parts=example.com        # Jo Jane; Ka Keller; Lea Long",
+    "email_parts=\"example com\"    # Jo Jane; Ka Keller; Lea Long",
+    //"email_parts=\"example com\"  #",
     "email<>example.com             # Jo Jane; Ka Keller; Lea Long",
     "email==ka@example.com          # Ka Keller",
     "name == \"Lea Long\"           # Lea Long",
@@ -931,7 +931,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Test
   @Parameters({
   //"lang = [] # a",                     // disable this till CQL-PG83 is done
-    "lang == [\"en\"]               # b",
+    "lang == [\"en\"]              # b",
   //"lang = [\"en\"]               # b", // disable this till CQL-PG83 is done
   //"lang = [\"au\"]               # i", //
   //
