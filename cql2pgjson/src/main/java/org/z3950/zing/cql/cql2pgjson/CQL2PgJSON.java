@@ -90,7 +90,6 @@ public class CQL2PgJSON {
   }
 
   private static class IndexTextAndJsonValues {
-    String indexPure;
     String indexText;
     String indexJson;
     /** the RAML type like integer, number, string, boolean, datetime, ... "" for unknown. */
@@ -492,7 +491,7 @@ public class CQL2PgJSON {
       }
 
       // We assume that a CREATE INDEX for this has been installed.
-      order.append(vals.indexText).append(desc);
+      order.append(wrapInLowerUnaccent(vals.indexText)).append(desc);
     }
     return new SqlSelect(where, order.toString());
   }
@@ -769,7 +768,6 @@ public class CQL2PgJSON {
       finalIndex = field.getPath();
       vals.type = field.getType();
     }
-    vals.indexPure = finalIndex;
     vals.indexJson = index2sqlJson(this.jsonField, finalIndex);
     vals.indexText = index2sqlText(this.jsonField, finalIndex);
     return vals;
