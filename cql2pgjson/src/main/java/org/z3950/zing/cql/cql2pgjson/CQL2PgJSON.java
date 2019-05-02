@@ -474,7 +474,16 @@ public class CQL2PgJSON {
       }  // ASC not needed, it's Postgres' default
 
       IndexTextAndJsonValues vals = getIndexTextAndJsonValues(modifierSet.getBase());
-
+      //determine if sort is primary key 
+      String pkColumnName = dbTable.optString("pkColumnName", /* default = */ "id");
+      String pkColumnComparator = pkColumnName;
+      if(pkColumnComparator.equals( "_id")) {
+        pkColumnComparator = "id";
+      }
+      if(pkColumnComparator.equals( modifierSet.getBase())) {
+        //if it is we short circuit the json and just use the pkColumnName 
+        vals.indexJson = pkColumnName;
+      }
       // if number sort is specified explicitly
       if (modifiers.cqlSortType == CqlSortType.NUMBER) {
         order.append(vals.indexJson).append(desc);

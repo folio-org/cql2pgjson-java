@@ -556,6 +556,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Test
   @Parameters({
     "example   sortBy name                           # Jo Jane; Ka Keller; Lea Long",
+    "example   sortBy id                           # Jo Jane; Ka Keller; Lea Long",
     "example   sortBy name/sort.ascending            # Jo Jane; Ka Keller; Lea Long",
     "example   sortBy name/sort.ascending/sort.text  # Jo Jane; Ka Keller; Lea Long",
     "example   sortBy name/sort.descending           # Lea Long; Ka Keller; Jo Jane",
