@@ -472,18 +472,22 @@ public class CQL2PgJSON {
       if (modifiers.cqlSort == CqlSort.DESCENDING) {
         desc = " DESC";
       }  // ASC not needed, it's Postgres' default
-
+      
       IndexTextAndJsonValues vals = getIndexTextAndJsonValues(modifierSet.getBase());
+      String sortbyClause  = wrapInLowerUnaccent(vals.indexText);
       //determine if sort is primary key 
       if(dbTable != null) {
         String pkColumnName = dbTable.optString("pkColumnName", /* default = */ "id");
         String pkColumnComparator = pkColumnName;
+        
         if(pkColumnComparator.equals( "_id")) {
           pkColumnComparator = "id";
         }
         if(pkColumnComparator.equals( modifierSet.getBase())) {
           //if it is we short circuit the json and just use the pkColumnName 
-          vals.indexJson = pkColumnName;
+          sortbyClause =  pkColumnName;
+        } else {
+          
         }
       }
       // if number sort is specified explicitly
@@ -502,7 +506,7 @@ public class CQL2PgJSON {
       }
 
       // We assume that a CREATE INDEX for this has been installed.
-      order.append(wrapInLowerUnaccent(vals.indexText)).append(desc);
+      order.append(sortbyClause).append(desc);
     }
     return new SqlSelect(where, order.toString());
   }
