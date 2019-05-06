@@ -764,22 +764,25 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "id=\"22222222*\",                           (_id>='22222222-0000-0000-0000-000000000000' and "
                                                + "_id<='22222222-ffff-ffff-ffff-ffffffffffff')",
   })
-  public void pKeySql(String cql, String expectedSql) throws QueryValidationException {
+  public void pkColumnSql(String cql, String expectedSql) throws QueryValidationException {
     assertEquals(expectedSql, cql2pgJson.toSql(cql).getWhere());
     assertEquals(expectedSql, cql2pgJson.toSql(cql.replace("=", "==")).getWhere());
   }
 
   @Test
   @Parameters({
-    "id=\"11111111-1111-1111-1111-111111111111\", WHERE _id='11111111-1111-1111-1111-111111111111'",
-    "cql.allRecords=1 sortBy id                 , WHERE true ORDER BY _id                         ",
+    "id=\"11111111-1111-1111-1111-111111111111\", WHERE pk='11111111-1111-1111-1111-111111111111'",
+    "cql.allRecords=1 sortBy id                 , WHERE true ORDER BY pk                         ",
+    "cql.allRecords=1 sortBy id/sort.number     , WHERE true ORDER BY pk                         ",
+    "cql.allRecords=1 sortBy id/sort.descending , WHERE true ORDER BY pk DESC                    ",
   })
-  public void pKeyDefault(String cql, String expectedSql) throws CQL2PgJSONException {
+  public void pkColumnName(String cql, String expectedSql) throws CQL2PgJSONException {
     CQL2PgJSON c = new CQL2PgJSON("users.user_data");
+    c.dbTable.put("pkColumnName", "pk");
     assertEquals(expectedSql, c.toSql(cql).toString());
     c.dbTable.remove("pkColumnName");
     // default pkColumnName is id without underscore
-    String expectedSqlDefault = expectedSql.replace("_", "");
+    String expectedSqlDefault = expectedSql.replace("pk", "id");
     assertEquals(expectedSqlDefault, c.toSql(cql).toString());
   }
 
