@@ -474,31 +474,37 @@ public class CQL2PgJSON {
       }  // ASC not needed, it's Postgres' default
       IndexTextAndJsonValues vals = getIndexTextAndJsonValues(modifierSet.getBase());
       //prepare sort by clause as if the sort by is not the primary key
-      String sortbyClause  = wrapInLowerUnaccent(vals.indexText);
+      String sortbyClauseText  = wrapInLowerUnaccent(vals.indexText);
+      String sortByClauseIndex = vals.indexJson;
       //determine if sort is primary key 
       if(dbTable != null) {
         String pkColumnName = getPkColumnName();
         String pkColumnComparator = pkColumnName;
+        String actualModifierBase = modifierSet.getBase();
         //_id is actually referred to as id by cql so we need to check for the known cql value
         if(pkColumnComparator.equals( "_id")) {
           pkColumnComparator = "id";
         }
-        if(pkColumnComparator.equals( modifierSet.getBase())) {
+        if(actualModifierBase.equals("id")) {
+          actualModifierBase = pkColumnName;
+        }
+        if(pkColumnComparator.equals(actualModifierBase)) {
           //if it is we short circuit the json version of the column and just use the pkColumnName 
-          sortbyClause =  pkColumnName;
+          sortbyClauseText =  pkColumnName;
+          sortByClauseIndex = pkColumnName;
         } else {
           
         }
       }
       // if number sort is specified explicitly
       if (modifiers.cqlSortType == CqlSortType.NUMBER) {
-        order.append(vals.indexJson).append(desc);
+        order.append(sortByClauseIndex).append(desc);
         continue;
       } else {
         switch (vals.type) {
         case "number":
         case "integer":
-          order.append(vals.indexJson).append(desc);
+          order.append(sortByClauseIndex).append(desc);
           continue;
         default:
           break;
@@ -506,7 +512,7 @@ public class CQL2PgJSON {
       }
 
       // We assume that a CREATE INDEX for this has been installed.
-      order.append(sortbyClause).append(desc);
+      order.append(sortbyClauseText).append(desc);
     }
     return new SqlSelect(where, order.toString());
   }
