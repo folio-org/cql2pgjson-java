@@ -472,19 +472,19 @@ public class CQL2PgJSON {
       if (modifiers.cqlSort == CqlSort.DESCENDING) {
         desc = " DESC";
       }  // ASC not needed, it's Postgres' default
-      
       IndexTextAndJsonValues vals = getIndexTextAndJsonValues(modifierSet.getBase());
+      //prepare sort by clause as if the sort by is not the primary key
       String sortbyClause  = wrapInLowerUnaccent(vals.indexText);
       //determine if sort is primary key 
       if(dbTable != null) {
-        String pkColumnName = dbTable.optString("pkColumnName", /* default = */ "id");
+        String pkColumnName = getPkColumnName();
         String pkColumnComparator = pkColumnName;
-        
+        //_id is actually referred to as id by cql so we need to check for the known cql value
         if(pkColumnComparator.equals( "_id")) {
           pkColumnComparator = "id";
         }
         if(pkColumnComparator.equals( modifierSet.getBase())) {
-          //if it is we short circuit the json and just use the pkColumnName 
+          //if it is we short circuit the json version of the column and just use the pkColumnName 
           sortbyClause =  pkColumnName;
         } else {
           
@@ -509,6 +509,11 @@ public class CQL2PgJSON {
       order.append(sortbyClause).append(desc);
     }
     return new SqlSelect(where, order.toString());
+  }
+
+  private String getPkColumnName() {
+    String pkColumnName = dbTable.optString("pkColumnName", /* default = */ "id");
+    return pkColumnName;
   }
 
   private static String sqlOperator(CQLBooleanNode node) throws CQLFeatureUnsupportedException {
@@ -1001,7 +1006,7 @@ public class CQL2PgJSON {
    */
   private String pgId(CQLTermNode node) throws QueryValidationException {
     final String uuidPattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
-    String pkColumnName = dbTable.optString("pkColumnName", /* default = */ "id");
+    String pkColumnName = getPkColumnName();
     String comparator = StringUtils.defaultString(node.getRelation().getBase());
     if (!node.getRelation().getModifiers().isEmpty()) {
       throw new QueryValidationException("CQL: Unsupported modifier "
