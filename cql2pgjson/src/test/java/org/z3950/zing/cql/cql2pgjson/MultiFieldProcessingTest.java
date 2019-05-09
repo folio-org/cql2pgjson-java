@@ -6,6 +6,9 @@ import static org.junit.Assert.assertThat;
 
 import java.util.Arrays;
 
+import org.folio.cql2pgjson.exception.FieldException;
+import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.folio.cql2pgjson.exception.ServerChoiceIndexesException;
 import org.junit.Test;
 
 public class MultiFieldProcessingTest {
@@ -21,15 +24,15 @@ public class MultiFieldProcessingTest {
   }
 
   @Test
-  public void testApplicationOfFieldNamesWithoutSchema() throws FieldException, QueryValidationException {
+  public void testApplicationOfFieldNames() throws FieldException, QueryValidationException {
     CQL2PgJSON converter = new CQL2PgJSON( Arrays.asList("field1","field2") );
     assertThat(converter.cql2pgJson("field1.name=v"),
         allOf(containsString("to_tsvector"),
             containsString("field1->>'name'")));
-    assertThat(converter.cql2pgJson("field2.name=/respectCase v"),
+    assertThat(converter.cql2pgJson("field2.name=v"),
         allOf(containsString("to_tsvector"),
             containsString("field2->>'name'")));
-    assertThat(converter.cql2pgJson("name=/respectAccents v"),
+    assertThat(converter.cql2pgJson("name=v"),
         allOf(containsString("to_tsvector"),
             containsString("field1->>'name'")));
   }
@@ -56,8 +59,8 @@ public class MultiFieldProcessingTest {
   public void testMixedFieldQuery() throws FieldException, QueryValidationException {
     CQL2PgJSON converter = new CQL2PgJSON( Arrays.asList("field1","field2") );
     assertThat(converter.cql2pgJson(
-            "name =/respectCase/respectAccents Smith"
-                + " AND email =/respectAccents gmail.com"
+            "name=Smith"
+                + " AND email=gmail.com"
                 + " sortBy field2.name/sort.ascending"),
         allOf(containsString("to_tsvector"),
             containsString("field1->>'name'"),

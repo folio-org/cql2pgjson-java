@@ -14,6 +14,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.logging.Logger;
 
+import org.folio.cql2pgjson.exception.CQL2PgJSONException;
+import org.folio.cql2pgjson.exception.CQLFeatureUnsupportedException;
+import org.folio.cql2pgjson.exception.FieldException;
+import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.folio.cql2pgjson.exception.SchemaException;
+import org.folio.cql2pgjson.exception.ServerChoiceIndexesException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -196,10 +202,6 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "email_parts all \"ka@example.\"             # Ka Keller",
     "email_parts all \"@example.com\"            # Jo Jane; Ka Keller; Lea Long",
     "email_parts all example.com                 # Jo Jane; Ka Keller; Lea Long",
-    "email_parts all/respectCase example.com     # Jo Jane; Ka Keller; Lea Long",
-    "email_parts all/respectCase Example.com     #",
-    "email_parts all/respectAccents Example.com  # Jo Jane; Ka Keller; Lea Long",
-    "email_parts all/respectAccents Exämple.com  #",
   })
   public void all(String testcase) {
     select(testcase);
@@ -218,10 +220,6 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "email_parts any \"com example\"             # Jo Jane; Ka Keller; Lea Long",
     "email_parts any \"ka@example.\"             # Ka Keller",
     "email_parts any \"@example.com\"            # Jo Jane; Ka Keller; Lea Long",
-    "email_parts any/respectCase example.com     # Jo Jane; Ka Keller; Lea Long",
-    "email_parts any/respectCase Example.com     #",
-    "email_parts any/respectAccents Example.com  # Jo Jane; Ka Keller; Lea Long",
-    "email_parts any/respectAccents Exämple.com  #",
   })
   public void any(String testcase) {
     select(testcase);
@@ -243,10 +241,6 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "email_parts adj \"example.com\"             # Jo Jane; Ka Keller; Lea Long",
     "email_parts adj \"@example.com\"            # Jo Jane; Ka Keller; Lea Long",
     "email_parts adj example.com                 # Jo Jane; Ka Keller; Lea Long",
-    "email_parts adj/respectCase example.com     # Jo Jane; Ka Keller; Lea Long",
-    "email_parts adj/respectCase Example.com     #",
-    "email_parts adj/respectAccents Example.com  # Jo Jane; Ka Keller; Lea Long",
-    "email_parts adj/respectAccents Exämple.com  #",
   })
   public void adj(String testcase) {
     select(testcase);
@@ -297,20 +291,9 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "\"lEA LoNg\"                   # Lea Long",
     //"name == \"LEA long\"         # Lea Long",
     "name == \"Lea Long\"           # Lea Long",
-    "name == \"LEA long\"           #", // == means exact match, case and everything
+    "name ==/respectCase \"LEA long\"           #", // == means exact match, case and everything
   })
   public void caseInsensitive(String testcase) {
-    select(testcase);
-  }
-
-  @Test
-  @Parameters({
-    "email_parts=/respectCase   lea         # Lea Long",
-    "email_parts=/respectCase   lEa         # ",
-    "email_parts=/respectCase \"lea\"       # Lea Long",
-    "email_parts=/respectCase \"LEA\"       #"
-  })
-  public void caseSensitive(String testcase) {
     select(testcase);
   }
 
@@ -398,12 +381,12 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Parameters({
     "                     lang ==/respectAccents []                      # a",
     "cql.allRecords=1 NOT lang <>/respectAccents []                      # a; n",
-    "lang =/respectCase/respectAccents en                                # b; c; d; f; g; h; i",
+    "lang = en                                # b; c; d; f; g; h; i",
 
     // note that \"en\" also matches case f ["\"en"]
-    "                     lang =/respectCase/respectAccents \\\"en\\\"   # b; f; i",  // without Java quoting: \"en\"
-    "cql.allRecords=1 NOT lang =/respectCase/respectAccents \\\"en\\\"   # a; c; d; e; g; h; n",
-    "lang = \"\"      NOT lang =/respectCase/respectAccents \\\"en\\\"   # a; c; d; e; g; h",
+    "                     lang = \\\"en\\\"   # b; c; d; f; g; h; i",  // without Java quoting: \"en\"
+    "cql.allRecords=1 NOT lang = \\\"en\\\"   # a; e; n",
+    "lang = \"\"      NOT lang = \\\"en\\\"   # a; e",
     "lang = \"\"                                                         # a; b; c; d; e; f; g; h; i",
     "cql.allRecords=1 NOT lang = \"\"                                    # n",
   })
@@ -558,15 +541,15 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Parameters({
     "example   sortBy name                           # Jo Jane; Ka Keller; Lea Long",
     "example   sortBy name/sort.ascending            # Jo Jane; Ka Keller; Lea Long",
-    "example   sortBy name/sort.ascending/sort.text  # Jo Jane; Ka Keller; Lea Long",
+    "example   sortBy name/sort.ascending            # Jo Jane; Ka Keller; Lea Long",
     "example   sortBy name/sort.descending           # Lea Long; Ka Keller; Jo Jane",
-    "example   sortBy name/sort.descending/sort.text # Lea Long; Ka Keller; Jo Jane",
+    "example   sortBy name/sort.descending           # Lea Long; Ka Keller; Jo Jane",
     "example   sortBy address.zip                    # Ka Keller; Jo Jane; Lea Long",
     "name=\"\" sortBy name                           # Jo Jane; Ka Keller; Lea Long",
     "name=\"\" sortBy name/sort.ascending            # Jo Jane; Ka Keller; Lea Long",
-    "name=\"\" sortBy name/sort.ascending/sort.text  # Jo Jane; Ka Keller; Lea Long",
+    "name=\"\" sortBy name/sort.ascending            # Jo Jane; Ka Keller; Lea Long",
     "name=\"\" sortBy name/sort.descending           # Lea Long; Ka Keller; Jo Jane",
-    "name=\"\" sortBy name/sort.descending/sort.text # Lea Long; Ka Keller; Jo Jane",
+    "name=\"\" sortBy name/sort.descending           # Lea Long; Ka Keller; Jo Jane",
     "name=\"\" sortBy address.zip                    # Ka Keller; Jo Jane; Lea Long"
   })
   public void sort(String testcase) {
@@ -575,8 +558,8 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "cql.allRecords=1 sortBy address.zip/sort.ascending/sort.number  name # a; b; c; d; e; f; g; h",
-    "cql.allRecords=1 sortBy address.zip/sort.descending/sort.number name # h; g; d; e; f; c; b; a",
+    "cql.allRecords=1 sortBy address.zip/sort.ascending/number  name # a; b; c; d; e; f; g; h",
+    "cql.allRecords=1 sortBy address.zip/sort.descending/number name # h; g; d; e; f; c; b; a",
   })
   public void sortNumber(String testcase) {
     select("special.sql", testcase);
@@ -584,27 +567,27 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "address.zip<1                  #",
-    "address.zip<2                  # a",
-    "address.zip<3                  # a; b",
-    "address.zip<=0                 #",
-    "address.zip<=1                 # a",
-    "address.zip<=2                 # a; b",
-    "address.zip>16                 # g; h",
-    "address.zip>17                 # h",
-    "address.zip>18                 #",
-    "address.zip>=17                # g; h",
-    "address.zip>=18                # h",
-    "address.zip>=19                #",
-    "address.zip= 4                 # d; f",   // full text does not match 4 to 4.0
-    "address.zip==4                 # d; e; f",
-    "address.zip= 4.0               # e",
-    "address.zip==4.0               # d; e; f",
-    "address.zip= 4e0               #",           // 4e0 is stored as 4, so it cannot match
-    "address.zip==4e0               # d; e; f",
-    "address.zip<>4                 # a; b; c; g; h",
-    "address.zip<>4.0               # a; b; c; g; h",
-    "address.zip<>4e0               # a; b; c; g; h",
+    "address.zip</number 1                  #",
+    "address.zip</number 2                  # a",
+    "address.zip</number 3                  # a; b",
+    "address.zip<=/number 0                 #",
+    "address.zip<=/number 1                 # a",
+    "address.zip<=/number 2                 # a; b",
+    "address.zip>/number 16                 # g; h",
+    "address.zip>/number 17                 # h",
+    "address.zip>/number 18                 #",
+    "address.zip>=/number 17                # g; h",
+    "address.zip>=/number 18                # h",
+    "address.zip>=/number 19                #",
+    "address.zip=/number 4                  # d; e; f",
+    "address.zip==/number 4                 # d; e; f",
+    "address.zip=/number 4.0                # d; e; f",
+    "address.zip==/number 4.0               # d; e; f",
+    "address.zip=/number 4e0                # d; e; f",
+    "address.zip==/number 4e0               # d; e; f",
+    "address.zip<>/number 4                 # a; b; c; g; h",
+    "address.zip<>/number 4.0               # a; b; c; g; h",
+    "address.zip<>/number 4e0               # a; b; c; g; h",
   })
   public void compareNumber(String testcase) throws CQL2PgJSONException {
     select("special.sql", testcase);
@@ -902,30 +885,6 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email"));
     select(aCql2pgJson, testcase);
     logger.fine("allFT: " + testcase + " OK ");
-  }
-
-
-  @Test
-  @Parameters({
-    /*
-    "foobar=x                              #",
-    "email all/respectCase example.com     # Jo Jane; Ka Keller; Lea Long",
-    "email all/respectCase Example.com     #",
-    "email all/respectAccents Example.com  # Jo Jane; Ka Keller; Lea Long",
-    "email all/respectAccents Exämple.com  #",
-    "name=Long                             # Lea Long",
-     */
-    "name=/RESpectCasE Long                # Unsupported modifier respectcase",
-    "name=/ignoreCase Long                 # Unsupported modifier ignorecase",
-    "name=/respectAccents Long             # Unsupported modifier respectaccents",
-    "name=/ignoreAccents Long              # Unsupported modifier ignoreaccents"
-  })
-  public void unsupportedFT(String testcase) throws IOException, CQL2PgJSONException {
-    logger.fine("unsupportedFT():" + testcase);
-    CQL2PgJSON aCql2pgJson = new CQL2PgJSON(
-      "users.user_data", Arrays.asList("name"));
-    select(aCql2pgJson, testcase);
-    logger.fine("unsupportedFT(): " + testcase + " OK");
   }
 
   @Test

@@ -11,11 +11,6 @@
           "tOps": "ADD",
           "caseSensitive": false,
           "removeAccents": true
-        }, {
-          "fieldName": "email",
-          "tOps": "ADD",
-          "caseSensitive": false,
-          "removeAccents": true
         }
       ],
       "fullTextIndex": [

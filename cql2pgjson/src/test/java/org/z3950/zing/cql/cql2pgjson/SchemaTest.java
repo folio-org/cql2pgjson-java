@@ -7,6 +7,8 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.*;
 import java.io.IOException;
 
+import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.folio.cql2pgjson.exception.SchemaException;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;

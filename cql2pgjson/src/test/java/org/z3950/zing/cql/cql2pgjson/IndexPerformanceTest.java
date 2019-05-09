@@ -4,6 +4,7 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 
+import org.folio.cql2pgjson.exception.CQL2PgJSONException;
 import org.junit.AfterClass;
 import org.junit.Assume;
 import org.junit.BeforeClass;

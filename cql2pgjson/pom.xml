@@ -14,10 +14,17 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <raml-module-builder.version>24.0.0</raml-module-builder.version>
     <argLine />
   </properties>
 
   <repositories>
+    <repository>
+      <id>folio-nexus</id>
+      <name>FOLIO Maven repository</name>
+      <url>https://repository.folio.org/repository/maven-folio</url>
+    </repository>
+
     <repository>
       <id>indexdata</id>
       <name>Index Data</name>
@@ -26,6 +33,12 @@
   </repositories>
 
   <dependencies>
+
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>domain-models-runtime</artifactId>
+      <version>${raml-module-builder.version}</version>
+    </dependency>
 
     <dependency>
       <groupId>org.apache.commons</groupId>

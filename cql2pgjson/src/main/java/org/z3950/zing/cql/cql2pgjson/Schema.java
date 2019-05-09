@@ -11,6 +11,10 @@ import java.net.URL;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.logging.Logger;
+
+import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.folio.cql2pgjson.exception.SchemaException;
+
 import java.util.logging.Level;
 
 /**

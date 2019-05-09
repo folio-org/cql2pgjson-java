@@ -13,11 +13,11 @@ import java.util.logging.Logger;
 
 import org.apache.commons.cli.*;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.cql2pgjson.exception.FieldException;
+import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.folio.cql2pgjson.exception.SchemaException;
 import org.json.JSONException;
 import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
-import org.z3950.zing.cql.cql2pgjson.FieldException;
-import org.z3950.zing.cql.cql2pgjson.QueryValidationException;
-import org.z3950.zing.cql.cql2pgjson.SchemaException;
 import org.z3950.zing.cql.cql2pgjson.SqlSelect;
 import org.json.JSONObject;
 
