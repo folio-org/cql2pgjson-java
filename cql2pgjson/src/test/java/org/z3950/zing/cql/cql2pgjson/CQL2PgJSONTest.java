@@ -18,7 +18,6 @@ import org.folio.cql2pgjson.exception.CQL2PgJSONException;
 import org.folio.cql2pgjson.exception.CQLFeatureUnsupportedException;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
-import org.folio.cql2pgjson.exception.SchemaException;
 import org.folio.cql2pgjson.exception.ServerChoiceIndexesException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;

@@ -19,7 +19,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.cql2pgjson.exception.CQLFeatureUnsupportedException;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
-import org.folio.cql2pgjson.exception.SchemaException;
 import org.folio.cql2pgjson.exception.ServerChoiceIndexesException;
 import org.folio.cql2pgjson.model.CqlAccents;
 import org.folio.cql2pgjson.model.CqlCase;
@@ -30,6 +29,7 @@ import org.folio.cql2pgjson.model.CqlTermFormat;
 import org.folio.cql2pgjson.model.DbIndex;
 import org.folio.cql2pgjson.model.IndexTextAndJsonValues;
 import org.folio.cql2pgjson.util.DbSchemaUtils;
+import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.tools.utils.ObjectMapperTool;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -64,15 +64,14 @@ public class CQL2PgJSON {
    */
   private static Logger logger = Logger.getLogger(CQL2PgJSON.class.getName());
 
-  // leverage RMB and consider to merge cql2pgjson into RMB
-  private org.folio.rest.persist.ddlgen.Schema dbSchemaObject;
-
   private String jsonField = null;
   private List<String> jsonFields = null;
-  /** Local data model of JSON schema */
-  private Schema schema; // for now keep this due to subQuery1FT and subQuery2FT
+
   JSONObject dbSchema; // The whole schema.json, with all tables etc
   JSONObject dbTable; // Our primary table inside the dbSchema
+
+  // leverage RMB and consider to merge cql2pgjson into RMB
+  private Schema dbSchemaObject;
 
   /**
    * Default index names to be used for cql.serverChoice.
@@ -1218,7 +1217,6 @@ public class CQL2PgJSON {
       // This is nasty. Make a new constructor that takes the dbSchema as a JsonObject,
       // so we don't need to convert back and forth! Also, get the .jsonb right!
       CQL2PgJSON c = new CQL2PgJSON(fkTable + ".jsonb");
-      c.schema = new Schema(dbSchema.toString());
       String term = node.getTerm();
       if (term.isEmpty()) {
         term = "\"\"";
@@ -1231,7 +1229,7 @@ public class CQL2PgJSON {
       return fld + " in ( SELECT jsonb->>'id' from " + fkTable
         + " WHERE " + subSql + " )";
       //System.out.println("CQL2PgJSON.subQuery1FT() sql: " + sql)
-    } catch (IOException | FieldException | QueryValidationException | SchemaException e) {
+    } catch (FieldException | QueryValidationException e) {
       // We should not get these exceptions, as we construct a valid query above,
       // using a valid schema.
       logger.log(Level.SEVERE, "subQuery1FT() Caught an exception", e);
@@ -1283,7 +1281,6 @@ public class CQL2PgJSON {
       // This is nasty. Make a new constructor that takes the dbSchema as a JsonObject,
       // so we don't need to convert back and forth! Also, get the .jsonb right!
       CQL2PgJSON c = new CQL2PgJSON(idxParts[0] + ".jsonb");
-      c.schema = new Schema(dbSchema.toString());
       String term = node.getTerm();
       // We may need to be more specific about quoting! Even better, do not pass as string
       if (term.isEmpty()) {
@@ -1297,7 +1294,7 @@ public class CQL2PgJSON {
       return " jsonb->>'id' in ( SELECT " + fld + " from " + idxParts[0]
         + " WHERE " + subSql + " )";
       //System.out.println("CQL2PgJSON.subQueryFT() sql: " + sql)
-    } catch (IOException | FieldException | QueryValidationException | SchemaException e) {
+    } catch (FieldException | QueryValidationException e) {
       // We should not get these exceptions, as we construct a valid query above,
       // using a valid schema.
       logger.log(Level.SEVERE, "subQueryFT() Caught an exception{0}", e);

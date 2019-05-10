@@ -8,7 +8,6 @@ import java.util.logging.Logger;
 import org.apache.commons.cli.ParseException;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
-import org.folio.cql2pgjson.exception.SchemaException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -54,7 +53,7 @@ public class TestCLI {
 
   @Test
   public void testCLIWithNoSchemaOrDBSchema() throws FieldException, IOException,
-      SchemaException, QueryValidationException, ParseException {
+      QueryValidationException, ParseException {
     String cql = "holdingsRecords.permanentLocationId=\"fcd64ce1-6995-48f0-840e-89ffa2\"";
     String[] args = new String[] {"-t", "instance", "-f", "jsonb", cql };
     String fullFieldName = "instance.jsonb";
@@ -68,7 +67,7 @@ public class TestCLI {
   }
 
   @Test
-  public void testCLIWithDBSchema() throws FieldException, IOException, SchemaException,
+  public void testCLIWithDBSchema() throws FieldException, IOException,
       ParseException, QueryValidationException {
     String cql = "hrid=\"fcd64ce1-6995-48f0-840e-89ffa2\"";
     String[] args = new String[] {"-t", "instance", "-f", "jsonb", "-b", dbSchemaPath, cql };

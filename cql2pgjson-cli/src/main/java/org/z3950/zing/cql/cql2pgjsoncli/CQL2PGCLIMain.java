@@ -15,7 +15,6 @@ import org.apache.commons.cli.*;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
-import org.folio.cql2pgjson.exception.SchemaException;
 import org.json.JSONException;
 import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 import org.z3950.zing.cql.cql2pgjson.SqlSelect;
@@ -39,7 +38,7 @@ public class CQL2PGCLIMain {
   }
 
   static String handleOptions(String[] args) throws
-      FieldException, SchemaException, IOException, QueryValidationException,
+      FieldException, IOException, QueryValidationException,
       ParseException {
     Options options = new Options();
 
@@ -88,7 +87,7 @@ public class CQL2PGCLIMain {
   }
 
   static protected String parseCQL(CQL2PgJSON cql2pgJson, String dbName, String cql) throws IOException,
-      FieldException, SchemaException, QueryValidationException {
+      FieldException, QueryValidationException {
     SqlSelect sql = cql2pgJson.toSql(cql);
     String orderby = sql.getOrderBy();
     logger.log(Level.FINE, String.format("orderby for cql query '%s' is '%s'", cql, orderby));
