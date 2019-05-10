@@ -406,15 +406,6 @@ public class CQL2PgJSON {
       if (modifiers.cqlTermFormat == CqlTermFormat.NUMBER) {
         order.append(vals.indexJson).append(desc);
         continue;
-      } else {
-        switch (vals.type) {
-        case "number":
-        case "integer":
-          order.append(vals.indexJson).append(desc);
-          continue;
-        default:
-          break;
-        }
       }
 
       // We assume that a CREATE INDEX for this has been installed.
@@ -651,14 +642,8 @@ public class CQL2PgJSON {
       return multiFieldProcessing(index);
     }
     IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-    String finalIndex = index;
-    if (schema != null) {
-      Schema.Field field = schema.mapFieldNameAgainstSchema(index);
-      finalIndex = field.getPath();
-      vals.type = field.getType();
-    }
-    vals.indexJson = index2sqlJson(this.jsonField, finalIndex);
-    vals.indexText = index2sqlText(this.jsonField, finalIndex);
+    vals.indexJson = index2sqlJson(this.jsonField, index);
+    vals.indexText = index2sqlText(this.jsonField, index);
     return vals;
   }
 
@@ -869,7 +854,7 @@ public class CQL2PgJSON {
 
     IndexTextAndJsonValues vals = getIndexTextAndJsonValues(index);
 
-    if (vals.type.equals("") && jsonMatch != null && isNumberComparator(node)) {
+    if (jsonMatch != null && isNumberComparator(node)) {
       // numberMatch: Both sides of the comparison operator are JSONB expressions.
 
       // When comparing two JSONBs a JSONB containing any string is bigger than
@@ -894,11 +879,6 @@ public class CQL2PgJSON {
       }
       append(s, "))");
       return s.toString();
-    }
-
-    if (jsonMatch != null &&
-        ("integer".equals(vals.type) || "number".equals(vals.type))) {
-        return vals.indexJson + numberMatch(jsonMatch);
     }
 
     String [] matches = match(vals.indexText, node);
