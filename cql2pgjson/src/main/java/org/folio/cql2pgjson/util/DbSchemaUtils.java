@@ -25,17 +25,21 @@ public class DbSchemaUtils {
     DbIndex dbIndexStatus = new DbIndex();
 
     String fieldName = CqlUtils.getFieldNameFromIndexJson(indexJson);
-    String indexName = CqlUtils.getIndexNameFromIndexJson(indexJson);
     String tableName = CqlUtils.getTableNameFromCqlField(fieldName);
-    for (Table table : schema.getTables()) {
-      if (table.getTableName().equalsIgnoreCase(tableName)) {
-        dbIndexStatus.ft = checkDbIndex(indexName, table.getFullTextIndex());
-        dbIndexStatus.gin = checkDbIndex(indexName, table.getGinIndex());
-        for (List<Index> index : Arrays.asList(table.getIndex(), table.getUniqueIndex(),
-            table.getLikeIndex())) {
-          dbIndexStatus.other = checkDbIndex(indexName, index);
-          if (dbIndexStatus.other) {
-            break;
+
+    String indexName = CqlUtils.getIndexNameFromIndexJson(indexJson);
+
+    if (schema.getTables() != null && !schema.getTables().isEmpty()) {
+      for (Table table : schema.getTables()) {
+        if (table.getTableName().equalsIgnoreCase(tableName)) {
+          dbIndexStatus.ft = checkDbIndex(indexName, table.getFullTextIndex());
+          dbIndexStatus.gin = checkDbIndex(indexName, table.getGinIndex());
+          for (List<Index> index : Arrays.asList(table.getIndex(),
+              table.getUniqueIndex(), table.getLikeIndex())) {
+            dbIndexStatus.other = checkDbIndex(indexName, index);
+            if (dbIndexStatus.other) {
+              break;
+            }
           }
         }
       }

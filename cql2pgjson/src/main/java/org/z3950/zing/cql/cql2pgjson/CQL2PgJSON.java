@@ -69,6 +69,9 @@ public class CQL2PgJSON {
   private String jsonField = null;
   private List<String> jsonFields = null;
 
+  // leverage RMB and consider to merge cql2pgjson into RMB
+  private Schema dbSchemaObject;
+
   private JSONObject dbSchema; // The whole schema.json, with all tables etc
   private JSONObject dbTable; // Our primary table inside the dbSchema
 
@@ -79,9 +82,6 @@ public class CQL2PgJSON {
   public JSONObject getDbTable() {
     return dbTable;
   }
-
-  // leverage RMB and consider to merge cql2pgjson into RMB
-  private Schema dbSchemaObject;
 
   /**
    * Default index names to be used for cql.serverChoice.
@@ -692,7 +692,15 @@ public class CQL2PgJSON {
     }
   }
 
-  // TODO: PG-81 new stuff
+  /**
+   * Create an SQL expression where index is applied to all matches.
+   *
+   * @param index index to use
+   * @param node CQLTermNode to use
+   *
+   * @return SQL expression
+   * @throws QueryValidationException
+   */
   private String index2sql(String index, CQLTermNode node) throws QueryValidationException {
 
     // special handling of id search (re-use existing code)
@@ -736,6 +744,17 @@ public class CQL2PgJSON {
     }
   }
 
+  /**
+   * Create an SQL expression using Full Text query syntax.
+   *
+   * @param hasFtIndex
+   * @param vals
+   * @param node
+   * @param comparator
+   * @param modifiers
+   * @return
+   * @throws QueryValidationException
+   */
   private String queryByFt(boolean hasFtIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) throws QueryValidationException {
 
     String index = vals.indexText;
@@ -776,21 +795,27 @@ public class CQL2PgJSON {
       case "all":
         tsTerm = String.join(" & ", words);
         break;
-//      case "<>":
-//        tsTerm = "!(" + String.join("<->", words) + ")";
-//        break;
       default:
         throw new QueryValidationException("CQL: Unknown comparator '" + comparator + "'");
     }
-    // "simple" dictionary only does to_lowercase, so need f_unaccent
+    // "simple" dictionary only does lower_casing, so need f_unaccent
     String sq = "to_tsvector('simple', f_unaccent(" + index + ")) "
       + "@@ to_tsquery('simple', f_unaccent('" + tsTerm + "'))";
 
-    //TODO: remove
-    logger.log(Level.WARNING, "index " + index + " generated SQL: " + sq);
+    logger.log(Level.FINE, "index " + index + " generated SQL: " + sq);
     return sq;
   }
 
+  /**
+   * Create an SQL expression using LIKE query syntax.
+   *
+   * @param hasGinIndex
+   * @param vals
+   * @param node
+   * @param comparator
+   * @param modifiers
+   * @return
+   */
   private String queryByLike(boolean hasGinIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) {
 
     String index = vals.indexText;
@@ -810,17 +835,31 @@ public class CQL2PgJSON {
         wrapInLowerUnaccent(index, modifiers) + likeOperator + wrapInLowerUnaccent(like, modifiers);
     };
 
-    // TODO: remove later
-    logger.log(Level.WARNING, "index " + index + " generated SQL: " + sql);
+    logger.log(Level.FINE, "index " + index + " generated SQL: " + sql);
     return sql;
   }
 
+  /**
+   * Create an SQL expression using SQL as is syntax.
+   *
+   * @param hasIndex
+   * @param vals
+   * @param node
+   * @param comparator
+   * @param modifiers
+   * @return
+   */
   private String queryBySql(boolean hasIndex, IndexTextAndJsonValues vals, CQLTermNode node, String comparator, CqlModifiers modifiers) {
+
+    String index = vals.indexText;
+
+    if (!hasIndex) {
+      logger.log(Level.WARNING, "Doing SQL query without index for " + index);
+    }
+
     if (comparator.equals("==")) {
       comparator = "=";
     }
-    String index = vals.indexText;
-//    String term = "'" + node.getTerm().replace("'", "''") + "'";
     String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
     if (CqlTermFormat.NUMBER.equals(modifiers.cqlTermFormat)) {
       index = "(" + index + ")::numeric";
@@ -828,8 +867,7 @@ public class CQL2PgJSON {
     }
     String sql = index + " " + comparator + term;
 
-    // TODO: remove later
-    logger.log(Level.WARNING, "index " + index + " generated SQL: " + sql);
+    logger.log(Level.FINE, "index " + index + " generated SQL: " + sql);
     return sql;
   }
 

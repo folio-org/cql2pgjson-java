@@ -6,7 +6,7 @@ package org.folio.cql2pgjson.util;
 public class CqlUtils {
 
   /**
-   * Get field name from CQL field like [schema.table.]field
+   * Get field name from CQL field: [schema.table.]field
    *
    * @param cqlField
    * @return
@@ -32,15 +32,15 @@ public class CqlUtils {
       return null;
     }
     tableName = tableName.substring(0, tableName.lastIndexOf("."));
-    if (tableName.contains(".")) {
-      return tableName.substring(tableName.lastIndexOf(".") + 1);
-    } else {
+    if (!tableName.contains(".")) {
       return tableName;
+    } else {
+      return tableName.substring(tableName.lastIndexOf(".") + 1);
     }
   }
 
   /**
-   * Retrieve the field name from indexJson.
+   * Get field name from IndexJson.
    *
    * @param indexJson
    * @return
@@ -50,7 +50,7 @@ public class CqlUtils {
   }
 
   /**
-   * Retrieve index name from indexJson.
+   * Get index name from IndexJson.
    *
    * @param indexJson
    * @return
