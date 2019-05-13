@@ -3,6 +3,7 @@ package org.z3950.zing.cql.cql2pgjson;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
+import org.folio.cql2pgjson.model.SqlSelect;
 import org.junit.Test;
 
 public class SqlSelectTest {

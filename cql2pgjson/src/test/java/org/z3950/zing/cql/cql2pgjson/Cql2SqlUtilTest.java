@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.folio.cql2pgjson.util.Cql2SqlUtil;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 

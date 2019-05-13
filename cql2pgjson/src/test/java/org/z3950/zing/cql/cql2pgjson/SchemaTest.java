@@ -8,7 +8,8 @@ import static org.junit.Assert.*;
 import java.io.IOException;
 
 import org.folio.cql2pgjson.exception.QueryValidationException;
-import org.folio.cql2pgjson.exception.SchemaException;
+import org.folio.cql2pgjson.tbd.Schema;
+import org.folio.cql2pgjson.tbd.SchemaException;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;

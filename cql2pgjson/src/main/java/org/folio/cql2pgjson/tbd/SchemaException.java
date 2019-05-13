@@ -1,4 +1,6 @@
-package org.folio.cql2pgjson.exception;
+package org.folio.cql2pgjson.tbd;
+
+import org.folio.cql2pgjson.exception.CQL2PgJSONException;
 
 public class SchemaException extends CQL2PgJSONException {
 

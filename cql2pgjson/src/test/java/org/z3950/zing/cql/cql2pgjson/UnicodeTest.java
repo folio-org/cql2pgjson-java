@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.StringReader;
 
+import org.folio.cql2pgjson.tbd.Unicode;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;

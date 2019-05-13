@@ -28,6 +28,8 @@ import org.folio.cql2pgjson.model.CqlSort;
 import org.folio.cql2pgjson.model.CqlTermFormat;
 import org.folio.cql2pgjson.model.DbIndex;
 import org.folio.cql2pgjson.model.IndexTextAndJsonValues;
+import org.folio.cql2pgjson.model.SqlSelect;
+import org.folio.cql2pgjson.util.Cql2SqlUtil;
 import org.folio.cql2pgjson.util.DbSchemaUtils;
 import org.folio.rest.persist.ddlgen.Schema;
 import org.folio.rest.tools.utils.ObjectMapperTool;
@@ -67,8 +69,16 @@ public class CQL2PgJSON {
   private String jsonField = null;
   private List<String> jsonFields = null;
 
-  JSONObject dbSchema; // The whole schema.json, with all tables etc
-  JSONObject dbTable; // Our primary table inside the dbSchema
+  private JSONObject dbSchema; // The whole schema.json, with all tables etc
+  private JSONObject dbTable; // Our primary table inside the dbSchema
+
+  public JSONObject getDbSchema() {
+    return dbSchema;
+  }
+
+  public JSONObject getDbTable() {
+    return dbTable;
+  }
 
   // leverage RMB and consider to merge cql2pgjson into RMB
   private Schema dbSchemaObject;
@@ -114,7 +124,7 @@ public class CQL2PgJSON {
     return null;
   }
 
-  private void getDbTable() {
+  private void initDbTable() {
     if (dbSchema.has("tables")) {
       if (jsonField == null) {
         logger.log(Level.SEVERE, "loadDbSchema(): No primary table name, can not load");
@@ -151,7 +161,7 @@ public class CQL2PgJSON {
    */
   public CQL2PgJSON(String field) throws FieldException {
     doInit(field, null);
-    getDbTable();
+    initDbTable();
   }
 
   /**
@@ -199,7 +209,7 @@ public class CQL2PgJSON {
     if (this.jsonFields.size() == 1) {
       this.jsonField = this.jsonFields.get(0);
     }
-    getDbTable();
+    initDbTable();
   }
 
   /**

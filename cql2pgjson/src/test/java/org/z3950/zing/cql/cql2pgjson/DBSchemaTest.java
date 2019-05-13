@@ -2,9 +2,11 @@ package org.z3950.zing.cql.cql2pgjson;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
+import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 public class DBSchemaTest {
 
@@ -16,7 +18,7 @@ public class DBSchemaTest {
     }
     CQL2PgJSON cql2pgjson = new CQL2PgJSON("instance.jsonb");
     cql2pgjson.setDbSchema(dbSchemaPath.toString());
-    JSONObject dbSchema = cql2pgjson.dbSchema;
+    JSONObject dbSchema = cql2pgjson.getDbSchema();
     JSONArray tables = dbSchema.getJSONArray("tables");
     String[] tableArray = new String[]{ "loan_type", "material_type", "service_point_user" };
     for(String tableName : tableArray) {

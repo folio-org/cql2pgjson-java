@@ -10,6 +10,7 @@ import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;

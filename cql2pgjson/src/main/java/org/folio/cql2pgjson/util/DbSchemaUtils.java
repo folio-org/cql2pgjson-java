@@ -10,9 +10,6 @@ import org.folio.rest.persist.ddlgen.Table;
 
 /**
  * Help method to extract info from RMB db schema.json
- *
- * @author hji
- *
  */
 public class DbSchemaUtils {
 

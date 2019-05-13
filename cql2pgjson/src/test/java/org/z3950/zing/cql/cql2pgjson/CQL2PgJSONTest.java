@@ -4,6 +4,7 @@ import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.*;
 import org.junit.runner.RunWith;
+import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 import java.io.IOException;
 import java.sql.ResultSet;
@@ -19,6 +20,7 @@ import org.folio.cql2pgjson.exception.CQLFeatureUnsupportedException;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.cql2pgjson.exception.ServerChoiceIndexesException;
+import org.folio.cql2pgjson.model.SqlSelect;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -729,7 +731,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Test
   public void pKeyDefault() throws CQL2PgJSONException {
     CQL2PgJSON c = new CQL2PgJSON("users.user_data");
-    c.dbTable.remove("pkColumnName");
+    c.getDbTable().remove("pkColumnName");
     String sql = c.toSql("id=\"11111111-1111-1111-1111-111111111111\"").getWhere();
     // default pkColumnName is id without underscore
     assertEquals("id='11111111-1111-1111-1111-111111111111'", sql);

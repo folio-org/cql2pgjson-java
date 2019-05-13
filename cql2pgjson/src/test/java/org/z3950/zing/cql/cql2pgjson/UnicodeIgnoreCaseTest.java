@@ -4,6 +4,8 @@ import static org.junit.Assert.*;
 
 import java.util.Arrays;
 
+import org.folio.cql2pgjson.tbd.Unicode;
+import org.folio.cql2pgjson.tbd.UnicodeIgnoreCase;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 

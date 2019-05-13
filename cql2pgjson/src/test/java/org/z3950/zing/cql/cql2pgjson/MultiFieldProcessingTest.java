@@ -10,6 +10,7 @@ import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.cql2pgjson.exception.ServerChoiceIndexesException;
 import org.junit.Test;
+import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 public class MultiFieldProcessingTest {
 

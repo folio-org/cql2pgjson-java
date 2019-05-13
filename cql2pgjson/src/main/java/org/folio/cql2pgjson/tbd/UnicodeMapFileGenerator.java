@@ -1,4 +1,4 @@
-package org.z3950.zing.cql.cql2pgjson;
+package org.folio.cql2pgjson.tbd;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -44,7 +44,7 @@ public final class UnicodeMapFileGenerator {
     }
   }
 
-  static Iterable<Character> nonSurrogates = NonSurrogates::new;
+  public static Iterable<Character> nonSurrogates = NonSurrogates::new;
   private static Pattern accents = Pattern.compile("[\\p{InCombiningDiacriticalMarks}\uFE20\uFE21]+");
 
   private UnicodeMapFileGenerator() {

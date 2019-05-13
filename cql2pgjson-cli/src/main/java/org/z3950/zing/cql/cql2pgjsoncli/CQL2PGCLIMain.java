@@ -15,10 +15,10 @@ import org.apache.commons.cli.*;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.folio.cql2pgjson.model.SqlSelect;
 import org.json.JSONException;
-import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
-import org.z3950.zing.cql.cql2pgjson.SqlSelect;
 import org.json.JSONObject;
+import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 public class CQL2PGCLIMain {
 

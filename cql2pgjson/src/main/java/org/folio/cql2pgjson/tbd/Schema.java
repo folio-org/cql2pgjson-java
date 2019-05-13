@@ -1,4 +1,4 @@
-package org.z3950.zing.cql.cql2pgjson;
+package org.folio.cql2pgjson.tbd;
 
 import java.io.IOException;
 
@@ -13,7 +13,6 @@ import java.util.Deque;
 import java.util.logging.Logger;
 
 import org.folio.cql2pgjson.exception.QueryValidationException;
-import org.folio.cql2pgjson.exception.SchemaException;
 
 import java.util.logging.Level;
 
@@ -41,7 +40,7 @@ public class Schema {
     private final String path;
     private final String type;
 
-    Field(String path, String type) {
+    public Field(String path, String type) {
       this.path = path;
       if (type == null) {
         this.type = "";
@@ -55,7 +54,7 @@ public class Schema {
      *
      * @return full path
      */
-    String getPath() {
+    public String getPath() {
       return path;
     }
 
@@ -65,7 +64,7 @@ public class Schema {
      *
      * @return the RAML type.
      */
-    String getType() {
+    public String getType() {
       return type;
     }
   }

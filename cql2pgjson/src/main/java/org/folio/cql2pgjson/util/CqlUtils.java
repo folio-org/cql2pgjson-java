@@ -2,9 +2,6 @@ package org.folio.cql2pgjson.util;
 
 /**
  * Help methods related to CQL syntax.
- *
- * @author hji
- *
  */
 public class CqlUtils {
 
