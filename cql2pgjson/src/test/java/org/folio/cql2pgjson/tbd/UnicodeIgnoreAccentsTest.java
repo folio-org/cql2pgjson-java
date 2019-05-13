@@ -1,4 +1,4 @@
-package org.z3950.zing.cql.cql2pgjson;
+package org.folio.cql2pgjson.tbd;
 
 import static org.junit.Assert.*;
 
@@ -8,6 +8,7 @@ import org.folio.cql2pgjson.tbd.Unicode;
 import org.folio.cql2pgjson.tbd.UnicodeIgnoreAccents;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.z3950.zing.cql.cql2pgjson.Util;
 
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;

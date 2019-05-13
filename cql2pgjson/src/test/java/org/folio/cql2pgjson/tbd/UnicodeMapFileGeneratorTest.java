@@ -1,4 +1,4 @@
-package org.z3950.zing.cql.cql2pgjson;
+package org.folio.cql2pgjson.tbd;
 
 import static org.junit.Assert.fail;
 
@@ -8,6 +8,7 @@ import java.util.NoSuchElementException;
 
 import org.folio.cql2pgjson.tbd.UnicodeMapFileGenerator;
 import org.junit.Test;
+import org.z3950.zing.cql.cql2pgjson.Util;
 
 public class UnicodeMapFileGeneratorTest {
   @Test (expected = IllegalArgumentException.class)
