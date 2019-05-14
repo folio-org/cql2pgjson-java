@@ -30,8 +30,8 @@ import org.folio.cql2pgjson.model.SqlSelect;
 import org.folio.cql2pgjson.util.Cql2SqlUtil;
 import org.folio.cql2pgjson.util.DbSchemaUtils;
 import org.folio.rest.persist.ddlgen.Schema;
+import org.folio.rest.persist.ddlgen.Table;
 import org.folio.rest.tools.utils.ObjectMapperTool;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.z3950.zing.cql.CQLAndNode;
 import org.z3950.zing.cql.CQLBooleanNode;
@@ -53,8 +53,6 @@ import org.z3950.zing.cql.ModifierSet;
  * JSONB in PostgreSQL:
  * <a href="https://www.postgresql.org/docs/current/static/datatype-json.html">https://www.postgresql.org/docs/current/static/datatype-json.html</a>
  */
-@SuppressWarnings("squid:S1192")  // We have a few duplicated strings.
-// I refuse to harm readability by declaring symbolic names for them.
 public class CQL2PgJSON {
 
   /**
@@ -68,10 +66,9 @@ public class CQL2PgJSON {
   private List<String> jsonFields = null;
 
   // leverage RMB and consider to merge cql2pgjson into RMB
-  private Schema dbSchemaObject;
+  private Schema dbSchema;
+  private Table dbTable;
 
-  private JSONObject dbSchema; // The whole schema.json, with all tables etc
-  private JSONObject dbTable; // Our primary table inside the dbSchema
 
   /**
    * Default index names to be used for cql.serverChoice.
@@ -83,20 +80,16 @@ public class CQL2PgJSON {
     return jsonField;
   }
 
-  public JSONObject getDbSchema() {
+  public Schema getDbSchema() {
     return dbSchema;
   }
 
-  public void setDbSchema(String dbSchemaPath) {
-    this.dbSchema = loadDbSchema(dbSchemaPath);
-  }
-
-  public JSONObject getDbTable() {
+  public Table getDbTable() {
     return dbTable;
   }
 
-  private JSONObject loadDbSchema() {
-    return loadDbSchema(null);
+  public void setDbSchemaPath(String dbSchemaPath) {
+    loadDbSchema(dbSchemaPath);
   }
 
   private JSONObject loadDbSchema(String schemaPath) {
@@ -118,7 +111,7 @@ public class CQL2PgJSON {
       }
 
       try {
-        dbSchemaObject = ObjectMapperTool.getMapper().readValue(dbJson, org.folio.rest.persist.ddlgen.Schema.class);
+        dbSchema = ObjectMapperTool.getMapper().readValue(dbJson, org.folio.rest.persist.ddlgen.Schema.class);
       } catch (Exception e) {
         logger.log(Level.SEVERE, "Cannot convert db schema defintion to Java object");
       }
@@ -131,7 +124,7 @@ public class CQL2PgJSON {
   }
 
   private void initDbTable() {
-    if (dbSchema.has("tables")) {
+    if (dbSchema.getTables() != null) {
       if (jsonField == null) {
         logger.log(Level.SEVERE, "loadDbSchema(): No primary table name, can not load");
         return;
@@ -139,8 +132,13 @@ public class CQL2PgJSON {
       // Remove the json blob field name, usually ".jsonb", but in tests also
       // ".user_data" etc.
       String tname = this.jsonField.replaceAll("\\.[^.]+$", "");
-      this.dbTable = findItem(dbSchema.getJSONArray("tables"), "tableName", tname);
-      if (this.dbTable == null) {
+      for (Table table : dbSchema.getTables()) {
+        if (tname.equalsIgnoreCase(table.getTableName())) {
+          dbTable = table;
+          break;
+        }
+      }
+      if (dbTable == null) {
         logger.log(Level.SEVERE, "loadDbSchema loadDbSchema(): Table {0} NOT FOUND", tname);
       }
     } else {
@@ -149,12 +147,8 @@ public class CQL2PgJSON {
   }
 
   private void doInit(String field, String dbSchemaPath) throws FieldException {
-    this.jsonField = trimNotEmpty(field);
-    if(dbSchemaPath != null) {
-      dbSchema = loadDbSchema(dbSchemaPath);
-    } else {
-      dbSchema = loadDbSchema();
-    }
+    jsonField = trimNotEmpty(field);
+    loadDbSchema(dbSchemaPath);
   }
 
   /**
@@ -196,7 +190,7 @@ public class CQL2PgJSON {
    * @throws FieldException (subclass of CQL2PgJSONException) - provided field is not valid
    */
   public CQL2PgJSON(List<String> fields) throws FieldException {
-    dbSchema = loadDbSchema();
+    loadDbSchema(null);
     if (fields == null || fields.isEmpty())
       throw new FieldException( "fields list must not be empty" );
     this.jsonFields = new ArrayList<>();
@@ -226,29 +220,6 @@ public class CQL2PgJSON {
       throws ServerChoiceIndexesException, FieldException {
     this(fields);
     setServerChoiceIndexes(serverChoiceIndexes);
-  }
-
-  /**
-   * Scans through a JsonArray, looking for a record that has a given value in a
-   * given field. For example "tableName" that matches "users". If found,
-   * returns the whole item.
-   */
-  private JSONObject findItem(JSONArray arr, String key, String value) {
-    if (arr == null) {
-      return null;
-    }
-    Iterator<Object> it = arr.iterator();
-    while (it.hasNext()) {
-      Object e = it.next();
-      if (e instanceof JSONObject) {
-        JSONObject item = (JSONObject) e;
-        String name = item.getString(key);
-        if (value.equalsIgnoreCase(name)) {
-          return item;
-        }
-      } // else ???
-    }
-    return null;
   }
 
   /**
@@ -498,6 +469,169 @@ public class CQL2PgJSON {
     return vals;
   }
 
+  private IndexTextAndJsonValues multiFieldProcessing( String index ) throws QueryValidationException {
+    IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
+
+    // processing for case where index is prefixed with json field name
+    for (String f : jsonFields) {
+      if (index.startsWith(f+'.')) {
+        String indexTermWithinField = index.substring(f.length()+1);
+        vals.indexJson = index2sqlJson(f, indexTermWithinField);
+        vals.indexText = index2sqlText(f, indexTermWithinField);
+        return vals;
+      }
+    }
+
+    // if no json field name prefix is found, the default field name gets applied.
+    String defaultJsonField = this.jsonFields.get(0);
+    vals.indexJson = index2sqlJson(defaultJsonField, index);
+    vals.indexText = index2sqlText(defaultJsonField, index);
+    return vals;
+  }
+
+  private String pg(CQLTermNode node) throws QueryValidationException {
+    if ("cql.allRecords".equalsIgnoreCase(node.getIndex())) {
+      return "true";
+    }
+    if ("cql.serverChoice".equalsIgnoreCase(node.getIndex())) {
+      if (serverChoiceIndexes.isEmpty()) {
+        throw new QueryValidationException("cql.serverChoice requested, but no serverChoiceIndexes defined.");
+      }
+      List<String> sqlPieces = new ArrayList<>();
+      for(String index : serverChoiceIndexes) {
+        sqlPieces.add(index2sql(index, node));
+      }
+      return String.join(" OR ", sqlPieces);
+    }
+    return index2sql(node.getIndex(), node);
+  }
+
+  /**
+   * Normalize a term for FT searching. Escape quotes, masking, etc
+   *
+   * @param term
+   * @return
+   */
+  @SuppressWarnings({
+    "squid:ForLoopCounterChangedCheck",
+    // Yes, we skip the occasional character in the loop by incrementing i
+    "squid:S135"
+  // Yes, we have a few continue statements. Unlike what SQ says,
+  // refactoring the code to avoid that would make it much less
+  // readable.
+  })
+  private static String fTTerm(String term) throws QueryValidationException {
+    StringBuilder res = new StringBuilder();
+    term = term.trim();
+    for (int i = 0; i < term.length(); i++) {
+      // CQL specials
+      char c = term.charAt(i);
+      switch (c) {
+        case '?':
+          throw new QueryValidationException("CQL: single character mask unsupported (?)");
+        case '*':
+          if (i == term.length() - 1) {
+            res.append(":*");
+            continue;
+          } else {
+            throw new QueryValidationException("CQL: only right truncation supported");
+          }
+        case '\\':
+          if (i == term.length() - 1) {
+            continue;
+          }
+          i++;
+          c = term.charAt(i);
+          break;
+        case '^':
+          throw new QueryValidationException("CQL: anchoring unsupported (^)");
+        default:
+        // SQ complains if there is no default case, and if there is an empty statement #!$
+      }
+      if (c == '\'') {
+        if (res.length() > 0) {
+          res.append("''"); // double up single quotes
+        } // but not in the beginning of the term, won't work.
+        continue;
+      }
+      // escape for FT
+      if ("&!|()<>*:\\".indexOf(c) != -1) {
+        res.append("\\");
+      }
+      res.append(c);
+    }
+    return res.toString();
+  }
+  /**
+   * Handle a termnode that does a search on the id. We use the primary key
+   * column in the query, it is clearly faster, and we use a numerical
+   * comparison instead of truncation. That way PG will use the primary key,
+   * which is pretty much faster. Assumes that the UUID has already been
+   * validated to be in the right format.
+   *
+   * @param node
+   * @return SQL where clause component for this term
+   * @throws QueryValidationException
+   */
+  private String pgId(CQLTermNode node) throws QueryValidationException {
+    final String uuidPattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
+    String pkColumnName = StringUtils.defaultIfBlank(dbTable.getPkColumnName(), "id");
+    String comparator = StringUtils.defaultString(node.getRelation().getBase());
+    if (!node.getRelation().getModifiers().isEmpty()) {
+      throw new QueryValidationException("CQL: Unsupported modifier "
+        + node.getRelation().getModifiers().get(0).getType());
+    }
+    boolean equals = true;
+    switch (comparator) {
+    case "==":
+    case "=":
+      comparator = "=";
+      break;
+    case "<>":
+      equals = false;
+      break;
+    default:
+      throw new QueryValidationException("CQL: Unsupported operator '" + comparator + "' "
+          + "id only supports '=', '==', and '<>' (possibly with right truncation)");
+    }
+    String term = node.getTerm();
+    if (term.equals("") || term.equals("*")) {
+      return equals ? "true" : "false";  // no need to check
+      // not even for "", since id is a mandatory field, so
+      // "all that have id" is the same as "all records"
+    }
+
+    if (!term.contains("*")) { // exact match
+      if (!term.matches(uuidPattern)) {
+        // avoid SQL injection, don't put term into comment
+        return equals
+            ? "false /* id == invalid UUID */"
+            : "true /* id <> invalid UUID */";
+      }
+      return pkColumnName + comparator + "'" + term + "'";
+    }
+    String truncTerm = term.replaceFirst("\\*$", ""); // remove trailing '*'
+    if (truncTerm.contains("*")) { // any remaining '*' is an error
+      throw new QueryValidationException("CQL: only right truncation supported for id:  " + term);
+    }
+    String lo = new StringBuilder("00000000-0000-0000-0000-000000000000")
+      .replace(0, truncTerm.length(), truncTerm).toString();
+    String hi = new StringBuilder("ffffffff-ffff-ffff-ffff-ffffffffffff")
+      .replace(0, truncTerm.length(), truncTerm).toString();
+    if (!lo.matches(uuidPattern) || !hi.matches(uuidPattern)) {
+      // avoid SQL injection, don't put term into comment
+      return equals ? "false /* id == invalid UUID */"
+                    : "true /* id <> invalid UUID */";
+    }
+    if (equals) {
+      return "(" + pkColumnName + ">='" + lo + "'"
+        + " and " + pkColumnName + "<='" + hi + "')";
+    } else {
+      return "(" + pkColumnName + "<'" + lo + "'"
+          + " or " + pkColumnName + ">'" + hi + "')";
+    }
+  }
+
   /**
    * Create an SQL expression where index is applied to all matches.
    *
@@ -515,7 +649,7 @@ public class CQL2PgJSON {
     }
 
     IndexTextAndJsonValues vals = getIndexTextAndJsonValues(index);
-    DbIndex dbIndex = DbSchemaUtils.getDbIndex(dbSchemaObject, vals.indexJson);
+    DbIndex dbIndex = DbSchemaUtils.getDbIndex(dbSchema, vals.indexJson);
 
     CqlModifiers modifiers = new CqlModifiers(node);
     String comparator = node.getRelation().getBase().toLowerCase();
@@ -675,169 +809,6 @@ public class CQL2PgJSON {
 
     logger.log(Level.FINE, "index " + index + " generated SQL: " + sql);
     return sql;
-  }
-
-  private IndexTextAndJsonValues multiFieldProcessing( String index ) throws QueryValidationException {
-    IndexTextAndJsonValues vals = new IndexTextAndJsonValues();
-
-    // processing for case where index is prefixed with json field name
-    for (String f : jsonFields) {
-      if (index.startsWith(f+'.')) {
-        String indexTermWithinField = index.substring(f.length()+1);
-        vals.indexJson = index2sqlJson(f, indexTermWithinField);
-        vals.indexText = index2sqlText(f, indexTermWithinField);
-        return vals;
-      }
-    }
-
-    // if no json field name prefix is found, the default field name gets applied.
-    String defaultJsonField = this.jsonFields.get(0);
-    vals.indexJson = index2sqlJson(defaultJsonField, index);
-    vals.indexText = index2sqlText(defaultJsonField, index);
-    return vals;
-  }
-
-  private String pg(CQLTermNode node) throws QueryValidationException {
-    if ("cql.allRecords".equalsIgnoreCase(node.getIndex())) {
-      return "true";
-    }
-    if ("cql.serverChoice".equalsIgnoreCase(node.getIndex())) {
-      if (serverChoiceIndexes.isEmpty()) {
-        throw new QueryValidationException("cql.serverChoice requested, but no serverChoiceIndexes defined.");
-      }
-      List<String> sqlPieces = new ArrayList<>();
-      for(String index : serverChoiceIndexes) {
-        sqlPieces.add(index2sql(index, node));
-      }
-      return String.join(" OR ", sqlPieces);
-    }
-    return index2sql(node.getIndex(), node);
-  }
-
-  /**
-   * Normalize a term for FT searching. Escape quotes, masking, etc
-   *
-   * @param term
-   * @return
-   */
-  @SuppressWarnings({
-    "squid:ForLoopCounterChangedCheck",
-    // Yes, we skip the occasional character in the loop by incrementing i
-    "squid:S135"
-  // Yes, we have a few continue statements. Unlike what SQ says,
-  // refactoring the code to avoid that would make it much less
-  // readable.
-  })
-  private static String fTTerm(String term) throws QueryValidationException {
-    StringBuilder res = new StringBuilder();
-    term = term.trim();
-    for (int i = 0; i < term.length(); i++) {
-      // CQL specials
-      char c = term.charAt(i);
-      switch (c) {
-        case '?':
-          throw new QueryValidationException("CQL: single character mask unsupported (?)");
-        case '*':
-          if (i == term.length() - 1) {
-            res.append(":*");
-            continue;
-          } else {
-            throw new QueryValidationException("CQL: only right truncation supported");
-          }
-        case '\\':
-          if (i == term.length() - 1) {
-            continue;
-          }
-          i++;
-          c = term.charAt(i);
-          break;
-        case '^':
-          throw new QueryValidationException("CQL: anchoring unsupported (^)");
-        default:
-        // SQ complains if there is no default case, and if there is an empty statement #!$
-      }
-      if (c == '\'') {
-        if (res.length() > 0) {
-          res.append("''"); // double up single quotes
-        } // but not in the beginning of the term, won't work.
-        continue;
-      }
-      // escape for FT
-      if ("&!|()<>*:\\".indexOf(c) != -1) {
-        res.append("\\");
-      }
-      res.append(c);
-    }
-    return res.toString();
-  }
-  /**
-   * Handle a termnode that does a search on the id. We use the primary key
-   * column in the query, it is clearly faster, and we use a numerical
-   * comparison instead of truncation. That way PG will use the primary key,
-   * which is pretty much faster. Assumes that the UUID has already been
-   * validated to be in the right format.
-   *
-   * @param node
-   * @return SQL where clause component for this term
-   * @throws QueryValidationException
-   */
-  private String pgId(CQLTermNode node) throws QueryValidationException {
-    final String uuidPattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
-    String pkColumnName = dbTable.optString("pkColumnName", /* default = */ "id");
-    String comparator = StringUtils.defaultString(node.getRelation().getBase());
-    if (!node.getRelation().getModifiers().isEmpty()) {
-      throw new QueryValidationException("CQL: Unsupported modifier "
-        + node.getRelation().getModifiers().get(0).getType());
-    }
-    boolean equals = true;
-    switch (comparator) {
-    case "==":
-    case "=":
-      comparator = "=";
-      break;
-    case "<>":
-      equals = false;
-      break;
-    default:
-      throw new QueryValidationException("CQL: Unsupported operator '" + comparator + "' "
-          + "id only supports '=', '==', and '<>' (possibly with right truncation)");
-    }
-    String term = node.getTerm();
-    if (term.equals("") || term.equals("*")) {
-      return equals ? "true" : "false";  // no need to check
-      // not even for "", since id is a mandatory field, so
-      // "all that have id" is the same as "all records"
-    }
-
-    if (!term.contains("*")) { // exact match
-      if (!term.matches(uuidPattern)) {
-        // avoid SQL injection, don't put term into comment
-        return equals
-            ? "false /* id == invalid UUID */"
-            : "true /* id <> invalid UUID */";
-      }
-      return pkColumnName + comparator + "'" + term + "'";
-    }
-    String truncTerm = term.replaceFirst("\\*$", ""); // remove trailing '*'
-    if (truncTerm.contains("*")) { // any remaining '*' is an error
-      throw new QueryValidationException("CQL: only right truncation supported for id:  " + term);
-    }
-    String lo = new StringBuilder("00000000-0000-0000-0000-000000000000")
-      .replace(0, truncTerm.length(), truncTerm).toString();
-    String hi = new StringBuilder("ffffffff-ffff-ffff-ffff-ffffffffffff")
-      .replace(0, truncTerm.length(), truncTerm).toString();
-    if (!lo.matches(uuidPattern) || !hi.matches(uuidPattern)) {
-      // avoid SQL injection, don't put term into comment
-      return equals ? "false /* id == invalid UUID */"
-                    : "true /* id <> invalid UUID */";
-    }
-    if (equals) {
-      return "(" + pkColumnName + ">='" + lo + "'"
-        + " and " + pkColumnName + "<='" + hi + "')";
-    } else {
-      return "(" + pkColumnName + "<'" + lo + "'"
-          + " or " + pkColumnName + ">'" + hi + "')";
-    }
   }
 
 }

@@ -73,7 +73,7 @@ public class TestCLI {
     String[] args = new String[] {"-t", "instance", "-f", "jsonb", "-b", dbSchemaPath, cql };
     String fullFieldName = "instance.jsonb";
     CQL2PgJSON cql2pgjson = new CQL2PgJSON(fullFieldName);
-    cql2pgjson.setDbSchema(dbSchemaPath);
+    cql2pgjson.setDbSchemaPath(dbSchemaPath);
     String output = CQL2PGCLIMain.parseCQL(cql2pgjson, "instance", cql);
     String cli_output = CQL2PGCLIMain.handleOptions(args);
     assertNotNull(output);

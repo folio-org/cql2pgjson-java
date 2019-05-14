@@ -70,7 +70,7 @@ public class CQL2PGCLIMain {
     String fullFieldName = line.getOptionValue("t") + "." + line.getOptionValue("f", "jsonb");
     cql2pgJson = new CQL2PgJSON(fullFieldName);
     if(line.hasOption("b")) {
-      cql2pgJson.setDbSchema(line.getOptionValue("b"));
+      cql2pgJson.setDbSchemaPath(line.getOptionValue("b"));
     }
     List<String> cliArgs = line.getArgList();
     String cql = cliArgs.get(0);
