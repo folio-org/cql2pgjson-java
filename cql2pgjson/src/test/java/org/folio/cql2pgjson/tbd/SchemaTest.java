@@ -30,11 +30,6 @@ public class SchemaTest {
   }
 
   @Test
-  public void emptySchema() throws Exception {
-    new Schema("{}");
-  }
-
-  @Test
   @Parameters({
     "address.city",
     "address.zip",

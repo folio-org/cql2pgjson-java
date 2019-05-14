@@ -13,6 +13,9 @@ import org.folio.rest.persist.ddlgen.Table;
  */
 public class DbSchemaUtils {
 
+  private DbSchemaUtils() {
+  }
+
   /**
    * For given index name, check if database has matching indexes.
    *
@@ -32,12 +35,12 @@ public class DbSchemaUtils {
     if (schema.getTables() != null && !schema.getTables().isEmpty()) {
       for (Table table : schema.getTables()) {
         if (table.getTableName().equalsIgnoreCase(tableName)) {
-          dbIndexStatus.ft = checkDbIndex(indexName, table.getFullTextIndex());
-          dbIndexStatus.gin = checkDbIndex(indexName, table.getGinIndex());
+          dbIndexStatus.setFt(checkDbIndex(indexName, table.getFullTextIndex()));
+          dbIndexStatus.setGin(checkDbIndex(indexName, table.getGinIndex()));
           for (List<Index> index : Arrays.asList(table.getIndex(),
               table.getUniqueIndex(), table.getLikeIndex())) {
-            dbIndexStatus.other = checkDbIndex(indexName, index);
-            if (dbIndexStatus.other) {
+            dbIndexStatus.setOther(checkDbIndex(indexName, index));
+            if (dbIndexStatus.isOther()) {
               break;
             }
           }

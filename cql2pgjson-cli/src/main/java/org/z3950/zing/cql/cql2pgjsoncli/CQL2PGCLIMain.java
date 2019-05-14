@@ -87,7 +87,7 @@ public class CQL2PGCLIMain {
   }
 
   static protected String parseCQL(CQL2PgJSON cql2pgJson, String dbName, String cql) throws IOException,
-      FieldException, QueryValidationException {
+    QueryValidationException {
     SqlSelect sql = cql2pgJson.toSql(cql);
     String orderby = sql.getOrderBy();
     logger.log(Level.FINE, String.format("orderby for cql query '%s' is '%s'", cql, orderby));

@@ -9,11 +9,11 @@ import org.z3950.zing.cql.Modifier;
 import org.z3950.zing.cql.ModifierSet;
 
 public class CqlModifiers {
-  public CqlSort cqlSort = CqlSort.ASCENDING;
-  public CqlCase cqlCase = CqlCase.IGNORE_CASE;
-  public CqlAccents cqlAccents = CqlAccents.IGNORE_ACCENTS;
-  public CqlTermFormat cqlTermFormat = CqlTermFormat.STRING;
-  public CqlMasking cqlMasking = CqlMasking.MASKED;
+  private CqlSort cqlSort = CqlSort.ASCENDING;
+  private CqlCase cqlCase = CqlCase.IGNORE_CASE;
+  private CqlAccents cqlAccents = CqlAccents.IGNORE_ACCENTS;
+  private CqlTermFormat cqlTermFormat = CqlTermFormat.STRING;
+  private CqlMasking cqlMasking = CqlMasking.MASKED;
 
   public CqlModifiers(CQLTermNode node) throws CQLFeatureUnsupportedException {
     readModifiers(node.getRelation().getModifiers());
@@ -35,44 +35,75 @@ public class CqlModifiers {
     for (Modifier m : modifiers) {
       switch (m.getType()) {
       case "ignorecase":
-        cqlCase = CqlCase.IGNORE_CASE;
+        setCqlCase(CqlCase.IGNORE_CASE);
         break;
       case "respectcase":
-        cqlCase = CqlCase.RESPECT_CASE;
+        setCqlCase(CqlCase.RESPECT_CASE);
         break;
       case "ignoreaccents":
-        cqlAccents = CqlAccents.IGNORE_ACCENTS;
+        setCqlAccents(CqlAccents.IGNORE_ACCENTS);
         break;
       case "respectaccents":
-        cqlAccents = CqlAccents.RESPECT_ACCENTS;
+        setCqlAccents(CqlAccents.RESPECT_ACCENTS);
         break;
       case "string":
-        cqlTermFormat = CqlTermFormat.STRING;
+        setCqlTermFormat(CqlTermFormat.STRING);
         break;
       case "number":
-        cqlTermFormat = CqlTermFormat.NUMBER;
+        setCqlTermFormat(CqlTermFormat.NUMBER);
         break;
       case "sort.ascending":
-        cqlSort = CqlSort.ASCENDING;
+        setCqlSort(CqlSort.ASCENDING);
         break;
       case "sort.descending":
-        cqlSort = CqlSort.DESCENDING;
+        setCqlSort(CqlSort.DESCENDING);
         break;
       case "masked":
-        cqlMasking = CqlMasking.MASKED;
+        setCqlMasking(CqlMasking.MASKED);
         break;
-//      case "unmasked":
-//        cqlMasking = CqlMasking.UNMASKED;
-//        break;
-//      case "substring":
-//        cqlMasking = CqlMasking.SUBSTRING;
-//        break;
-//      case "regexp":
-//        cqlMasking = CqlMasking.REGEXP;
-//        break;
       default:
         throw new CQLFeatureUnsupportedException("CQL: Unsupported modifier " + m.getType());
       }
     }
+  }
+
+  public CqlSort getCqlSort() {
+    return cqlSort;
+  }
+
+  public void setCqlSort(CqlSort cqlSort) {
+    this.cqlSort = cqlSort;
+  }
+
+  public CqlCase getCqlCase() {
+    return cqlCase;
+  }
+
+  public void setCqlCase(CqlCase cqlCase) {
+    this.cqlCase = cqlCase;
+  }
+
+  public CqlAccents getCqlAccents() {
+    return cqlAccents;
+  }
+
+  public void setCqlAccents(CqlAccents cqlAccents) {
+    this.cqlAccents = cqlAccents;
+  }
+
+  public CqlTermFormat getCqlTermFormat() {
+    return cqlTermFormat;
+  }
+
+  public void setCqlTermFormat(CqlTermFormat cqlTermFormat) {
+    this.cqlTermFormat = cqlTermFormat;
+  }
+
+  public CqlMasking getCqlMasking() {
+    return cqlMasking;
+  }
+
+  public void setCqlMasking(CqlMasking cqlMasking) {
+    this.cqlMasking = cqlMasking;
   }
 }

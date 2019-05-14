@@ -5,6 +5,9 @@ package org.folio.cql2pgjson.util;
  */
 public class CqlUtils {
 
+  private CqlUtils() {
+  }
+
   /**
    * Get field name from CQL field: [schema.table.]field
    *
@@ -16,7 +19,7 @@ public class CqlUtils {
     if (!fieldName.contains(".")) {
       return fieldName;
     } else {
-      return fieldName.substring(fieldName.lastIndexOf(".") + 1);
+      return fieldName.substring(fieldName.lastIndexOf('.') + 1);
     }
   }
 
@@ -31,11 +34,11 @@ public class CqlUtils {
     if (!tableName.contains(".")) {
       return null;
     }
-    tableName = tableName.substring(0, tableName.lastIndexOf("."));
+    tableName = tableName.substring(0, tableName.lastIndexOf('.'));
     if (!tableName.contains(".")) {
       return tableName;
     } else {
-      return tableName.substring(tableName.lastIndexOf(".") + 1);
+      return tableName.substring(tableName.lastIndexOf('.') + 1);
     }
   }
 

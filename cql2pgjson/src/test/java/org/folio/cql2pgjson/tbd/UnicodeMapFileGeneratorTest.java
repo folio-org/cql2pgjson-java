@@ -17,18 +17,13 @@ public class UnicodeMapFileGeneratorTest {
   }
 
   @Test
-  public void targetTest() throws IOException {
-    UnicodeMapFileGenerator.main(new String [] {"target/test-generator/"});
-  }
-
-  @Test
   public void utilityClass() {
     Util.assertUtilityClass(UnicodeMapFileGenerator.class);
   }
 
   @Test(expected=NoSuchElementException.class)
   public void nonSurrogatesThrowsNoSuchElementException() {
-    Iterator<Character> it = UnicodeMapFileGenerator.nonSurrogates.iterator();
+    Iterator<Character> it = UnicodeMapFileGenerator.getNonSurrogates().iterator();
     try {
        while (it.hasNext()) {
          it.next();
