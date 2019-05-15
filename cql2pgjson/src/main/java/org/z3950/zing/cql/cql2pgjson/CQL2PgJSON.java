@@ -482,9 +482,7 @@ public class CQL2PgJSON {
         String pkColumnComparator = pkColumnName;
         String actualModifierBase = modifierSet.getBase();
         //_id is actually referred to as id by cql so we need to check for the known cql value
-        if(pkColumnComparator.equals( "_id")) {
-          pkColumnComparator = "id";
-        }
+
         if(actualModifierBase.equals("id")) {
           actualModifierBase = pkColumnName;
         }
