@@ -52,11 +52,14 @@ field name:
 
 ## id
 
-The UUID field id is not searched in the JSON but in a separate \_id field (the table's
-primary key as specified in the db schema file, defaults to id).
+The UUID field id is not searched in the JSON but in the table's primary key field. PostgreSQL automatically
+creates an index for the primary key.
 
-Only `=`, `==`, and `<>` relations are supported, `*` is allowed for right truncation only,
-modifiers are forbidden.
+`=`, `==`, `<>`, `>`, `>=`, `<`, and `<=` relations are supported for comparison with a valid UUID.
+
+`=`, `==`, and `<>` relations allow `*` for right truncation.
+
+Modifiers are forbidden.
 
 ## Relations
 
