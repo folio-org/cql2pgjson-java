@@ -519,7 +519,7 @@ public class CQL2PgJSON {
     if(dbTable != null) {
       return dbTable.optString("pkColumnName", /* default = */ "id");
     }
-    return null;
+    return "id";
   }
 
   private static String sqlOperator(CQLBooleanNode node) throws CQLFeatureUnsupportedException {
