@@ -1,6 +1,7 @@
 package org.z3950.zing.cql.cql2pgjson;
 
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.*;
 import org.junit.runner.RunWith;
 
@@ -843,6 +844,12 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   })
   public void pKey(String testcase) {
     select(cql2pgJson, testcase);
+  }
+
+  @Test
+  public void getPkColumnNameNull() throws FieldException {
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON("not.existing");
+    assertThat(aCql2pgJson.getPkColumnName(), is("id"));
   }
 
   //

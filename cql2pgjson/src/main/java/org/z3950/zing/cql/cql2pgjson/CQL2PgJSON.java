@@ -480,7 +480,7 @@ public class CQL2PgJSON {
       IndexTextAndJsonValues vals = getIndexTextAndJsonValues(modifierSet.getBase());
 
       // if number sort is specified explicitly
-      if (modifiers.cqlSortType == CqlSortType.NUMBER || "number".equals( vals.type) || "integer".equals(vals.type) ) {
+      if (modifiers.cqlSortType == CqlSortType.NUMBER || "number".equals( vals.type) || "integer".equals(vals.type)) {
         order.append(vals.indexJson).append(desc);
         continue;
       }
@@ -491,8 +491,8 @@ public class CQL2PgJSON {
     return new SqlSelect(where, order.toString());
   }
 
-  private String getPkColumnName() {
-    if(dbTable != null) {
+  String getPkColumnName() {
+    if (dbTable != null) {
       return dbTable.optString("pkColumnName", /* default = */ "id");
     }
     return "id";
