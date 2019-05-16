@@ -472,45 +472,21 @@ public class CQL2PgJSON {
       if (modifiers.cqlSort == CqlSort.DESCENDING) {
         desc = " DESC";
       }  // ASC not needed, it's Postgres' default
-      IndexTextAndJsonValues vals = getIndexTextAndJsonValues(modifierSet.getBase());
-      //prepare sort by clause as if the sort by is not the primary key
-      String sortbyClauseText  = wrapInLowerUnaccent(vals.indexText);
-      String sortByClauseIndex = vals.indexJson;
-      //determine if sort is primary key 
       
-      String pkColumnName = getPkColumnName();
-      String pkColumnComparator = pkColumnName;
-      String actualModifierBase = modifierSet.getBase();
-      //_id is actually referred to as id by cql so we need to check for the known cql value
-
-      if(actualModifierBase.equals("id")) {
-        actualModifierBase = pkColumnName;
+      if (modifierSet.getBase().equals("id")) {
+        order.append(getPkColumnName()).append(desc);
+        continue;
       }
-      if(pkColumnComparator != null && pkColumnComparator.equals(actualModifierBase)) {
-        //if it is we short circuit the json version of the column and just use the pkColumnName 
-        sortbyClauseText =  pkColumnName;
-        sortByClauseIndex = pkColumnName;
-      } else {
-        //left blank due to default assignment handling this case 
-      }
+      IndexTextAndJsonValues vals = getIndexTextAndJsonValues(modifierSet.getBase());
       
       // if number sort is specified explicitly
-      if (modifiers.cqlSortType == CqlSortType.NUMBER) {
-        order.append(sortByClauseIndex).append(desc);
+      if (modifiers.cqlSortType == CqlSortType.NUMBER || "number".equals( vals.type) || "integer".equals(vals.type) ) {
+        order.append(vals.indexJson).append(desc);
         continue;
-      } else {
-        switch (vals.type) {
-        case "number":
-        case "integer":
-          order.append(sortByClauseIndex).append(desc);
-          continue;
-        default:
-          break;
-        }
       }
 
       // We assume that a CREATE INDEX for this has been installed.
-      order.append(sortbyClauseText).append(desc);
+      order.append(wrapInLowerUnaccent(vals.indexText)).append(desc);
     }
     return new SqlSelect(where, order.toString());
   }
