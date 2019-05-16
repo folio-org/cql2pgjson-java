@@ -1,17 +1,21 @@
-package org.z3950.zing.cql.cql2pgjson;
+package org.folio.cql2pgjson.tbd;
 
 import static org.junit.Assert.*;
 
 import java.util.Arrays;
 
+import org.folio.cql2pgjson.tbd.Unicode;
+import org.folio.cql2pgjson.tbd.UnicodeIgnoreAccents;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.z3950.zing.cql.cql2pgjson.Util;
 
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
 
 @RunWith(JUnitParamsRunner.class)
-public class UnicodeIgnoreNoneTest {
+public class UnicodeIgnoreAccentsTest {
+
   private static String [] tests = { "",
       "a", "A", "ä", "Ä",
       "o", "ö", "ø", "O", "Ö", "Ø",
@@ -21,39 +25,31 @@ public class UnicodeIgnoreNoneTest {
   };
 
   public static void match(Character c, String test, boolean match) {
-    String regexp = Unicode.IGNORE_NONE.getEquivalents(c);
+    String regexp = Unicode.IGNORE_ACCENTS.getEquivalents(c);
     boolean matching = test.matches("^" + regexp + "$");
     String title = "c=" + c + " test=" + test + " match=" + match + " regexp=" + regexp;
     assertTrue(title, matching == match);
   }
 
+  @Test
   @Parameters({
-    "a,a",
-    "ä,ä",
-    "A,A",
-    "Ä,Ä",
-    "o,o",
-    "ö,ö",
-    "ø,ø",
-    "O,O",
-    "Ö,Ö",
-    "Ø,Ø",
+    "a,a,ä",
+    "ä,a,ä",
+    "A,A,Ä",
+    "Ä,A,Ä",
+    "o,o,ö,ø",
+    "ö,o,ö,ø",
+    "ø,o,ö,ø",
+    "O,O,Ö,Ø",
+    "Ö,O,Ö,Ø",
+    "Ø,O,Ö,Ø",
     "b,b",
     "B,B",
     "z,z",
     "Z,Z",
     "ß,ß",  // LATIN SMALL LETTER SHARP S
-    "ẞ,ẞ",  // LATIN CAPITAL LETTER SHARP S
-    ".,.",
-    "+,+",
-    "(,(",
-    "),)",
-    "[,[",
-    "],]",
-    "{,{",
-    "},}",
+    "ẞ,ẞ"   // LATIN CAPITAL LETTER SHARP S
   })
-  @Test
   public void match(Character c, String ... expected) {
     for (String test : expected) {
       match(c, test, true);
@@ -64,5 +60,10 @@ public class UnicodeIgnoreNoneTest {
       }
       match(c, test, false);
     }
+  }
+
+  @Test
+  public void utilityClass() {
+    Util.assertUtilityClass(UnicodeIgnoreAccents.class);
   }
 }

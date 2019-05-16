@@ -1,4 +1,4 @@
-package org.z3950.zing.cql.cql2pgjson;
+package org.folio.cql2pgjson.util;
 
 import java.util.regex.Pattern;
 
@@ -33,7 +33,7 @@ public final class Cql2SqlUtil {
    * @return SQL LIKE string without leading or trailing single quote
    */
   @SuppressWarnings("squid:S3776")  // suppress "Cognitive Complexity of methods should not be too high"
-  static String cql2like(String s) {
+  public static String cql2like(String s) {
     StringBuilder like = new StringBuilder();
     /** true if the previous character is an escaping backslash */
     boolean backslash = false;
@@ -95,7 +95,7 @@ public final class Cql2SqlUtil {
    * @return SQL regexp string without leading and trailing single quote
    */
   @SuppressWarnings("squid:S3776")  // suppress "Cognitive Complexity of methods should not be too high"
-  static String cql2regexp(String s) {
+  public static String cql2regexp(String s) {
     StringBuilder regexp = new StringBuilder();
     /** true if the previous character is an escaping backslash */
     boolean backslash = false;
@@ -171,7 +171,7 @@ public final class Cql2SqlUtil {
    * @param s  String to test
    * @return true  if s is a Postgres number, false if not or unknown
    */
-  static boolean isPostgresNumber(String s) {
+  public static boolean isPostgresNumber(String s) {
     return postgresNumber.matcher(s).matches();
   }
 }

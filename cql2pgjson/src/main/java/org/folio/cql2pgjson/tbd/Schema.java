@@ -1,4 +1,4 @@
-package org.z3950.zing.cql.cql2pgjson;
+package org.folio.cql2pgjson.tbd;
 
 import java.io.IOException;
 
@@ -10,8 +10,8 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.logging.Logger;
-import java.util.logging.Level;
+
+import org.folio.cql2pgjson.exception.QueryValidationException;
 
 /**
  * Resolves index names against a JSON schema. Can return the fully qualified
@@ -27,7 +27,6 @@ public class Schema {
   private static final String ITEMS_USAGE_MESSAGE
     = "`items` is a reserved field name, whose value should be a Json object containing `type` field.";
   private static final int MIN_DEPTH = 4;
-  private static Logger logger = Logger.getLogger(Schema.class.getName());
 
   /**
    * Container for path and RAML type of a field.
@@ -37,7 +36,7 @@ public class Schema {
     private final String path;
     private final String type;
 
-    Field(String path, String type) {
+    public Field(String path, String type) {
       this.path = path;
       if (type == null) {
         this.type = "";
@@ -51,7 +50,7 @@ public class Schema {
      *
      * @return full path
      */
-    String getPath() {
+    public String getPath() {
       return path;
     }
 
@@ -61,7 +60,7 @@ public class Schema {
      *
      * @return the RAML type.
      */
-    String getType() {
+    public String getType() {
       return type;
     }
   }

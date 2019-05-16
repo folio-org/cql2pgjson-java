@@ -1,4 +1,4 @@
-package org.z3950.zing.cql.cql2pgjson;
+package org.folio.cql2pgjson.tbd;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -44,7 +44,10 @@ public final class UnicodeMapFileGenerator {
     }
   }
 
-  static Iterable<Character> nonSurrogates = NonSurrogates::new;
+  private static Iterable<Character> nonSurrogates = NonSurrogates::new;
+  public static Iterable<Character> getNonSurrogates() {
+    return nonSurrogates;
+  }
   private static Pattern accents = Pattern.compile("[\\p{InCombiningDiacriticalMarks}\uFE20\uFE21]+");
 
   private UnicodeMapFileGenerator() {
@@ -174,7 +177,7 @@ public final class UnicodeMapFileGenerator {
 
   private static Map<Character,String> regexpMap(Equivalents equivalents) {
     Map<Character,Set<String>> ignoreSet = new HashMap<>();
-    for (Character c : nonSurrogates) {
+    for (Character c : getNonSurrogates()) {
       addValueValue(ignoreSet, equivalents.equivalents(c));
     }
 
@@ -196,7 +199,7 @@ public final class UnicodeMapFileGenerator {
     Files.createDirectories(path.getParent());
     try (BufferedWriter writer = Files.newBufferedWriter(path)) {
       Map<Character,String> map = regexpMap(equivalents);
-      for (Character c : nonSurrogates) {
+      for (Character c : getNonSurrogates()) {
         if (map.containsKey(c)) {
           writer.write(c + "\t" + map.get(c) + "\n");
         }
@@ -212,4 +215,5 @@ public final class UnicodeMapFileGenerator {
     generateMapFile(args[0] + "/UnicodeIgnoreAccents",     UnicodeMapFileGenerator::ignoreAccents);
     generateMapFile(args[0] + "/UnicodeIgnoreCaseAccents", UnicodeMapFileGenerator::ignoreCaseAccents);
   }
+
 }

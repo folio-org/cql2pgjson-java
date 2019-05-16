@@ -13,13 +13,12 @@ import java.util.logging.Logger;
 
 import org.apache.commons.cli.*;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.cql2pgjson.exception.FieldException;
+import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.folio.cql2pgjson.model.SqlSelect;
 import org.json.JSONException;
-import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
-import org.z3950.zing.cql.cql2pgjson.FieldException;
-import org.z3950.zing.cql.cql2pgjson.QueryValidationException;
-import org.z3950.zing.cql.cql2pgjson.SchemaException;
-import org.z3950.zing.cql.cql2pgjson.SqlSelect;
 import org.json.JSONObject;
+import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
 
 public class CQL2PGCLIMain {
 
@@ -39,7 +38,7 @@ public class CQL2PGCLIMain {
   }
 
   static String handleOptions(String[] args) throws
-      FieldException, SchemaException, IOException, QueryValidationException,
+      FieldException, IOException, QueryValidationException,
       ParseException {
     Options options = new Options();
 
@@ -71,7 +70,7 @@ public class CQL2PGCLIMain {
     String fullFieldName = line.getOptionValue("t") + "." + line.getOptionValue("f", "jsonb");
     cql2pgJson = new CQL2PgJSON(fullFieldName);
     if(line.hasOption("b")) {
-      cql2pgJson.setDbSchema(line.getOptionValue("b"));
+      cql2pgJson.setDbSchemaPath(line.getOptionValue("b"));
     }
     List<String> cliArgs = line.getArgList();
     String cql = cliArgs.get(0);
@@ -88,7 +87,7 @@ public class CQL2PGCLIMain {
   }
 
   static protected String parseCQL(CQL2PgJSON cql2pgJson, String dbName, String cql) throws IOException,
-      FieldException, SchemaException, QueryValidationException {
+    QueryValidationException {
     SqlSelect sql = cql2pgJson.toSql(cql);
     String orderby = sql.getOrderBy();
     logger.log(Level.FINE, String.format("orderby for cql query '%s' is '%s'", cql, orderby));

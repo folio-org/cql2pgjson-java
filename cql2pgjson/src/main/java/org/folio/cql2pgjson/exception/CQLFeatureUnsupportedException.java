@@ -1,4 +1,4 @@
-package org.z3950.zing.cql.cql2pgjson;
+package org.folio.cql2pgjson.exception;
 
 public class CQLFeatureUnsupportedException extends QueryValidationException {
 

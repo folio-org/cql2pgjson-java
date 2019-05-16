@@ -6,14 +6,14 @@ import java.nio.file.Paths;
 import java.util.logging.Logger;
 
 import org.apache.commons.cli.ParseException;
+import org.folio.cql2pgjson.exception.FieldException;
+import org.folio.cql2pgjson.exception.QueryValidationException;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import org.junit.Before;
 import org.junit.Test;
 import org.z3950.zing.cql.cql2pgjson.CQL2PgJSON;
-import org.z3950.zing.cql.cql2pgjson.FieldException;
-import org.z3950.zing.cql.cql2pgjson.QueryValidationException;
-import org.z3950.zing.cql.cql2pgjson.SchemaException;
 
 public class TestCLI {
 
@@ -53,7 +53,7 @@ public class TestCLI {
 
   @Test
   public void testCLIWithNoSchemaOrDBSchema() throws FieldException, IOException,
-      SchemaException, QueryValidationException, ParseException {
+      QueryValidationException, ParseException {
     String cql = "holdingsRecords.permanentLocationId=\"fcd64ce1-6995-48f0-840e-89ffa2\"";
     String[] args = new String[] {"-t", "instance", "-f", "jsonb", cql };
     String fullFieldName = "instance.jsonb";
@@ -67,13 +67,13 @@ public class TestCLI {
   }
 
   @Test
-  public void testCLIWithDBSchema() throws FieldException, IOException, SchemaException,
+  public void testCLIWithDBSchema() throws FieldException, IOException,
       ParseException, QueryValidationException {
     String cql = "hrid=\"fcd64ce1-6995-48f0-840e-89ffa2\"";
     String[] args = new String[] {"-t", "instance", "-f", "jsonb", "-b", dbSchemaPath, cql };
     String fullFieldName = "instance.jsonb";
     CQL2PgJSON cql2pgjson = new CQL2PgJSON(fullFieldName);
-    cql2pgjson.setDbSchema(dbSchemaPath);
+    cql2pgjson.setDbSchemaPath(dbSchemaPath);
     String output = CQL2PGCLIMain.parseCQL(cql2pgjson, "instance", cql);
     String cli_output = CQL2PGCLIMain.handleOptions(args);
     assertNotNull(output);
@@ -103,7 +103,7 @@ public class TestCLI {
   @Test
   public void testCLIName() throws Exception {
     testCLI("title=foo",
-        "select * from instance where to_tsvector('simple', instance.jsonb->>'title') @@ to_tsquery('simple','foo')");
+        "select * from instance where to_tsvector('simple', f_unaccent(instance.jsonb->>'title')) @@ to_tsquery('simple', f_unaccent('foo'))");
   }
 
   @Test(expected = QueryValidationException.class)

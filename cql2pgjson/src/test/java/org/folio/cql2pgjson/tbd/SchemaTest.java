@@ -1,4 +1,4 @@
-package org.z3950.zing.cql.cql2pgjson;
+package org.folio.cql2pgjson.tbd;
 
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
@@ -7,10 +7,14 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.*;
 import java.io.IOException;
 
+import org.folio.cql2pgjson.exception.QueryValidationException;
+import org.folio.cql2pgjson.tbd.Schema;
+import org.folio.cql2pgjson.tbd.SchemaException;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
+import org.z3950.zing.cql.cql2pgjson.Util;
 
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
@@ -23,11 +27,6 @@ public class SchemaTest {
   private void expect(Class<? extends Throwable> type, String substring1, String substring2, String substring3) {
     thrown.expect(type);
     thrown.expectMessage(allOf(containsString(substring1), containsString(substring2), containsString(substring3)));
-  }
-
-  @Test
-  public void emptySchema() throws Exception {
-    new Schema("{}");
   }
 
   @Test
