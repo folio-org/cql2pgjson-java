@@ -472,13 +472,13 @@ public class CQL2PgJSON {
       if (modifiers.cqlSort == CqlSort.DESCENDING) {
         desc = " DESC";
       }  // ASC not needed, it's Postgres' default
-      
+
       if (modifierSet.getBase().equals("id")) {
         order.append(getPkColumnName()).append(desc);
         continue;
       }
       IndexTextAndJsonValues vals = getIndexTextAndJsonValues(modifierSet.getBase());
-      
+
       // if number sort is specified explicitly
       if (modifiers.cqlSortType == CqlSortType.NUMBER || "number".equals( vals.type) || "integer".equals(vals.type) ) {
         order.append(vals.indexJson).append(desc);
