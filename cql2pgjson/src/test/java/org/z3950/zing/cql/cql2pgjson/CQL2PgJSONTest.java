@@ -2,6 +2,7 @@ package org.z3950.zing.cql.cql2pgjson;
 
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.*;
 import org.junit.runner.RunWith;
 
@@ -21,6 +22,7 @@ import org.junit.Test;
 
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
+import junitparams.converters.Nullable;
 
 @RunWith(JUnitParamsRunner.class)
 public class CQL2PgJSONTest extends DatabaseTestBase {
@@ -557,6 +559,9 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Test
   @Parameters({
     "example   sortBy name                           # Jo Jane; Ka Keller; Lea Long",
+    "example   sortBy id                             # Jo Jane; Ka Keller; Lea Long",
+    "example   sortBy id/sort.ascending              # Jo Jane; Ka Keller; Lea Long",
+    "example   sortBy id/sort.descending             # Lea Long; Ka Keller; Jo Jane",
     "example   sortBy name/sort.ascending            # Jo Jane; Ka Keller; Lea Long",
     "example   sortBy name/sort.ascending/sort.text  # Jo Jane; Ka Keller; Lea Long",
     "example   sortBy name/sort.descending           # Lea Long; Ka Keller; Jo Jane",
@@ -763,18 +768,40 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "id=\"22222222*\",                           (_id>='22222222-0000-0000-0000-000000000000' and "
                                                + "_id<='22222222-ffff-ffff-ffff-ffffffffffff')",
   })
-  public void pKeySql(String cql, String expectedSql) throws QueryValidationException {
+  public void pkColumnRelation(String cql, String expectedSql) throws QueryValidationException {
     assertEquals(expectedSql, cql2pgJson.toSql(cql).getWhere());
     assertEquals(expectedSql, cql2pgJson.toSql(cql.replace("=", "==")).getWhere());
   }
 
   @Test
-  public void pKeyDefault() throws CQL2PgJSONException {
+  @Parameters({
+    "null, id=\"11111111-1111-1111-1111-111111111111\", WHERE id='11111111-1111-1111-1111-111111111111' ",
+    "id  , id=\"11111111-1111-1111-1111-111111111111\", WHERE id='11111111-1111-1111-1111-111111111111' ",
+    "_id , id=\"11111111-1111-1111-1111-111111111111\", WHERE _id='11111111-1111-1111-1111-111111111111'",
+    "pk  , id=\"11111111-1111-1111-1111-111111111111\", WHERE pk='11111111-1111-1111-1111-111111111111' ",
+    "null, cql.allRecords=1 sortBy id                 , WHERE true ORDER BY id                          ",
+    "id  , cql.allRecords=1 sortBy id                 , WHERE true ORDER BY id                          ",
+    "_id , cql.allRecords=1 sortBy id                 , WHERE true ORDER BY _id                         ",
+    "pk  , cql.allRecords=1 sortBy id                 , WHERE true ORDER BY pk                          ",
+  })
+  public void pkColumnName(@Nullable String pkColumnName, String cql, String expectedSql) throws CQL2PgJSONException {
     CQL2PgJSON c = new CQL2PgJSON("users.user_data");
-    c.dbTable.remove("pkColumnName");
-    String sql = c.toSql("id=\"11111111-1111-1111-1111-111111111111\"").getWhere();
-    // default pkColumnName is id without underscore
-    assertEquals("id='11111111-1111-1111-1111-111111111111'", sql);
+    // putting a null value removes the key; this triggers the default name "id"
+    c.dbTable.put("pkColumnName", pkColumnName);
+    assertEquals(expectedSql, c.toSql(cql).toString());
+  }
+
+  @Test
+  @Parameters({
+    "cql.allRecords=1 sortBy id                                    , WHERE true ORDER BY pk     ",
+    "cql.allRecords=1 sortBy id/sort.number                        , WHERE true ORDER BY pk     ",
+    "cql.allRecords=1 sortBy id/sort.descending                    , WHERE true ORDER BY pk DESC",
+    "cql.allRecords=1 sortBy id/sort.descending age/sort.number id , WHERE true ORDER BY pk DESC\\, users.user_data->'age'\\, pk",
+  })
+  public void pkColumnSort(String cql, String expectedSql) throws CQL2PgJSONException {
+    CQL2PgJSON c = new CQL2PgJSON("users.user_data");
+    c.dbTable.put("pkColumnName", "pk");
+    assertEquals(expectedSql, c.toSql(cql).toString());
   }
 
   @Test
@@ -809,7 +836,19 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "id=*1                                     # only right truncation supported for id",
     "id=*1*                                    # only right truncation supported for id",
     "id=11111111*1111-1111-1111-111111111111   # only right truncation supported for id",
-    "id>                11111111-1111-1111-1111-111111111111   # Unsupported operator",
+    "id< 11111111-1111-1111-1111-111111111110  #",
+    "id< 11111111-1111-1111-1111-111111111111  #",
+    "id< 11111111-1111-1111-1111-111111111112  # Jo Jane",
+    "id<=11111111-1111-1111-1111-111111111110  #",
+    "id<=11111111-1111-1111-1111-111111111111  # Jo Jane",
+    "id<=11111111-1111-1111-1111-111111111112  # Jo Jane",
+    "id> 11111111-1111-1111-1111-111111111110  # Jo Jane; Ka Keller; Lea Long",
+    "id> 11111111-1111-1111-1111-111111111111  # Ka Keller; Lea Long",
+    "id> 11111111-1111-1111-1111-111111111112  # Ka Keller; Lea Long",
+    "id>=11111111-1111-1111-1111-111111111110  # Jo Jane; Ka Keller; Lea Long",
+    "id>=11111111-1111-1111-1111-111111111111  # Jo Jane; Ka Keller; Lea Long",
+    "id>=11111111-1111-1111-1111-111111111112  # Ka Keller; Lea Long",
+    "id>=11111111-1111-111w-1111-111111111112  # Invalid UUID after id comparator >=",
     "id=/ignoreCase     11111111-1111-1111-1111-111111111111   # Unsupported modifier ignorecase",
     "id=/respectCase    11111111-1111-1111-1111-111111111111   # Unsupported modifier respectcase",
     "id=/masked         11111111-1111-1111-1111-111111111111   # Unsupported modifier masked",
@@ -819,6 +858,12 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   })
   public void pKey(String testcase) {
     select(cql2pgJson, testcase);
+  }
+
+  @Test
+  public void getPkColumnNameNull() throws FieldException {
+    CQL2PgJSON aCql2pgJson = new CQL2PgJSON("not.existing");
+    assertThat(aCql2pgJson.getPkColumnName(), is("id"));
   }
 
   //
