@@ -477,23 +477,23 @@ public class CQL2PgJSON {
       String sortbyClauseText  = wrapInLowerUnaccent(vals.indexText);
       String sortByClauseIndex = vals.indexJson;
       //determine if sort is primary key 
-      if(dbTable != null) {
-        String pkColumnName = getPkColumnName();
-        String pkColumnComparator = pkColumnName;
-        String actualModifierBase = modifierSet.getBase();
-        //_id is actually referred to as id by cql so we need to check for the known cql value
+      
+      String pkColumnName = getPkColumnName();
+      String pkColumnComparator = pkColumnName;
+      String actualModifierBase = modifierSet.getBase();
+      //_id is actually referred to as id by cql so we need to check for the known cql value
 
-        if(actualModifierBase.equals("id")) {
-          actualModifierBase = pkColumnName;
-        }
-        if(pkColumnComparator.equals(actualModifierBase)) {
-          //if it is we short circuit the json version of the column and just use the pkColumnName 
-          sortbyClauseText =  pkColumnName;
-          sortByClauseIndex = pkColumnName;
-        } else {
-          
-        }
+      if(actualModifierBase.equals("id")) {
+        actualModifierBase = pkColumnName;
       }
+      if(pkColumnComparator.equals(actualModifierBase)) {
+        //if it is we short circuit the json version of the column and just use the pkColumnName 
+        sortbyClauseText =  pkColumnName;
+        sortByClauseIndex = pkColumnName;
+      } else {
+        //left blank due to default assignment handling this case 
+      }
+      
       // if number sort is specified explicitly
       if (modifiers.cqlSortType == CqlSortType.NUMBER) {
         order.append(sortByClauseIndex).append(desc);
@@ -516,8 +516,10 @@ public class CQL2PgJSON {
   }
 
   private String getPkColumnName() {
-    String pkColumnName = dbTable.optString("pkColumnName", /* default = */ "id");
-    return pkColumnName;
+    if(dbTable != null) {
+      return dbTable.optString("pkColumnName", /* default = */ "id");
+    }
+    return null;
   }
 
   private static String sqlOperator(CQLBooleanNode node) throws CQLFeatureUnsupportedException {
