@@ -473,27 +473,29 @@ public class CQL2PgJSON {
         desc = " DESC";
       }  // ASC not needed, it's Postgres' default
 
+      if (modifierSet.getBase().equals("id")) {
+        order.append(getPkColumnName()).append(desc);
+        continue;
+      }
       IndexTextAndJsonValues vals = getIndexTextAndJsonValues(modifierSet.getBase());
 
       // if number sort is specified explicitly
-      if (modifiers.cqlSortType == CqlSortType.NUMBER) {
+      if (modifiers.cqlSortType == CqlSortType.NUMBER || "number".equals( vals.type) || "integer".equals(vals.type)) {
         order.append(vals.indexJson).append(desc);
         continue;
-      } else {
-        switch (vals.type) {
-        case "number":
-        case "integer":
-          order.append(vals.indexJson).append(desc);
-          continue;
-        default:
-          break;
-        }
       }
 
       // We assume that a CREATE INDEX for this has been installed.
       order.append(wrapInLowerUnaccent(vals.indexText)).append(desc);
     }
     return new SqlSelect(where, order.toString());
+  }
+
+  String getPkColumnName() {
+    if (dbTable != null) {
+      return dbTable.optString("pkColumnName", /* default = */ "id");
+    }
+    return "id";
   }
 
   private static String sqlOperator(CQLBooleanNode node) throws CQLFeatureUnsupportedException {
@@ -986,7 +988,7 @@ public class CQL2PgJSON {
    */
   private String pgId(CQLTermNode node) throws QueryValidationException {
     final String uuidPattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
-    String pkColumnName = dbTable.optString("pkColumnName", /* default = */ "id");
+    String pkColumnName = getPkColumnName();
     String comparator = StringUtils.defaultString(node.getRelation().getBase());
     if (!node.getRelation().getModifiers().isEmpty()) {
       throw new QueryValidationException("CQL: Unsupported modifier "
