@@ -486,7 +486,7 @@ public class CQL2PgJSON {
       if(actualModifierBase.equals("id")) {
         actualModifierBase = pkColumnName;
       }
-      if(pkColumnComparator.equals(actualModifierBase)) {
+      if(pkColumnComparator != null && pkColumnComparator.equals(actualModifierBase)) {
         //if it is we short circuit the json version of the column and just use the pkColumnName 
         sortbyClauseText =  pkColumnName;
         sortByClauseIndex = pkColumnName;
