@@ -994,8 +994,17 @@ public class CQL2PgJSON {
       throw new QueryValidationException("CQL: Unsupported modifier "
         + node.getRelation().getModifiers().get(0).getType());
     }
+    String term = node.getTerm();
     boolean equals = true;
     switch (comparator) {
+    case ">":
+    case "<":
+    case ">=":
+    case "<=":
+      if (!term.matches(uuidPattern)) {
+        throw new QueryValidationException("CQL: Invalid UUID after id comparator " + comparator + ": " + term);
+      }
+      return pkColumnName + comparator + "'" + term + "'";
     case "==":
     case "=":
       comparator = "=";
@@ -1007,7 +1016,6 @@ public class CQL2PgJSON {
       throw new QueryValidationException("CQL: Unsupported operator '" + comparator + "' "
           + "id only supports '=', '==', and '<>' (possibly with right truncation)");
     }
-    String term = node.getTerm();
     if (term.equals("") || term.equals("*")) {
       return equals ? "true" : "false";  // no need to check
       // not even for "", since id is a mandatory field, so
