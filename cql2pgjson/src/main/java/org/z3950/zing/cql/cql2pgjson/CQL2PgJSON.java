@@ -56,13 +56,6 @@ public class CQL2PgJSON {
   JSONObject dbSchema; // The whole schema.json, with all tables etc
   JSONObject dbTable; // Our primary table inside the dbSchema
 
-  /** Postgres regexp that matches at any punctuation and space character
-   * and at the beginning of the string */
-  private static final String REGEXP_WORD_BEGIN = "(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))";
-  /** Postgres regexp that matches at any punctuation and space character
-   * and at the end of the string */
-  private static final String REGEXP_WORD_END = "($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))";
-
   /**
    * Default index names to be used for cql.serverChoice.
    * May be empty, but not null. Must not contain null, names must not contain double quote or single quote.
@@ -575,87 +568,53 @@ public class CQL2PgJSON {
   }
 
   /**
-   * Return SQL regexp expressions for do an "all" CQL match of the cql string.
-   * "all" means that all words match, in any position.
-   * <p>
-   * It matches if all returned expressions are true, the caller needs to "AND" them.
-   * Words are delimited by whitespace, punctuation, or start or end of field.
+   * Return SQL full text search expression for an "Adj/And/Any" CQL match string.
    *
    * @param textIndex  JSONB field to match against
    * @param modifiers  CqlModifiers to use
-   * @param cql   words to convert
-   * @return resulting regexps
+   * @param cql  words to convert
+   * @param ftOperator full text search operator to use. One of "<->", "&", or "|"
+   *
+   * @return resulting full text search expression
+   * @throws QueryValidationException
    */
-  @SuppressWarnings("squid:S1192")  // suppress "String literals should not be duplicated"
-  private static String [] allRegexp(String textIndex, CqlModifiers modifiers, String cql) {
+  private static String [] pgFtAAA(String textIndex, CqlModifiers modifiers, String cql, String ftOperator) throws QueryValidationException {
+
+    logger.warning("Doing full text search without index: " + textIndex + ftOperator + cql);
+
     String [] split = cql.trim().split("\\s+");  // split at whitespace
-    if (split.length == 1 && "".equals(split[0])) {
+    if (split.length == 1 && ("".equals(split[0]) || "*".equals(split[0]))) {
       // The variable cql contains whitespace only. honorWhitespace is not implemented yet.
       // So there is no word at all. Therefore no restrictions for matching - anything matches.
       return new String [] { textIndex + " ~ ''" };  // matches any (existing non-null) value
       // don't use "TRUE" because that also matches when the field is not defined or is null
     }
-    for (int i=0; i<split.length; i++) {
-      // A word is delimited by any of: the beginning ^ or the end $ of the field or
-      // by punctuation or by whitespace.
-      String regexp = "'" + REGEXP_WORD_BEGIN
-          + Cql2SqlUtil.cql2regexp(split[i]) + REGEXP_WORD_END + "'";
-      split[i] = wrapInLowerUnaccent(textIndex) + " ~ " + wrapInLowerUnaccent(regexp);
-      if (modifiers.cqlAccents == CqlAccents.RESPECT_ACCENTS ||
-          modifiers.cqlCase == CqlCase.RESPECT_CASE) {
-        split[i] = "(" + split[i] + " AND " +
-            wrapInLowerUnaccent(textIndex, modifiers) + " ~ " +
-            wrapInLowerUnaccent(regexp,    modifiers) + ")";
-      }
+
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < split.length; i++) {
+      split[i] = fTTerm(split[i]);
     }
-    return split;
+    String tsTerm = String.join(ftOperator, split);
+    sb.append("to_tsvector('simple', f_unaccent(" + textIndex + ")) "
+      + "@@ to_tsquery('simple', f_unaccent('" + tsTerm + "'))");
+
+    // Compensate full text not supported modifiers for now. Will change in CQLPG-81
+    if (modifiers.cqlAccents == CqlAccents.RESPECT_ACCENTS || modifiers.cqlCase == CqlCase.RESPECT_CASE) {
+      logger.warning("Trying to compensate unsupported modifiers: " + modifiers.cqlAccents + " : " + modifiers.cqlCase);
+      sb.append(" AND (");
+      String relOp = "|".equals(ftOperator) ? " OR " : " AND ";
+      for (int i = 0; i < split.length; i++) {
+        sb.append(wrapInLowerUnaccent(textIndex, modifiers) +
+          " LIKE '%' || " + wrapInLowerUnaccent("'" + split[i] + "'", modifiers) + " || '%'")
+          .append(i < split.length - 1 ? relOp : "");
+      }
+      sb.append(")");
+    }
+
+    return new String[] { sb.toString() };
   }
 
-  /**
-   * Return SQL regexp expressions for do an "adj" CQL match (phrase match) of the cql string.
-   * "adj" means that all words match, and must be adjacent to each other
-   * in the order they are in the cql string. Other words may be before or after
-   * the phrase.
-   * <p>
-   * It matches if all returned expressions are true, the caller needs to "AND" them.
-   * Words are delimited by whitespace, punctuation, or start or end of field.
-   *
-   * @param textIndex  JSONB field to match against
-   * @param modifiers  CqlModifiers to use
-   * @param cql   words to convert
-   * @return resulting regexps
-   */
-  private static String [] adjRegexp(String textIndex, CqlModifiers modifiers, String cql) {
-    String [] split = cql.trim().split("\\s+");  // split at whitespace
-    if (split.length == 1 && "".equals(split[0])) {
-      // The variable cql contains whitespace only. honorWhitespace is not implemented yet.
-      // So there is no word at all. Therefore no restrictions for matching - anything matches.
-      return new String [] { textIndex + " ~ ''" };  // matches any (existing non-null) value
-      // don't use "TRUE" because that also matches when the field is not defined or is null
-    }
-    StringBuilder regexp = new StringBuilder();
-    regexp.append("'").append(REGEXP_WORD_BEGIN);
-    for (int i=0; i<split.length; i++) {
-      if (i > 0) {
-        regexp.append("([[:punct:]]|[[:space:]])+");
-      }
-      regexp.append(Cql2SqlUtil.cql2regexp(split[i]));
-    }
-    regexp.append(REGEXP_WORD_END).append("'");
-
-    String regexpString = regexp.toString();
-
-    String result = wrapInLowerUnaccent(textIndex) + " ~ " + wrapInLowerUnaccent(regexpString);
-    if (modifiers.cqlAccents == CqlAccents.RESPECT_ACCENTS ||
-        modifiers.cqlCase == CqlCase.RESPECT_CASE) {
-      result = "(" + result + " AND " +
-          wrapInLowerUnaccent(textIndex,    modifiers) + " ~ " +
-          wrapInLowerUnaccent(regexpString, modifiers) + ")";
-    }
-    return new String [] { result };
-  }
-
-  private static String [] match(String textIndex, CQLTermNode node) throws CQLFeatureUnsupportedException {
+  private static String [] match(String textIndex, CQLTermNode node) throws QueryValidationException {
     CqlModifiers modifiers = new CqlModifiers(node);
     if (modifiers.cqlMasking != CqlMasking.MASKED) {
       throw new CQLFeatureUnsupportedException("This masking is not implemented yet: " + modifiers.cqlMasking);
@@ -666,17 +625,13 @@ public class CQL2PgJSON {
       return fullMatch(textIndex, modifiers, node.getTerm(), true);
     case "<>":
       return fullMatch(textIndex, modifiers, node.getTerm(), false);
-    case "all":
-      return allRegexp(textIndex, modifiers, node.getTerm());
     case "=":   // use "adj"
     case "adj":
-      return adjRegexp(textIndex, modifiers, node.getTerm());
+      return pgFtAAA(textIndex, modifiers, node.getTerm(), "<->");
+    case "all":
+      return pgFtAAA(textIndex, modifiers, node.getTerm(), "&");
     case "any":
-      String [] matches = allRegexp(textIndex, modifiers, node.getTerm());
-      if (matches.length == 1) {
-        return matches;
-      }
-      return new String [] { "(" + String.join(") OR (", matches) + ")" };
+      return pgFtAAA(textIndex, modifiers, node.getTerm(), "|");
     case "<":
     case "<=":
     case ">":
@@ -933,7 +888,7 @@ public class CQL2PgJSON {
   // refactoring the code to avoid that would make it much less
   // readable.
   })
-  private String fTTerm(String term) throws QueryValidationException {
+  private static String fTTerm(String term) throws QueryValidationException {
     StringBuilder res = new StringBuilder();
     term = term.trim();
     for (int i = 0; i < term.length(); i++) {

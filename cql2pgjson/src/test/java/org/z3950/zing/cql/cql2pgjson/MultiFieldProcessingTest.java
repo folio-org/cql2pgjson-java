@@ -24,11 +24,14 @@ public class MultiFieldProcessingTest {
   public void testApplicationOfFieldNamesWithoutSchema() throws FieldException, QueryValidationException {
     CQL2PgJSON converter = new CQL2PgJSON( Arrays.asList("field1","field2") );
     assertThat(converter.cql2pgJson("field1.name=v"),
-        containsString("lower(f_unaccent(field1->>'name')) ~ lower(f_unaccent('"));
+        allOf(containsString("to_tsvector"),
+            containsString("field1->>'name'")));
     assertThat(converter.cql2pgJson("field2.name=/respectCase v"),
-        containsString("f_unaccent(field2->>'name') ~ f_unaccent('"));
+        allOf(containsString("to_tsvector"),
+            containsString("field2->>'name'")));
     assertThat(converter.cql2pgJson("name=/respectAccents v"),
-        containsString("lower(field1->>'name') ~ lower('"));
+        allOf(containsString("to_tsvector"),
+            containsString("field1->>'name'")));
   }
 
   @Test
@@ -37,13 +40,16 @@ public class MultiFieldProcessingTest {
     CQL2PgJSON converter = new CQL2PgJSON( Arrays.asList("field1","field2") );
     converter.setServerChoiceIndexes(Arrays.asList("field1.name"));
     assertThat(converter.cql2pgJson("v"),
-        containsString("lower(f_unaccent(field1->>'name')) ~ lower(f_unaccent('"));
+        allOf(containsString("to_tsvector"),
+            containsString("field1->>'name'")));
     converter.setServerChoiceIndexes(Arrays.asList("field2.name"));
     assertThat(converter.cql2pgJson("v"),
-        containsString("lower(f_unaccent(field2->>'name')) ~ lower(f_unaccent('"));
+        allOf(containsString("to_tsvector"),
+            containsString("field2->>'name'")));
     converter.setServerChoiceIndexes(Arrays.asList("name"));
     assertThat(converter.cql2pgJson("v"),
-        containsString("lower(f_unaccent(field1->>'name')) ~ lower(f_unaccent('"));
+        allOf(containsString("to_tsvector"),
+            containsString("field1->>'name'")));
   }
 
   @Test
@@ -53,9 +59,12 @@ public class MultiFieldProcessingTest {
             "name =/respectCase/respectAccents Smith"
                 + " AND email =/respectAccents gmail.com"
                 + " sortBy field2.name/sort.ascending"),
-        allOf(containsString("field1->>'name' ~ '"),
-              containsString("lower(field1->>'email') ~ lower('"),
-              containsString("ORDER BY lower(f_unaccent(field2->>'name'))")));
+        allOf(containsString("to_tsvector"),
+            containsString("field1->>'name'"),
+            containsString("Smith"),
+            containsString("field1->>'email'"),
+            containsString("gmail.com"),
+            containsString("ORDER BY lower(f_unaccent(field2->>'name'))")));
   }
 
 }
